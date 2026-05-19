@@ -1,26 +1,89 @@
 {
-  "timestamp": "2026-05-19T16:44:34.206387",
+  "timestamp": "2026-05-19T19:32:20.648743",
   "data": {
-    "chinaGdp": 5.2,
-    "chinaPmi": 49.4,
-    "usGdp": 3.3,
-    "servicePmi": 50.3,
-    "usCpi": 3.8,
-    "corePce": 2.9,
-    "vix": 25.43,
-    "oilPrice": 94.5,
-    "fedRate": 4.5,
-    "dollarIndex": 105.0,
-    "cpi": 2.5,
-    "ppi": -0.5,
-    "lpr": 3.45,
-    "dr007": 1.8,
-    "m2": 8.3,
-    "epu": 750,
-    "geoRisk": 85,
-    "naturalGas": 3.5,
-    "carbonPrice": 80,
-    "electricity": 7500
+    "chinaGdp": {
+      "value": 5.2,
+      "unit": "%"
+    },
+    "chinaPmi": {
+      "value": 49.4,
+      "unit": ""
+    },
+    "usGdp": {
+      "value": 3.3,
+      "unit": "%"
+    },
+    "servicePmi": {
+      "value": 50.3,
+      "unit": ""
+    },
+    "usCpi": {
+      "value": {
+        "value": 3.8,
+        "unit": "%"
+      },
+      "unit": "%"
+    },
+    "corePce": {
+      "value": 2.9,
+      "unit": "%"
+    },
+    "vix": {
+      "value": 25.43,
+      "unit": ""
+    },
+    "oilPrice": {
+      "value": 94.5,
+      "unit": "$/桶"
+    },
+    "fedRate": {
+      "value": 4.25,
+      "unit": "%"
+    },
+    "dollarIndex": {
+      "value": 99.23,
+      "unit": ""
+    },
+    "cpi": {
+      "value": 2.5,
+      "unit": "%"
+    },
+    "ppi": {
+      "value": -0.5,
+      "unit": "%"
+    },
+    "lpr": {
+      "value": 3.45,
+      "unit": "%"
+    },
+    "dr007": {
+      "value": 1.8,
+      "unit": "%"
+    },
+    "m2": {
+      "value": 8.3,
+      "unit": "%"
+    },
+    "epu": {
+      "value": 750,
+      "unit": ""
+    },
+    "geoRisk": {
+      "value": 85,
+      "unit": ""
+    },
+    "naturalGas": {
+      "value": 3.5,
+      "unit": "$/MMBtu"
+    },
+    "carbonPrice": {
+      "value": 80,
+      "unit": "€/吨"
+    },
+    "electricity": {
+      "value": 7500,
+      "unit": "亿kWh"
+    }
   },
   "meta": {
     "chinaGdp": {
@@ -104,9 +167,56 @@
       "source": "akshare"
     }
   },
+  "units": {
+    "chinaGdp": "%",
+    "chinaPmi": "",
+    "usGdp": "%",
+    "servicePmi": "",
+    "usCpi": "%",
+    "corePce": "%",
+    "vix": "",
+    "oilPrice": "$/桶",
+    "fedRate": "%",
+    "dollarIndex": "",
+    "cpi": "%",
+    "ppi": "%",
+    "lpr": "%",
+    "dr007": "%",
+    "m2": "%",
+    "epu": "",
+    "geoRisk": "",
+    "naturalGas": "$/MMBtu",
+    "carbonPrice": "€/吨",
+    "electricity": "亿kWh"
+  },
   "validity_report": {
     "total": 20,
     "valid": 20,
     "invalid": 0
+  },
+  "legacy_data": {
+    "chinaGdp": 5.2,
+    "chinaPmi": 49.4,
+    "usGdp": 3.3,
+    "servicePmi": 50.3,
+    "usCpi": {
+      "value": 3.8,
+      "unit": "%"
+    },
+    "corePce": 2.9,
+    "vix": 25.43,
+    "oilPrice": 94.5,
+    "fedRate": 4.25,
+    "dollarIndex": 99.23,
+    "cpi": 2.5,
+    "ppi": -0.5,
+    "lpr": 3.45,
+    "dr007": 1.8,
+    "m2": 8.3,
+    "epu": 750,
+    "geoRisk": 85,
+    "naturalGas": 3.5,
+    "carbonPrice": 80,
+    "electricity": 7500
   }
 }
