@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-19T19:36:34.084529",
+  "timestamp": "2026-05-19T22:38:16.419144",
   "data": {
     "chinaGdp": {
       "value": 5.2,
@@ -38,7 +38,7 @@
       "unit": "%"
     },
     "dollarIndex": {
-      "value": 99.21,
+      "value": 99.42,
       "unit": ""
     },
     "cpi": {
@@ -201,7 +201,7 @@
     "vix": 25.43,
     "oilPrice": 94.5,
     "fedRate": 4.25,
-    "dollarIndex": 99.21,
+    "dollarIndex": 99.42,
     "cpi": 2.5,
     "ppi": -0.5,
     "lpr": 3.45,
