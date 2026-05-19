@@ -7,6 +7,7 @@ interface IndicatorScore {
   id: string
   name: string
   value: string
+  unit: string
   score: number  // +1, 0, -1
   reason: string
   region: string
@@ -111,6 +112,7 @@ function transformDataV3(raw: any): IASResult {
       // 支持简单数值和 {value, unit} 对象格式
       const rawVal = data[field.key]
       const rawValue = typeof rawVal === 'object' && rawVal !== null && 'value' in rawVal ? rawVal.value : rawVal
+      const fieldUnit = typeof rawVal === 'object' && rawVal !== null && 'unit' in rawVal ? rawVal.unit : ''
       const fieldMeta = meta[field.key] || {}
       
   // 计算得分
@@ -146,6 +148,7 @@ function transformDataV3(raw: any): IASResult {
         id: field.key,
         name: field.name,
         value: displayValue,
+        unit: fieldUnit,
         score,
         reason: fieldMeta.reason || (score === 1 ? '+1' : score === -1 ? '-1' : '0'),
         region: field.region
@@ -328,7 +331,7 @@ function IndicatorRowV3({ indicator }: { indicator: IndicatorScore }) {
         <span>{indicator.name}</span>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-gray-400 text-xs">{indicator.value}</span>
+        <span className="text-gray-400 text-xs">{indicator.value}{indicator.unit}</span>
         <span className={`font-medium ${scoreClass} w-8 text-right`}>
           {scoreIcon} {indicator.score > 0 ? '+' : ''}{indicator.score}
         </span>
