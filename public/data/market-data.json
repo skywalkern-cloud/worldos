@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-19T19:32:20.648743",
+  "timestamp": "2026-05-19T19:36:34.084529",
   "data": {
     "chinaGdp": {
       "value": 5.2,
@@ -18,10 +18,7 @@
       "unit": ""
     },
     "usCpi": {
-      "value": {
-        "value": 3.8,
-        "unit": "%"
-      },
+      "value": 3.8,
       "unit": "%"
     },
     "corePce": {
@@ -41,7 +38,7 @@
       "unit": "%"
     },
     "dollarIndex": {
-      "value": 99.23,
+      "value": 99.21,
       "unit": ""
     },
     "cpi": {
@@ -199,15 +196,12 @@
     "chinaPmi": 49.4,
     "usGdp": 3.3,
     "servicePmi": 50.3,
-    "usCpi": {
-      "value": 3.8,
-      "unit": "%"
-    },
+    "usCpi": 3.8,
     "corePce": 2.9,
     "vix": 25.43,
     "oilPrice": 94.5,
     "fedRate": 4.25,
-    "dollarIndex": 99.23,
+    "dollarIndex": 99.21,
     "cpi": 2.5,
     "ppi": -0.5,
     "lpr": 3.45,
