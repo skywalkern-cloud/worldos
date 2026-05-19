@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-05-19T16:44:34.206387",
+  "data": {
+    "chinaGdp": 5.2,
+    "chinaPmi": 49.4,
+    "usGdp": 3.3,
+    "servicePmi": 50.3,
+    "usCpi": 3.8,
+    "corePce": 2.9,
+    "vix": 25.43,
+    "oilPrice": 94.5,
+    "fedRate": 4.5,
+    "dollarIndex": 105.0,
+    "cpi": 2.5,
+    "ppi": -0.5,
+    "lpr": 3.45,
+    "dr007": 1.8,
+    "m2": 8.3,
+    "epu": 750,
+    "geoRisk": 85,
+    "naturalGas": 3.5,
+    "carbonPrice": 80,
+    "electricity": 7500
+  },
+  "meta": {
+    "chinaGdp": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "chinaPmi": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "usGdp": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "servicePmi": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "usCpi": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "corePce": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "vix": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "oilPrice": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "fedRate": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "dollarIndex": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "cpi": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "ppi": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "lpr": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "dr007": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "m2": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "epu": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "geoRisk": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "naturalGas": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "carbonPrice": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    },
+    "electricity": {
+      "dateLabel": "2026-05",
+      "source": "akshare"
+    }
+  },
+  "validity_report": {
+    "total": 20,
+    "valid": 20,
+    "invalid": 0
+  }
+}
