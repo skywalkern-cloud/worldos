@@ -108,7 +108,9 @@ function transformDataV3(raw: any): IASResult {
     let negativeCount = 0
     
     const indicators: IndicatorScore[] = dim.fields.map(field => {
-      const rawValue = data[field.key]
+      // 支持简单数值和 {value, unit} 对象格式
+      const rawVal = data[field.key]
+      const rawValue = typeof rawVal === 'object' && rawVal !== null && 'value' in rawVal ? rawVal.value : rawVal
       const fieldMeta = meta[field.key] || {}
       
   // 计算得分
