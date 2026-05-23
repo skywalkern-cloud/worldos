@@ -147,10 +147,12 @@ def main():
     print(f"✅ 仓库存在: {REPO_OWNER}/{REPO_NAME}")
     
     gitignore_patterns = load_gitignore()
-    print(f"已加载 {len(gitignore_patterns)} 条.gitignore规则")
+    # 排除对 dist 目录的限制（dist 是构建输出，需要上传）
+    gitignore_patterns = [p for p in gitignore_patterns if p not in ("dist", "dist/", "dist-ssr")]
+    print(f"已加载 {len(gitignore_patterns)} 条.gitignore规则（已移除dist/dist-ssr）")
     
-    # 排除目录
-    exclude_dirs = {"node_modules", ".git", "dist-ssr", ".github"}
+    # 排除目录（这些目录不会上传到GitHub）
+    exclude_dirs = {"node_modules", ".git", "dist-ssr", ".github", "gh-pages", ".vercel"}
     
     files = get_all_files(WORK_DIR, exclude_dirs)
     print(f"\n待上传: {len(files)} 个文件")
