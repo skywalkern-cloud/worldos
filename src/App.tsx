@@ -11,6 +11,9 @@ interface IndicatorScore {
   score: number  // +1, 0, -1
   reason: string
   region: string
+  frequency: string  // daily | monthly | quarterly | yearly
+  source: string
+  dataDate: string
 }
 
 interface DimensionScore {
@@ -64,7 +67,7 @@ function transformDataV3(raw: any): IASResult {
       icon: '🏦',
       fields: [
         { key: 'lpr', name: 'LPR利率', region: '🇨🇳', getScore: (v: number) => v < 4 ? 1 : (v > 5 ? -1 : 0) },
-        { key: 'dr007', name: 'DR007', region: '🇨🇳', getScore: (v: number) => v < 2 ? 1 : (v > 3 ? -1 : 0) },
+        { key: 'dr007', name: '7天回购利率', region: '🇨🇳', getScore: (v: number) => v < 2 ? 1 : (v > 3 ? -1 : 0) },
         { key: 'm2', name: 'M2货币供应', region: '🇨🇳', getScore: (v: number) => v > 10 ? 1 : (v < 8 ? -1 : 0) },
         { key: 'fedRate', name: '美联储利率', region: '🇺🇸', getScore: (v: number) => v < 3 ? 1 : (v > 5 ? -1 : 0) }
       ]
@@ -80,23 +83,13 @@ function transformDataV3(raw: any): IASResult {
         { key: 'geoRisk', name: '地缘风险指数', region: '🌐', getScore: (v: number) => v < 50 ? 1 : (v > 100 ? -1 : 0) }
       ]
     },
-    {
-      id: 'tech',
-      name: '技术与生产力',
-      icon: '🔬',
-      fields: [
-        { key: 'aiRdRatio', name: 'AI研发投入比', region: '🌐', getScore: () => 0 },
-        { key: 'aiPatentCount', name: 'AI专利数量', region: '🌐', getScore: () => 0 },
-        { key: 'robotInstallBase', name: '机器人装机量', region: '🌐', getScore: () => 0 },
-        { key: 'quantumComputingBudget', name: '量子计算预算', region: '🌐', getScore: () => 0 }
-      ]
-    },
+
     {
       id: 'commodity',
       name: '气候与资源',
       icon: '🌍',
       fields: [
-        { key: 'oilPrice', name: '原油价格', region: '🌐', getScore: (v: number) => v < 80 ? 1 : (v > 100 ? -1 : 0) },
+        { key: 'oilPrice', name: 'WTI原油', region: '🌐', getScore: (v: number) => v < 80 ? 1 : (v > 100 ? -1 : 0) },
         { key: 'naturalGas', name: '天然气价格', region: '🌐', getScore: (v: number) => v < 3 ? 1 : (v > 6 ? -1 : 0) },
         { key: 'carbonPrice', name: '碳排放价格', region: '🌐', getScore: (v: number) => v > 30 ? 1 : (v < 15 ? -1 : 0) },
         { key: 'electricity', name: '电力价格', region: '🌐', getScore: (v: number) => v < 0.1 ? 1 : (v > 0.2 ? -1 : 0) }
@@ -113,7 +106,14 @@ function transformDataV3(raw: any): IASResult {
       const rawVal = data[field.key]
       const rawValue = typeof rawVal === 'object' && rawVal !== null && 'value' in rawVal ? rawVal.value : rawVal
       const fieldUnit = typeof rawVal === 'object' && rawVal !== null && 'unit' in rawVal ? rawVal.unit : ''
+      // 从 rawVal 中提取 frequency, source, dataDate
+      const rawFreq = typeof rawVal === 'object' && rawVal !== null ? (rawVal.frequency || 'other') : 'other'
+      const rawSource = typeof rawVal === 'object' && rawVal !== null ? (rawVal.source || '未知') : '未知'
+      const rawDataDate = typeof rawVal === 'object' && rawVal !== null ? (rawVal.dataDate || '-') : '-'
       const fieldMeta = meta[field.key] || {}
+      const fieldFreq = fieldMeta.frequency || rawFreq || 'other'
+      const fieldSource = fieldMeta.source || rawSource || '未知'
+      const fieldDataDate = fieldMeta.dataDate || rawDataDate || '-'
       
   // 计算得分
       let score = 0
@@ -151,7 +151,10 @@ function transformDataV3(raw: any): IASResult {
         unit: fieldUnit,
         score,
         reason: fieldMeta.reason || (score === 1 ? '+1' : score === -1 ? '-1' : '0'),
-        region: field.region
+        region: field.region,
+        frequency: fieldFreq,
+        source: fieldSource,
+        dataDate: fieldDataDate,
       }
     })
     
@@ -214,7 +217,7 @@ function App() {
     <div className="min-h-screen bg-gray-900 text-white p-4">
       {/* Header */}
       <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold mb-2">📊 WorldOS V3.0 投资评分系统</h1>
+        <h1 className="text-3xl font-bold mb-2">📊 WorldOS数据平台</h1>
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-400">更新时间：{rawData?.timestamp || '-'}</p>
           {isStale && (
@@ -319,19 +322,87 @@ function DimensionCardV3({ dimension }: { dimension: DimensionScore }) {
   )
 }
 
-// ====== 指标行 V3 ======
+function getFreshnessLevel(dataDate: string, frequency: string): 'fresh' | 'stale' | 'expired' {
+  const now = new Date()
+  const data = new Date(dataDate)
+  if (isNaN(data.getTime())) return 'stale'
+  const diffDays = Math.floor((now.getTime() - data.getTime()) / (1000 * 60 * 60 * 24))
+  if (frequency === 'daily') {
+    if (diffDays <= 2) return 'fresh'
+    if (diffDays <= 4) return 'stale'
+    return 'expired'
+  }
+  if (frequency === 'monthly') {
+    if (diffDays <= 35) return 'fresh'
+    if (diffDays <= 70) return 'stale'
+    return 'expired'
+  }
+  if (frequency === 'quarterly') {
+    if (diffDays <= 100) return 'fresh'
+    if (diffDays <= 200) return 'stale'
+    return 'expired'
+  }
+  return 'stale'
+}
+
+function getFrequencyLabel(freq: string): string {
+  if (freq === 'daily') return '日频'
+  if (freq === 'monthly') return '月频'
+  if (freq === 'quarterly') return '季频'
+  if (freq === 'yearly') return '年频'
+  return '其他'
+}
+
+function getFrequencyTag(freq: string): string {
+  if (freq === 'daily') return '📅日'
+  if (freq === 'monthly') return '📅月'
+  if (freq === 'quarterly') return '📅季'
+  if (freq === 'yearly') return '📅年'
+  return '📅其他'
+}
+
+function getFrequencyColor(freq: string): string {
+  if (freq === 'daily') return 'bg-green-500/20 text-green-400'
+  if (freq === 'monthly') return 'bg-blue-500/20 text-blue-400'
+  if (freq === 'quarterly') return 'bg-orange-500/20 text-orange-400'
+  if (freq === 'yearly') return 'bg-gray-500/20 text-gray-400'
+  return 'bg-gray-500/20 text-gray-400'
+}
+
+function getFreshnessColor(level: string): string {
+  if (level === 'fresh') return 'text-green-400'
+  if (level === 'stale') return 'text-yellow-400'
+  return 'text-red-400'
+}
+
 function IndicatorRowV3({ indicator }: { indicator: IndicatorScore }) {
   const scoreClass = indicator.score > 0 ? 'text-green-400' : indicator.score < 0 ? 'text-red-400' : 'text-gray-500'
   const scoreIcon = indicator.score > 0 ? '↑' : indicator.score < 0 ? '↓' : '→'
-  
+
+  const freshnessLevel = getFreshnessLevel(indicator.dataDate, indicator.frequency)
+  const freshnessColor = getFreshnessColor(freshnessLevel)
+
   return (
     <div className="flex items-center justify-between py-2 border-b border-gray-700/30 text-sm">
       <div className="flex items-center gap-2">
         <span className="text-xs">{indicator.region}</span>
         <span>{indicator.name}</span>
+        <span className={`frequency-tag text-xs px-1.5 py-0.5 rounded font-medium ${getFrequencyColor(indicator.frequency)}`}>
+          {getFrequencyLabel(indicator.frequency)}
+        </span>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-gray-400 text-xs">{indicator.value}{indicator.unit}</span>
+        <div className="text-right">
+          <div className="text-gray-400 text-xs">{indicator.value}{indicator.unit}</div>
+          <div className="text-gray-500 text-xs">{indicator.source}</div>
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className={`text-xs ${freshnessColor}`}>
+              {freshnessLevel === 'fresh' ? '🟢' : freshnessLevel === 'stale' ? '🟡' : '🔴'}
+            </span>
+            <span className="text-gray-600 text-xs">{indicator.dataDate}</span>
+            <span className="text-gray-600 text-xs">{getFrequencyTag(indicator.frequency)}</span>
+          </div>
+        </div>
         <span className={`font-medium ${scoreClass} w-8 text-right`}>
           {scoreIcon} {indicator.score > 0 ? '+' : ''}{indicator.score}
         </span>
