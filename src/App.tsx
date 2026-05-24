@@ -1,414 +1,410 @@
-import { useState, useEffect } from 'react'
+import React from "react";
+import { useMemo } from 'react'
 import { useMarketData, MarketDataSkeleton } from './hooks/useMarketData'
 import './index.css'
 
-// ====== V3.0 类型定义 ======
-interface IndicatorScore {
-  id: string
+// ====== v4.1 类型定义 ======
+
+interface IndicatorInfo {
+  value: number | null
+  score: number | null
+  trend: 'up' | 'down' | 'neutral'
+  signal: string       // green, lightgreen, gray, yellow, red
+  category: string
+  country: string
   name: string
-  value: string
-  unit: string
-  score: number  // +1, 0, -1
-  reason: string
-  region: string
-  frequency: string  // daily | monthly | quarterly | yearly
+  frequency: string
+  dataDate: string | null
   source: string
-  dataDate: string
+  unit: string
+  timeliness: number   // α: 0.0 ~ 1.0
+  freshness: string    // 🟢🟡🔴
+  freshness_level: string  // fresh | stale | expired
 }
 
-interface DimensionScore {
-  id: string
+interface DimensionMeta {
   name: string
   icon: string
-  score: number  // F_维度 = 正分 - 负分
-  indicators: IndicatorScore[]
+  weight: number
+  score: number
+  signal: string
+  valid_count: number
 }
 
-interface IASResult {
-  totalScore: number  // IAS = sum(F_维度)
-  signal: string      // 强烈买入/买入/持有/减仓/清仓
-  position: string   // 仓位建议
-  dimensions: DimensionScore[]
+interface IASMeta {
+  score: number
+  max_possible: number
+  signal: string
+  position: string
+  signal_icon: string
 }
 
-// ====== V3.0 数据转换 ======
-function transformDataV3(raw: any): IASResult {
-  const data = raw.data || {}
-  const meta = raw.meta || {}
-
-  // 6大维度20指标 V3.0 配置（匹配后端20个实际字段）
-  // AI/技术指标暂无数据，默认0分
-  const dimensionConfigs = [
-    {
-      id: 'economic',
-      name: '经济产出',
-      icon: '📈',
-      fields: [
-        { key: 'chinaGdp', name: '中国GDP增速', region: '🇨🇳', getScore: (v: number) => v > 5 ? 1 : (v < 4 ? -1 : 0) },
-        { key: 'chinaPmi', name: '中国PMI', region: '🇨🇳', getScore: (v: number) => v > 50 ? 1 : -1 },
-        { key: 'usGdp', name: '美国GDP增速', region: '🇺🇸', getScore: (v: number) => v > 2 ? 1 : (v < 0 ? -1 : 0) },
-        { key: 'servicePmi', name: '中国服务业PMI', region: '🇨🇳', getScore: (v: number) => v > 50 ? 1 : -1 }
-      ]
-    },
-    {
-      id: 'inflation',
-      name: '通胀与价格',
-      icon: '💰',
-      fields: [
-        { key: 'cpi', name: '中国CPI', region: '🇨🇳', getScore: (v: number) => v > 0 && v < 3 ? 1 : (v > 5 ? -1 : 0) },
-        { key: 'ppi', name: '中国PPI', region: '🇨🇳', getScore: (v: number) => v > 0 ? 1 : (v < -3 ? -1 : 0) },
-        { key: 'usCpi', name: '美国CPI', region: '🇺🇸', getScore: (v: number) => v > 0 && v < 3 ? 1 : (v > 5 ? -1 : 0) },
-        { key: 'corePce', name: '美国核心PCE', region: '🇺🇸', getScore: (v: number) => v < 2 ? 1 : (v > 3 ? -1 : 0) }
-      ]
-    },
-    {
-      id: 'money',
-      name: '货币与信用',
-      icon: '🏦',
-      fields: [
-        { key: 'lpr', name: 'LPR利率', region: '🇨🇳', getScore: (v: number) => v < 4 ? 1 : (v > 5 ? -1 : 0) },
-        { key: 'dr007', name: '7天回购利率', region: '🇨🇳', getScore: (v: number) => v < 2 ? 1 : (v > 3 ? -1 : 0) },
-        { key: 'm2', name: 'M2货币供应', region: '🇨🇳', getScore: (v: number) => v > 10 ? 1 : (v < 8 ? -1 : 0) },
-        { key: 'fedRate', name: '美联储利率', region: '🇺🇸', getScore: (v: number) => v < 3 ? 1 : (v > 5 ? -1 : 0) }
-      ]
-    },
-    {
-      id: 'risk',
-      name: '风险与不确定性',
-      icon: '⚠️',
-      fields: [
-        { key: 'vix', name: 'VIX恐慌指数', region: '🇺🇸', getScore: (v: number) => v < 20 ? 1 : (v > 30 ? -1 : 0) },
-        { key: 'epu', name: '经济政策不确定性', region: '🌐', getScore: (v: number) => v < 100 ? 1 : (v > 200 ? -1 : 0) },
-        { key: 'dollarIndex', name: '美元指数', region: '🇺🇸', getScore: (v: number) => v < 100 ? 1 : (v > 110 ? -1 : 0) },
-        { key: 'geoRisk', name: '地缘风险指数', region: '🌐', getScore: (v: number) => v < 50 ? 1 : (v > 100 ? -1 : 0) }
-      ]
-    },
-
-    {
-      id: 'commodity',
-      name: '气候与资源',
-      icon: '🌍',
-      fields: [
-        { key: 'oilPrice', name: 'WTI原油', region: '🌐', getScore: (v: number) => v < 80 ? 1 : (v > 100 ? -1 : 0) },
-        { key: 'naturalGas', name: '天然气价格', region: '🌐', getScore: (v: number) => v < 3 ? 1 : (v > 6 ? -1 : 0) },
-        { key: 'carbonPrice', name: '碳排放价格', region: '🌐', getScore: (v: number) => v > 30 ? 1 : (v < 15 ? -1 : 0) },
-        { key: 'electricity', name: '电力价格', region: '🌐', getScore: (v: number) => v < 0.1 ? 1 : (v > 0.2 ? -1 : 0) }
-      ]
-    }
-  ]
-
-  const dimensions: DimensionScore[] = dimensionConfigs.map(dim => {
-    let positiveCount = 0
-    let negativeCount = 0
-    
-    const indicators: IndicatorScore[] = dim.fields.map(field => {
-      // 支持简单数值和 {value, unit} 对象格式
-      const rawVal = data[field.key]
-      const rawValue = typeof rawVal === 'object' && rawVal !== null && 'value' in rawVal ? rawVal.value : rawVal
-      const fieldUnit = typeof rawVal === 'object' && rawVal !== null && 'unit' in rawVal ? rawVal.unit : ''
-      // 从 rawVal 中提取 frequency, source, dataDate
-      const rawFreq = typeof rawVal === 'object' && rawVal !== null ? (rawVal.frequency || 'other') : 'other'
-      const rawSource = typeof rawVal === 'object' && rawVal !== null ? (rawVal.source || '未知') : '未知'
-      const rawDataDate = typeof rawVal === 'object' && rawVal !== null ? (rawVal.dataDate || '-') : '-'
-      const fieldMeta = meta[field.key] || {}
-      const fieldFreq = fieldMeta.frequency || rawFreq || 'other'
-      const fieldSource = fieldMeta.source || rawSource || '未知'
-      const fieldDataDate = fieldMeta.dataDate || rawDataDate || '-'
-      
-  // 计算得分
-      let score = 0
-      if (rawValue !== undefined && rawValue !== 'NA') {
-        if (typeof field.getScore === 'function') {
-          // 处理字符串类型和数字类型
-          if (typeof rawValue === 'string') {
-            score = (field.getScore as unknown as (v: string) => number)(rawValue)
-          } else {
-            score = (field.getScore as unknown as (v: number) => number)(rawValue as number)
-          }
-        }
-      }
-      
-      if (score > 0) positiveCount++
-      if (score < 0) negativeCount++
-      
-      // 格式化显示值
-      let displayValue = '-'
-      if (rawValue !== undefined && rawValue !== 'NA') {
-        if (typeof rawValue === 'number') {
-          if (rawValue >= 1e11) displayValue = (rawValue / 1e8).toFixed(0) + '亿'
-          else if (rawValue >= 1e9) displayValue = (rawValue / 1e8).toFixed(1) + '亿'
-          else if (rawValue >= 1e6) displayValue = (rawValue / 1e4).toFixed(0) + '万'
-          else displayValue = typeof rawValue === 'number' ? rawValue.toFixed(2) : String(rawValue)
-        } else {
-          displayValue = String(rawValue)
-        }
-      }
-      
-      return {
-        id: field.key,
-        name: field.name,
-        value: displayValue,
-        unit: fieldUnit,
-        score,
-        reason: fieldMeta.reason || (score === 1 ? '+1' : score === -1 ? '-1' : '0'),
-        region: field.region,
-        frequency: fieldFreq,
-        source: fieldSource,
-        dataDate: fieldDataDate,
-      }
-    })
-    
-    return {
-      id: dim.id,
-      name: dim.name,
-      icon: dim.icon,
-      score: positiveCount - negativeCount,
-      indicators
-    }
-  })
-
-  // 计算 IAS 总分
-  const totalScore = dimensions.reduce((sum: number, dim: DimensionScore) => sum + dim.score, 0)
-  
-  // 投资建议
-  let signal = '持有'
-  let position = '40-60%'
-  if (totalScore >= 6) {
-    signal = '强烈买入'
-    position = '80-100%'
-  } else if (totalScore >= 3) {
-    signal = '买入'
-    position = '60-80%'
-  } else if (totalScore >= 0) {
-    signal = '持有'
-    position = '40-60%'
-  } else if (totalScore >= -3) {
-    signal = '减仓'
-    position = '20-40%'
-  } else {
-    signal = '清仓'
-    position = '0-20%'
+interface V4Data {
+  timestamp: string
+  data: Record<string, { value: number | null; unit: string; frequency: string; source: string; dataDate: string | null }>
+  indicators: Record<string, IndicatorInfo>
+  meta: {
+    ias: IASMeta
+    dimensions: Record<string, DimensionMeta>
   }
+}
 
-  return {
-    totalScore,
-    signal,
-    position,
-    dimensions
-  }
+// ====== 6维度配置 ======
+
+const DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
+
+const DIMENSION_LABELS: Record<string, { name: string; icon: string }> = {
+  economic:  { name: '经济增长', icon: '📈' },
+  inflation: { name: '通胀与政策', icon: '💰' },
+  liquidity: { name: '流动性', icon: '💧' },
+  sentiment: { name: '市场情绪', icon: '🧠' },
+  resource:  { name: '资源与供应链', icon: '🛢️' },
+  techGreen: { name: '科技与绿色', icon: '🌱' },
+}
+
+// 每个维度下按国家排序的指标key列表
+const DIMENSION_INDICATORS: Record<string, string[]> = {
+  economic:  ['chinaGdp', 'chinaPmi', 'servicePmi', 'electricity', 'usGdp'],
+  inflation: ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
+  liquidity: ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex'],
+  sentiment: ['vix', 'epu'],
+  resource:  ['oilPrice', 'naturalGas', 'carbonPrice'],
+  techGreen: ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
+}
+
+const COUNTRY_ORDER: Record<string, number> = {
+  '🇨🇳': 0,
+  '🇺🇸': 1,
+  '🌐': 2,
 }
 
 // ====== 主组件 ======
+
 function App() {
   const { data: rawData, isLoading, isStale, refetch } = useMarketData()
-  const [iasResult, setIasResult] = useState<IASResult | null>(null)
 
-  useEffect(() => {
-    if (rawData) {
-      setIasResult(transformDataV3(rawData))
-    }
+  const v4Data = useMemo<V4Data | null>(() => {
+    if (!rawData) return null
+    return rawData as unknown as V4Data
   }, [rawData])
 
-  if (isLoading || !iasResult) {
+  const indicators = v4Data?.indicators || {}
+  const meta = v4Data?.meta || { ias: { score: 0, max_possible: 4.6, signal: '持有', position: '40-60%', signal_icon: '➖' }, dimensions: {} }
+  
+  // Compute anomalies early (before early return to keep hook count stable)
+  const anomalies = useMemo(() => {
+    const result: { key: string; info: IndicatorInfo }[] = []
+    for (const [key, info] of Object.entries(indicators)) {
+      if (info.signal === 'red' || info.signal === 'yellow') {
+        result.push({ key, info })
+      }
+    }
+    // Sort: red first, then yellow
+    result.sort((a, b) => {
+      if (a.info.signal === 'red' && b.info.signal !== 'red') return -1
+      if (a.info.signal !== 'red' && b.info.signal === 'red') return 1
+      return 0
+    })
+    return result.slice(0, 6)
+  }, [indicators])
+
+  if (isLoading || !v4Data) {
     return <MarketDataSkeleton />
   }
-
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       {/* Header */}
-      <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold mb-2">📊 WorldOS数据平台</h1>
-        <div className="flex items-center justify-center gap-4">
-          <p className="text-gray-400">更新时间：{rawData?.timestamp || '-'}</p>
-          {isStale && (
-            <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded">
-              ⚠️ 数据超时
-            </span>
-          )}
+      <header className="mb-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">
+            <span className="text-blue-400">WorldOS</span>
+            <span className="text-gray-400 text-base ml-2">v4.1</span>
+          </h1>
+          <div className="flex items-center gap-3 text-sm text-gray-400">
+            <span>更新: {v4Data.timestamp ? new Date(v4Data.timestamp).toLocaleString('zh-CN') : '-'}</span>
+            {isStale && <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs">⚠️ 超时</span>}
+            <button onClick={refetch} className="text-xs text-gray-500 hover:text-gray-300 underline">刷新</button>
+          </div>
         </div>
-        <button onClick={refetch} className="mt-2 text-xs text-gray-500 hover:text-gray-300 underline">
-          手动刷新
-        </button>
       </header>
 
       {/* IAS 卡片 */}
-      <IASCard score={iasResult.totalScore} signal={iasResult.signal} position={iasResult.position} />
+      <IASCard ias={meta.ias} />
+
+      {/* 异常指标速览 */}
+      {anomalies.length > 0 && (
+        <AnomalyBar anomalies={anomalies} />
+      )}
 
       {/* 维度条 */}
-      <DimensionBar dimensions={iasResult.dimensions} />
+      <DimensionBar dimensions={meta.dimensions} />
 
-      {/* 6-Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {iasResult.dimensions.map(dim => (
-          <DimensionCardV3 key={dim.id} dimension={dim} />
+      {/* 6维度卡片网格 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {DIMENSION_ORDER.map(dimId => (
+          <DimensionCardV4
+            key={dimId}
+            dimId={dimId}
+            dimMeta={meta.dimensions[dimId]}
+            indicatorKeys={DIMENSION_INDICATORS[dimId]}
+            indicators={indicators}
+          />
+        ))}
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-8 text-center text-xs text-gray-600">
+        WorldOS 全球运行监控系统 · 数据每60秒自动刷新
+      </footer>
+    </div>
+  )
+}
+
+// ====== IAS 卡片 ======
+
+function IASCard({ ias }: { ias: IASMeta }) {
+  const getGradient = () => {
+    if (ias.score >= 2.5) return 'from-green-600 to-green-500'
+    if (ias.score >= 1.0) return 'from-green-500 to-emerald-400'
+    if (ias.score >= -0.5) return 'from-yellow-500 to-orange-400'
+    if (ias.score >= -1.5) return 'from-orange-500 to-red-400'
+    return 'from-red-600 to-red-500'
+  }
+
+  return (
+    <div className={`bg-gradient-to-r ${getGradient()} rounded-xl p-5 mb-4 text-center shadow-lg`}>
+      <div className="text-sm text-white/70 mb-1">IAS 综合投资评分</div>
+      <div className="text-4xl font-bold text-white mb-1">
+        {ias.score > 0 ? '+' : ''}{ias.score.toFixed(2)}
+      </div>
+      <div className="text-xl font-semibold text-white flex items-center justify-center gap-2">
+        <span>{ias.signal_icon}</span>
+        <span>{ias.signal}</span>
+      </div>
+      <div className="text-white/70 mt-1">建议仓位: {ias.position}</div>
+    </div>
+  )
+}
+
+// ====== 异常指标速览 ======
+
+function AnomalyBar({
+  anomalies,
+}: {
+  anomalies: { key: string; info: IndicatorInfo }[]
+}) {
+  return (
+    <div className="mb-4 p-3 bg-gray-800/80 rounded-lg border border-gray-700">
+      <div className="text-xs text-gray-400 mb-2">⚠️ 异常指标速览</div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {anomalies.map(({ key, info }) => (
+          <div
+            key={key}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap ${
+              info.signal === 'red'
+                ? 'bg-red-500/15 text-red-300 border border-red-500/30'
+                : 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30'
+            }`}
+          >
+            <span className="mr-1">{info.country}</span>
+            <span className="font-medium">{info.name}</span>
+            <span className="mx-1 opacity-60">{info.value ?? '待接入'}</span>
+            <span className="opacity-60">{info.unit}</span>
+            <span className="ml-1">{info.freshness}</span>
+          </div>
         ))}
       </div>
     </div>
   )
 }
 
-// ====== IAS 卡片 ======
-function IASCard({ score, signal, position }: { score: number, signal: string, position: string }) {
-  const getColor = () => {
-    if (score >= 6) return 'from-green-600 to-green-500'
-    if (score >= 3) return 'from-green-500 to-emerald-400'
-    if (score >= 0) return 'from-yellow-500 to-orange-400'
-    if (score >= -3) return 'from-orange-500 to-red-400'
-    return 'from-red-600 to-red-500'
-  }
+// ====== 维度条 ======
 
-  const getSignalIcon = () => {
-    if (score >= 6) return '🚀'
-    if (score >= 3) return '✅'
-    if (score >= 0) return '➖'
-    if (score >= -3) return '⚠️'
-    return '🛑'
-  }
-
+function DimensionBar({ dimensions }: { dimensions: Record<string, DimensionMeta> }) {
   return (
-    <div className={`bg-gradient-to-r ${getColor()} rounded-xl p-6 mb-6 text-center shadow-lg`}>
-      <div className="text-sm text-white/80 mb-1">IAS 综合评分</div>
-      <div className="text-5xl font-bold text-white mb-2">{score > 0 ? '+' : ''}{score}</div>
-      <div className="text-2xl font-semibold text-white flex items-center justify-center gap-2">
-        <span>{getSignalIcon()}</span>
-        <span>{signal}</span>
-      </div>
-      <div className="text-white/80 mt-1">建议仓位: {position}</div>
+    <div className="flex flex-wrap justify-center gap-2 mb-4">
+      {DIMENSION_ORDER.map(dimId => {
+        const dim = dimensions[dimId]
+        return (
+          <div
+            key={dimId}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+              dim.score > 0.1
+                ? 'bg-green-500/15 text-green-400'
+                : dim.score < -0.1
+                ? 'bg-red-500/15 text-red-400'
+                : 'bg-gray-500/15 text-gray-400'
+            }`}
+          >
+            {dim.icon} {dim.name} {dim.score > 0 ? '+' : ''}{dim.score.toFixed(2)}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-// ====== 维度条 ======
-function DimensionBar({ dimensions }: { dimensions: DimensionScore[] }) {
+// ====== 维度卡片 ======
+
+function DimensionCardV4({
+  dimId,
+  dimMeta,
+  indicatorKeys,
+  indicators,
+}: {
+  dimId: string
+  dimMeta: DimensionMeta
+  indicatorKeys: string[]
+  indicators: Record<string, IndicatorInfo>
+}) {
+  const label = DIMENSION_LABELS[dimId]
+
+  const getScoreColor = () => {
+    if (dimMeta.score > 0.1) return 'text-green-400'
+    if (dimMeta.score < -0.1) return 'text-red-400'
+    return 'text-gray-400'
+  }
+
+  // Group indicators by country
+  const grouped = useMemo(() => {
+    const groups: Record<string, { key: string; info: IndicatorInfo }[]> = {}
+    for (const key of indicatorKeys) {
+      const info = indicators[key]
+      if (!info) continue
+      const country = info.country || '🌐'
+      if (!groups[country]) groups[country] = []
+      groups[country].push({ key, info })
+    }
+    // Sort by country order
+    return Object.entries(groups).sort(
+      (a, b) => (COUNTRY_ORDER[a[0]] ?? 99) - (COUNTRY_ORDER[b[0]] ?? 99)
+    )
+  }, [indicatorKeys, indicators])
+
   return (
-    <div className="flex flex-wrap justify-center gap-2 mb-6">
-      {dimensions.map(dim => (
-        <div 
-          key={dim.id}
-          className={`px-3 py-1 rounded-full text-sm ${
-            dim.score > 0 ? 'bg-green-500/20 text-green-400' :
-            dim.score < 0 ? 'bg-red-500/20 text-red-400' :
-            'bg-gray-500/20 text-gray-400'
-          }`}
-        >
-          {dim.icon} {dim.name} {dim.score > 0 ? '+' : ''}{dim.score}
+    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
+      {/* 维度头部 */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{label.icon}</span>
+          <h2 className="text-base font-semibold text-gray-100">{label.name}</h2>
+          <span className="text-xs text-gray-500">w={dimMeta.weight}</span>
+        </div>
+        <span className={`text-lg font-bold ${getScoreColor()}`}>
+          {dimMeta.score > 0 ? '+' : ''}{dimMeta.score.toFixed(2)}
+        </span>
+      </div>
+
+      {/* 按国家分组的指标 */}
+      {grouped.map(([country, items]) => (
+        <div key={country} className="mb-2 last:mb-0">
+          <div className="text-xs text-gray-500 mb-1 font-medium">{country}</div>
+          <div className="space-y-0.5">
+            {items.map(({ key, info }) => (
+              <IndicatorRowV4 key={key} info={info} />
+            ))}
+          </div>
         </div>
       ))}
     </div>
   )
 }
 
-// ====== 维度卡片 V3 ======
-function DimensionCardV3({ dimension }: { dimension: DimensionScore }) {
-  const scoreColor = dimension.score > 0 ? 'text-green-400' : dimension.score < 0 ? 'text-red-400' : 'text-gray-400'
-  
-  return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <span>{dimension.icon}</span>
-          <span>【{dimension.name}】</span>
-        </h2>
-        <span className={`text-xl font-bold ${scoreColor}`}>
-          {dimension.score > 0 ? '+' : ''}{dimension.score}
-        </span>
-      </div>
-      <div className="space-y-2">
-        {dimension.indicators.map(ind => (
-          <IndicatorRowV3 key={ind.id} indicator={ind} />
-        ))}
-      </div>
-    </div>
-  )
-}
+// ====== 指标行 ======
 
-function getFreshnessLevel(dataDate: string, frequency: string): 'fresh' | 'stale' | 'expired' {
-  const now = new Date()
-  const data = new Date(dataDate)
-  if (isNaN(data.getTime())) return 'stale'
-  const diffDays = Math.floor((now.getTime() - data.getTime()) / (1000 * 60 * 60 * 24))
-  if (frequency === 'daily') {
-    if (diffDays <= 2) return 'fresh'
-    if (diffDays <= 4) return 'stale'
-    return 'expired'
-  }
-  if (frequency === 'monthly') {
-    if (diffDays <= 35) return 'fresh'
-    if (diffDays <= 70) return 'stale'
-    return 'expired'
-  }
-  if (frequency === 'quarterly') {
-    if (diffDays <= 100) return 'fresh'
-    if (diffDays <= 200) return 'stale'
-    return 'expired'
-  }
-  return 'stale'
-}
+function IndicatorRowV4({ info }: { info: IndicatorInfo }) {
+  // Determine background color based on signal
+  const rowBg = info.signal === 'red'
+    ? 'bg-red-500/8'
+    : info.signal === 'yellow'
+    ? 'bg-yellow-500/8'
+    : ''
 
-function getFrequencyLabel(freq: string): string {
-  if (freq === 'daily') return '日频'
-  if (freq === 'monthly') return '月频'
-  if (freq === 'quarterly') return '季频'
-  if (freq === 'yearly') return '年频'
-  return '其他'
-}
+  const isExpired = info.freshness_level === 'expired'
 
-function getFrequencyTag(freq: string): string {
-  if (freq === 'daily') return '📅日'
-  if (freq === 'monthly') return '📅月'
-  if (freq === 'quarterly') return '📅季'
-  if (freq === 'yearly') return '📅年'
-  return '📅其他'
-}
+  // Format value
+  const displayValue = info.value !== null && info.value !== undefined
+    ? (typeof info.value === 'number' && info.value >= 1000
+        ? info.value.toFixed(0)
+        : typeof info.value === 'number'
+        ? info.value.toFixed(2)
+        : String(info.value))
+    : '待接入'
 
-function getFrequencyColor(freq: string): string {
-  if (freq === 'daily') return 'bg-green-500/20 text-green-400'
-  if (freq === 'monthly') return 'bg-blue-500/20 text-blue-400'
-  if (freq === 'quarterly') return 'bg-orange-500/20 text-orange-400'
-  if (freq === 'yearly') return 'bg-gray-500/20 text-gray-400'
-  return 'bg-gray-500/20 text-gray-400'
-}
-
-function getFreshnessColor(level: string): string {
-  if (level === 'fresh') return 'text-green-400'
-  if (level === 'stale') return 'text-yellow-400'
-  return 'text-red-400'
-}
-
-function IndicatorRowV3({ indicator }: { indicator: IndicatorScore }) {
-  const scoreClass = indicator.score > 0 ? 'text-green-400' : indicator.score < 0 ? 'text-red-400' : 'text-gray-500'
-  const scoreIcon = indicator.score > 0 ? '↑' : indicator.score < 0 ? '↓' : '→'
-
-  const freshnessLevel = getFreshnessLevel(indicator.dataDate, indicator.frequency)
-  const freshnessColor = getFreshnessColor(freshnessLevel)
+  // Score display
+  const scoreDisplay = info.score !== null
+    ? `${info.score > 0 ? '+' : ''}${info.score.toFixed(2)}`
+    : '-'
 
   return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-700/30 text-sm">
-      <div className="flex items-center gap-2">
-        <span className="text-xs">{indicator.region}</span>
-        <span>{indicator.name}</span>
-        <span className={`frequency-tag text-xs px-1.5 py-0.5 rounded font-medium ${getFrequencyColor(indicator.frequency)}`}>
-          {getFrequencyLabel(indicator.frequency)}
-        </span>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="text-right">
-          <div className="text-gray-400 text-xs">{indicator.value}{indicator.unit}</div>
-          <div className="text-gray-500 text-xs">{indicator.source}</div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className={`text-xs ${freshnessColor}`}>
-              {freshnessLevel === 'fresh' ? '🟢' : freshnessLevel === 'stale' ? '🟡' : '🔴'}
-            </span>
-            <span className="text-gray-600 text-xs">{indicator.dataDate}</span>
-            <span className="text-gray-600 text-xs">{getFrequencyTag(indicator.frequency)}</span>
-          </div>
+    <div className={`${rowBg} ${isExpired ? 'opacity-70' : ''} py-1`}>
+      {/* 主行 */}
+      <div className="flex items-center justify-between px-2 rounded text-sm">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="text-xs flex-shrink-0">{info.country}</span>
+          <span className={`truncate ${isExpired ? 'text-gray-400' : 'text-gray-300'}`}>
+            {info.name}
+          </span>
+          <span className="text-xs flex-shrink-0">{info.freshness}</span>
         </div>
-        <span className={`font-medium ${scoreClass} w-8 text-right`}>
-          {scoreIcon} {indicator.score > 0 ? '+' : ''}{indicator.score}
-        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`font-mono text-xs text-right min-w-[3.5rem] ${
+            displayValue === '待接入' ? 'text-gray-500' : isExpired ? 'text-gray-400' : 'text-gray-200'
+          }`}>
+            {displayValue}{info.value !== null && info.unit ? info.unit : ''}
+          </span>
+          <span className={`text-xs w-3 text-center ${
+            info.trend === 'up' ? 'text-green-500' :
+            info.trend === 'down' ? 'text-red-500' :
+            'text-gray-500'
+          }`}>
+            {info.trend === 'up' ? '↑' : info.trend === 'down' ? '↓' : '→'}
+          </span>
+          <span className={`font-mono text-xs w-12 text-right ${
+            info.score !== null && info.score > 0 ? 'text-green-500/60' :
+            info.score !== null && info.score < 0 ? 'text-red-500/60' :
+            'text-gray-500/60'
+          }`}>
+            {scoreDisplay}
+          </span>
+        </div>
       </div>
+      {/* 副行：数据来源 + 时间 */}
+      {(info.source || info.dataDate) && (
+        <div className="flex items-center gap-2 px-2 text-[10px] text-gray-600">
+          {info.source && <span>{info.source}</span>}
+          {info.dataDate && <span>· {info.dataDate}</span>}
+        </div>
+      )}
     </div>
   )
 }
 
-export default App
+const AppWithBoundary = () => React.createElement(ErrorBoundary, null, React.createElement(App));
+export default AppWithBoundary
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("WorldOS Error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return React.createElement("div", { style: { padding: 20, color: "white", background: "#1a1a2e", fontFamily: "monospace" } },
+        React.createElement("h1", null, "⚠️ WorldOS 渲染错误"),
+        React.createElement("pre", null, this.state.error?.toString()),
+        React.createElement("pre", { style: { fontSize: 12 } }, this.state.error?.stack)
+      );
+    }
+    return this.props.children;
+  }
+}
