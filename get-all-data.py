@@ -7,7 +7,13 @@
 
 import json
 import os
+import sys
 from datetime import datetime, timedelta
+from pathlib import Path
+
+# 加载评分模块
+sys.path.insert(0, str(Path(__file__).parent / 'scripts'))
+from scoring import build_indicators_and_meta, calc_score, calc_timeliness
 
 # 配置代理
 PROXY = os.environ.get('HTTP_PROXY', 'http://127.0.0.1:7890')
@@ -999,6 +1005,23 @@ def generate_validity_report(validity):
 
 if __name__ == "__main__":
     data, meta, sources, validity = get_all_data()
+
+    # Build indicators & meta for v4.1
+    # Convert flat data to { key: {value, frequency, source, dataDate} } format
+    rich_data = {}
+    for k, v in data.items():
+        m = meta.get(k, {})
+        s = sources.get(k, '')
+        vld = validity.get(k, {})
+        rich_data[k] = {
+            'value': v if v != 'NA' else None,
+            'unit': '',
+            'frequency': 'monthly',
+            'source': s,
+            'dataDate': m.get('dateLabel', '-'),
+        }
+
+    indicators, score_meta = build_indicators_and_meta(rich_data)
     
     real_count = sum(1 for v in data.values() if v != 'NA')
     print(f"\n📊 共获取 {real_count} 个真实数据，{len(data) - real_count} 个NA")
@@ -1013,7 +1036,8 @@ if __name__ == "__main__":
     output = {
         'timestamp': datetime.now().isoformat(),
         'data': data,
-        'meta': meta,
+        'indicators': indicators,
+        'meta': score_meta,
         'sources': sources,
         'validity': validity,
         'validity_report': report
