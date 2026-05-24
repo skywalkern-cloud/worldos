@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-WorldOS 数据获取脚本 v2.6 - 第三轮修复（稳定版）
+WorldOS 数据获取脚本 v4.1 - 第四轮修复（Bug修复版）
 修复问题：
 1. fedRate - 真实美联储利率（已知降息至3.75%）
 2. dollarIndex - 修复为使用 USDCNY+EURUSD+USDJPY 实时计算
 3. electricity - 真实全社会用电量同比（5.4%）
-4. aiGrowth/robotInstall - 第二产业用电量同比（工业代理）
-5. evPenetration - 第三产业用电量同比（服务业代理）
-6. 删掉 patentApps（无数据源）
-7. 所有指标都有真实数据，无默认值填充
+4. aiGrowth - 第二产业用电量同比（AI/制造业代理）
+5. robotInstall - 工业增加值同比（机器人安装代理，与aiGrowth不同数据源）
+6. evPenetration - 乘联会新能源车渗透率（%），修复了之前误用第三产业用电量的问题
+7. 删掉 patentApps（无数据源）
+8. 所有指标都有真实数据，无默认值填充
 """
 
 import os
@@ -18,6 +19,10 @@ import signal
 import functools
 from datetime import datetime, date, timedelta
 from pathlib import Path
+
+# 加载评分模块
+sys.path.insert(0, str(Path(__file__).parent))
+from scoring import build_indicators_and_meta
 
 # ========== 清除所有代理设置 ==========
 for key in list(os.environ.keys()):
@@ -345,6 +350,34 @@ def get_electricity_service():
 
 
 @with_timeout(20)
+def get_industrial_production():
+    """规模以上工业增加值同比增速 (机器人安装代理)"""
+    import akshare as ak
+    import pandas as pd
+    df = ak.macro_china_industrial_production_yoy()
+    for i in range(len(df) - 1, -1, -1):
+        val = df.iloc[i]['今值']
+        if not pd.isna(val):
+            return round(float(val), 1), str(df.iloc[i]['日期'])[:10], 'monthly'
+    return None, None, None
+
+
+@with_timeout(20)
+def get_nev_penetration_rate():
+    """新能源车渗透率 (%) 从乘联会数据"""
+    import akshare as ak
+    import pandas as pd
+    df = ak.car_market_fuel_cpca(symbol='销量占比-ICE-NEV')
+    # 取最新一条NEV占比数据
+    for i in range(len(df) - 1, -1, -1):
+        val = df.iloc[i]['NEV']
+        if not pd.isna(val):
+            date_str = str(df.iloc[i]['月份'])
+            return round(float(val), 1), date_str, 'monthly'
+    return None, None, None
+
+
+@with_timeout(20)
 def get_energy_index():
     """中证新能源指数"""
     import akshare as ak
@@ -399,8 +432,8 @@ INDICATOR_DEFS = {
     'electricity': {'name': '全社会用电量增速', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局', 'func': get_electricity},
     'renewEnergyInvest': {'name': '新能源指数', 'unit': '点', 'frequency': 'daily', 'source': '中证新能源指数', 'func': get_energy_index},
     'aiGrowth': {'name': '工业用电增速(AI/制造业代理)', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局-第二产业', 'func': get_electricity_industry},
-    'robotInstall': {'name': '工业用电增速(机器人安装代理)', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局-第二产业', 'func': get_electricity_industry},
-    'evPenetration': {'name': '服务业用电增速(EV渗透代理)', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局-第三产业', 'func': get_electricity_service},
+    'robotInstall': {'name': '工业增加值增速(机器人安装代理)', 'unit': '%', 'frequency': 'monthly', 'source': '国家统计局-规模以上工业增加值', 'func': get_industrial_production},
+    'evPenetration': {'name': '新能源车渗透率', 'unit': '%', 'frequency': 'monthly', 'source': '乘联会-CPCA', 'func': get_nev_penetration_rate},
     'extremeWeather': {'name': '经济天气代理(非制造业PMI)', 'unit': '', 'frequency': 'monthly', 'source': '国家统计局', 'func': get_service_pmi},
 }
 
@@ -424,12 +457,21 @@ def load_prev():
 
 
 def save_results(results, fetch_ts):
-    """保存结果到文件"""
+    """保存结果到文件（含v4.1评分）"""
     valid = sum(1 for v in results.values() if v['value'] is not None)
     total = len(results)
+
+    # 加载上一轮用于趋势比较
+    prev_data = load_prev()
+
+    # 计算v4.1评分
+    indicators, meta = build_indicators_and_meta(results, prev_data)
+
     output = {
         'timestamp': fetch_ts,
         'data': results,
+        'indicators': indicators,
+        'meta': meta,
         'validity_report': {'total': total, 'valid': valid, 'invalid': total - valid},
     }
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
