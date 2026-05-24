@@ -1,124 +1,333 @@
-# WorldOS 5大维度设计文档（v2.0）
+# WorldOS设计文档 v4.1
 
-## 一、维度总览
-
-| 维度ID | 维度名称 | 英文名 | Icon | 指标数 | 说明 |
-|:------:|:---------|:-------|:----:|:------:|:-----|
-| 1 | 经济产出 | Economic Output | 📈 | 4 | GDP、PMI等 |
-| 2 | 通胀与价格 | Inflation & Prices | 💰 | 4 | CPI、PPI等 |
-| 3 | 货币与信用 | Money & Credit | 🏦 | 4 | 利率、货币供应量 |
-| 4 | 风险与不确定性 | Risk & Uncertainty | ⚠️ | 4 | VIX、EPU等 |
-| 5 | 气候与资源 | Climate & Resources | 🌍 | 4 | 油价、碳价 |
+> 更新时间：2026-05-24 | 版本：v4.1（根据评审意见修正）
+> 维度重构：5→6维 | 指标扩容：20→30个 | 评分升级：离散→连续（已修正公式bug）
+> 修正记录：修复评分公式边界矛盾、补充双向指标公式、新增时间衰减因子
 
 ---
 
-## 二、指标列表（20个）
+## 一、版本历史
 
-### 维度1：经济产出 (Economic Output) - 4个指标
-
-| 序号 | 指标ID | 中文名 | 英文名 | 数据源 | 频率 | 时效要求 |
-|:----:|:-------|:-------|:-------|:-------|:----:|:---------|
-| 1 | chinaGdp | 中国GDP增速 | China GDP Growth | 国家统计局 | quarterly | 季度后1-2月 |
-| 2 | chinaPmi | 中国PMI | China PMI | 国家统计局 | monthly | 月底/次月初 |
-| 3 | usGdp | 美国GDP增速 | US GDP Growth | BEA | quarterly | 季度后1月 |
-| 4 | servicePmi | 服务业PMI | Services PMI | 国家统计局 | monthly | 月底/次月初 |
-
-### 维度2：通胀与价格 (Inflation & Prices) - 4个指标
-
-| 序号 | 指标ID | 中文名 | 英文名 | 数据源 | 频率 | 时效要求 |
-|:----:|:-------|:-------|:-------|:-------|:----:|:---------|
-| 1 | cpi | 中国CPI同比 | China CPI YoY | 国家统计局 | monthly | 月中/次月中旬 |
-| 2 | ppi | 中国PPI同比 | China PPI YoY | 国家统计局 | monthly | 月中/次月中旬 |
-| 3 | usCpi | 美国CPI同比 | US CPI YoY | BLS | monthly | 次月中旬 |
-| 4 | corePce | 核心PCE | Core PCE | 美联储 | monthly | 次月末 |
-
-### 维度3：货币与信用 (Money & Credit) - 4个指标
-
-| 序号 | 指标ID | 中文名 | 英文名 | 数据源 | 频率 | 时效要求 |
-|:----:|:-------|:-------|:-------|:-------|:----:|:---------|
-| 1 | lpr | LPR利率 | LPR Rate | 央行 | monthly | 每月20日 |
-| 2 | dr007 | DR007利率 | DR007 Rate | 货币市场 | daily | T+0 |
-| 3 | m2 | M2增速 | M2 Growth | 央行 | monthly | 月中/次月中旬 |
-| 4 | fedRate | 美联储利率 | Fed Funds Rate | 美联储 | daily | T+0 |
-
-### 维度4：风险与不确定性 (Risk & Uncertainty) - 4个指标
-
-| 序号 | 指标ID | 中文名 | 英文名 | 数据源 | 频率 | 时效要求 |
-|:----:|:-------|:-------|:-------|:-------|:----:|:---------|
-| 1 | vix | VIX恐慌指数 | VIX | CBOE | daily | T+0 |
-| 2 | epu | 经济政策不确定性 | EPU | 教授研究 | monthly | 月底 |
-| 3 | dollarIndex | 美元指数 | Dollar Index | ICE | daily | T+0 |
-| 4 | geoRisk | 地缘风险指数 | Geopolitical Risk | 教授研究 | daily | T+0 |
-
-### 维度5：气候与资源 (Climate & Resources) - 4个指标
-
-| 序号 | 指标ID | 中文名 | 英文名 | 数据源 | 频率 | 时效要求 |
-|:----:|:-------|:-------|:-------|:-------|:----:|:---------|
-| 1 | oilPrice | WTI原油价格 | WTI Oil Price | EIA | daily | T+1 |
-| 2 | naturalGas | 天然气价格 | Natural Gas Price | EIA | daily | T+1 |
-| 3 | carbonPrice | 碳市场价格 | Carbon Price | 碳市场 | daily | T+0 |
-| 4 | electricity | 用电量 | Electricity | 电网公司 | monthly | 月中 |
+| 版本 | 日期 | 主要变更 |
+| :---: | :---: | :--------- |
+| v1.0 | 2025-Q4 | 初始框架，5维度20指标 |
+| v2.0 | 2026-01 | 完善时效性标准和JSON映射 |
+| v3.0 | 2026-03 | 前端React V3组件，5维度26指标 |
+| v4.0 | 2026-05-24 | 维度重构5→6维、指标扩容30个、连续评分、欧洲覆盖 |
+| **v4.1** | **2026-05-24** | **修复评分公式Bug、补充双向指标边界、引入时间衰减因子** |
 
 ---
 
-## 三、JSON Key 映射
+## 二、6大维度
 
-```json
-{
-  "economicOutput": {
-    "dimensionId": "economicOutput",
-    "dimensionName": "经济产出",
-    "dimensionNameEn": "Economic Output",
-    "icon": "📈",
-    "indicators": ["chinaGdp", "chinaPmi", "usGdp", "servicePmi"]
-  },
-  "inflationPrices": {
-    "dimensionId": "inflationPrices",
-    "dimensionName": "通胀与价格",
-    "dimensionNameEn": "Inflation & Prices",
-    "icon": "💰",
-    "indicators": ["cpi", "ppi", "usCpi", "corePce"]
-  },
-  "moneyCredit": {
-    "dimensionId": "moneyCredit",
-    "dimensionName": "货币与信用",
-    "dimensionNameEn": "Money & Credit",
-    "icon": "🏦",
-    "indicators": ["lpr", "dr007", "m2", "fedRate"]
-  },
-  "riskUncertainty": {
-    "dimensionId": "riskUncertainty",
-    "dimensionName": "风险与不确定性",
-    "dimensionNameEn": "Risk & Uncertainty",
-    "icon": "⚠️",
-    "indicators": ["vix", "epu", "dollarIndex", "geoRisk"]
-  },
-  "climateResources": {
-    "dimensionId": "climateResources",
-    "dimensionName": "气候与资源",
-    "dimensionNameEn": "Climate & Resources",
-    "icon": "🌍",
-    "indicators": ["oilPrice", "naturalGas", "carbonPrice", "electricity"]
-  }
-}
+### 📈 维度1：经济增长 (Economic Growth)
+权重：1.0 | 核心指标 5个 + 辅助指标 2个
+
+- chinaGdp — GDP增速 🇨🇳 季频 target=5.0%
+- chinaPmi — 制造业PMI 🇨🇳 月频 target=50
+- usGdp — GDP增速 🇺🇸 季频 target=2.5%
+- usPmi — ISM制造业PMI 🇺🇸 月频 **🔄待接入** target=50
+- euPmi — 欧元区综合PMI 🇪🇺 月频 **🔄待接入** target=50
+- servicePmi — 服务业PMI 🇨🇳 月频 辅助指标
+- electricity — 用电量 🇨🇳 月频 辅助指标
+
+### 💰 维度2：通胀与政策 (Inflation & Policy)
+权重：1.0 | 核心指标 5个
+
+- cpi — CPI同比 🇨🇳 月频 target=2.0%
+- ppi — PPI同比 🇨🇳 月频 target=0%
+- usCpi — US CPI同比 🇺🇸 月频 target=2.5%
+- corePce — 核心PCE 🇺🇸 月频 target=2.0%
+- fedRate — 联邦基金利率 🇺🇸 不定期 target=3.0%
+
+### 💧 维度3：流动性 (Liquidity)
+权重：0.8 | 核心指标 5个
+
+- lpr — LPR利率 🇨🇳 月频 target=3.5%
+- dr007 — DR007利率 🇨🇳 日频 target=1.8%
+- m2 — M2增速 🇨🇳 月频 target=9.0%
+- creditSpread — 信用利差 🌐 日频 **已采集此前未展示** target=200bp
+- dollarIndex — 美元指数 🌐 日频 target=100
+
+### 🧠 维度4：市场情绪 (Market Sentiment)
+权重：0.8 | 核心指标 4个
+
+- vix — VIX恐慌指数 🇺🇸 日频 target=20
+- northFlow — 北向资金净流入 🇨🇳 日频 **🔄待接入** target=0亿
+- turnover — A股成交额 🇨🇳 日频 **🔄待接入** target=1万亿
+- epu — 经济政策不确定性 🌐 月频 target=150
+
+### 🛢️ 维度5：资源与供应链 (Resources & Supply Chain)
+权重：0.6 | 核心指标 4个
+
+- oilPrice — WTI原油 🌐 日频 target=$70
+- naturalGas — 天然气 🌐 日频 target=$3.5/MMBtu
+- exportGrowth — 出口增速 🇨🇳 月频 **🔄待接入** target=5%
+- bdi — BDI运价指数 🌐 日频 **🔄待接入** target=1500
+
+### 🌱 维度6：科技与绿色 (Tech & Green)
+权重：0.4 | 核心指标 5个
+
+- aiGrowth — AI产业增速 🇨🇳 月频 ✅目标值待确认
+- robotInstall — 工业机器人 🇨🇳 季频 ✅目标值待确认
+- evPenetration — 新能源渗透率 🇨🇳 月频 target=40%
+- carbonPrice — 碳价 🇨🇳 日频 target=¥60
+- renewEnergyInvest — 新能源指数 🇨🇳 日频 target=1200点
+
+---
+
+## 三、评分算法 v4.1（修正版）
+
+### 3.1 单指标评分通用公式
+
+#### 一、正向指标（值越大越正面，如GDP、PMI）
+
+采用三段分段线性映射，引入**最优阈值 H（score=+1 对应的值）**：
+
+```
+value < L: score = -1（极端差）
+L ≤ value < T: score = (value - L) / (T - L) - 1   （L→-1, 中间值→0）
+T ≤ value < H: score = (value - T) / (H - T)        （T→0, H→+1）
+value ≥ H: score = +1（极端优）
 ```
 
+**验证**：
+- value = L → (L-L)/(T-L)-1 = -1 ✅
+- value = (L+T)/2 → 中点 → 0 ✅
+- value = T → (T-T)/(H-T) = 0 ✅
+- value = (T+H)/2 → 0.5 ✅
+- value = H → (H-T)/(H-T) = +1 ✅
+- 溢出H时clamp到+1，溢出L时clamp到-1
+
+#### 二、逆向指标（值越大越负面，如VIX、EPU）
+
+```
+value < L: score = +1
+L ≤ value < T: score = 1 - (value - L) / (T - L)
+T ≤ value < H: score = (T - value) / (H - T)
+value ≥ H: score = -1
+```
+
+**公式说明**：L为最优值(score=+1)，T为中性值(score=0)，H为最差值(score=-1)
+
+#### 三、双向指标（适中最好，如CPI、油价）
+
+此类指标过高或过低都带来风险，需要**对称或非对称的完整区间定义**：
+
+```
+value < L_low: score = -1（通缩/需求崩盘）
+L_low ≤ value < T_low: score = (value - L_low) / (T_low - L_low) - 1  （-1→0）
+T_low ≤ value ≤ T_high: score = 0（理想区间）
+T_high < value ≤ H_high: score = -(value - T_high) / (H_high - T_high) （0→-1）
+value > H_high: score = -1（过热/危机）
+```
+
+**各双向指标参数：**
+
+| 指标 | L_low (score=-1) | T_low (score=0起始) | T_high (score=0终止) | H_high (score=-1) | 说明 |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| China CPI | 0% | 1% | 3% | 5% | 通缩<0、过热>5 |
+| US CPI | 0% | 1.5% | 3.5% | 5% | 同上 |
+| 核心PCE | 1% | 1.5% | 2.5% | 3.5% | Fed target=2% |
+| WTI原油 | $40 | $60 | $90 | $120 | 低于$40=通缩风险，高于$120=供给危机 |
+| 天然气 | $2 | $2.5 | $4.5 | $7 | 低于$2=供给过剩，高于$7=能源危机 |
+| Fed利率 | 1% | 2% | 4% | 5% | 当前3.75%偏紧 |
+
+> 注：天然气当前$3.14处于 T_low~T_high 区间内，score=0
+
+#### 四、带权重评分
+
+详见章节【四、评分计算】中的时间衰减因子。
+
 ---
 
-## 四、时效性标准（v2.0 核心）
+### 3.2 各指标详细评分参数（完整修正版）
 
-### 数据时效等级
-- 🟢 **实时** (T+0~T+1): VIX、美元指数、油价、天然气、FED利率、DR007
-- 🟡 **近期** (T+7~T+30): CPI、PPI、M2、LPR、碳价、用电量
-- 🔴 **滞后** (>T+30): GDP增速、PMI、核心PCE
+| 指标ID | 方向 | L(score=-1) | T(score=0) | H(score=+1) | 单位 |
+| :----- | :--: | :---------: | :---------: | :---------: | :--: |
+| chinaGdp | 正向 | 3.0 | 5.0 | 7.0 | % |
+| chinaPmi | 正向 | 48 | 50 | 53 | — |
+| usGdp | 正向 | -0.5 | 2.5 | 5.5 | % |
+| usPmi | 正向 | 47 | 50 | 53 | — |
+| euPmi | 正向 | 47 | 50 | 52 | — |
+| servicePmi | 正向 | 47 | 50 | 53 | — |
+| electricity | 正向 | 2.0 | 5.0 | 8.0 | % |
+| ppi | 正向 | -5.0 | 0 | 3.0 | % |
+| lpr | 逆向 | 2.0 | 3.5 | 5.0 | % |
+| dr007 | 逆向 | 1.0 | 1.8 | 3.0 | % |
+| m2 | 正向 | 7.0 | 9.0 | 12.0 | % |
+| creditSpread | 逆向 | 100 | 200 | 400 | bp |
+| dollarIndex | 逆向 | 92 | 100 | 112 | — |
+| vix | 逆向 | 12 | 20 | 35 | — |
+| northFlow | 正向 | -100 | 0 | 100 | 亿 |
+| turnover | 正向 | 5000 | 10000 | 15000 | 亿 |
+| epu | 逆向 | 80 | 150 | 300 | — |
+| exportGrowth | 正向 | -5.0 | 5.0 | 15.0 | % |
+| bdi | 适中 | 800/3000 | 1000/2000 | 1500 | — |
+| aiGrowth | 正向 | 0 | 10 | 25 | % |
+| robotInstall | 正向 | -5.0 | 10 | 25 | % |
+| evPenetration | 正向 | 20 | 40 | 60 | % |
+| carbonPrice | 正向 | 30 | 60 | 90 | ¥/吨 |
+| renewEnergyInvest | 正向 | 800 | 1200 | 1600 | 点 |
 
-### UI显示要求
-每个指标卡片必须显示：
-1. **数据日期** — 格式：`2026-05-20` 或 `2026-Q1`
-2. **频率标签** — `日频/月频/季频`
-3. **时效等级颜色** — 绿/黄/红 三色标识
+**双向指标**见3.1节参数表。
 
-### 数据新鲜度预警
-- 数据超过频率要求的2倍时间未更新 → 标红 ⚠️
-- 数据超过频率要求但未超过2倍 → 标黄 ⚠️
-- 数据在正常时效内 → 标绿 ✓
+---
+
+## 四、评分计算（含时间衰减）
+
+### 4.1 维度评分
+
+```
+F_维度 = Σ(score_i × α_i) / Σα_i
+```
+
+其中 α_i = 时间衰减因子（见4.2），不仅前端展示，**必须下沉到后端 get-all-data.py 计算层**
+
+### 4.2 时间衰减因子 α_i
+
+按数据新鲜度动态调整指标权重，防止僵尸数据误导信号：
+
+| 频率类型 | 合理延迟 | 🟡黄色预警(α=0.5) | 🔴红色预警(α=0) | 说明 |
+| :------: | :------: | :---------------: | :-------------: | :--- |
+| 日频 | 1天 | >3天未更新 | >5天未更新 | VIX、汇率、油价等 |
+| 月频 | 7-15天 | >30天未更新 | >45天未更新 | CPI、PMI、M2等 |
+| 季频 | 1-2月 | >90天未更新 | >120天未更新 | GDP等 |
+| 不定期 | 会议后1天 | >60天未更新 | >90天未更新 | Fed利率 |
+
+**实现逻辑**（后端 get-all-data.py）：
+```
+days_since_update = (today - data_date).days
+if freq == 'daily':
+    if days_since_update > 5: α = 0
+    elif days_since_update > 3: α = 0.5
+    else: α = 1.0
+elif freq == 'monthly':
+    if days_since_update > 45: α = 0
+    elif days_since_update > 30: α = 0.5
+    else: α = 1.0
+elif freq == 'quarterly':
+    if days_since_update > 120: α = 0
+    elif days_since_update > 90: α = 0.5
+    else: α = 1.0
+```
+
+### 4.3 IAS综合评分
+
+```
+IAS = Σ(i=1..6) F_i × W_i
+W = {经济增长:1.0, 通胀与政策:1.0, 流动性:0.8, 市场情绪:0.8, 资源与供应链:0.6, 科技与绿色:0.4}
+```
+
+**范围校验**：1×1.0 + 1×1.0 + 1×0.8 + 1×0.8 + 1×0.6 + 1×0.4 = 4.6 ✅
+
+### 4.4 投资信号映射
+
+| IAS区间 | 信号 | 建议仓位 | 逻辑 |
+| :-----: | :-- | :------: | :--- |
+| ≥ +2.5 | 🚀 强烈买入 | 80-100% | 多数维度全面向好 |
+| +1.0 ~ +2.5 | ✅ 增持 | 60-80% | 经济/流动性/情绪至少有2个利好 |
+| -0.5 ~ +1.0 | ➖ 持有 | 40-60% | 各维度信号混合 |
+| -1.5 ~ -0.5 | ⚠️ 减仓 | 20-40% | 通胀或流动性出现压力 |
+| < -1.5 | 🛑 清仓/防御 | 0-20% | 经济下行/流动性紧缩/恐慌蔓延 |
+
+---
+
+## 五、数据采集方案
+
+### 5.1 数据源及接入状态
+
+**当前数据源风险控制：**
+
+- **北向资金 & A股成交额**（Phase 2）：国内财经源对日频数据限制日益收紧，akshare爬取易遭遇接口变更。**必须预留备用方案**——Web Scraper或Tushare Token
+- **EPU指数**：原数据源 PolicyUncertainty.com 更新慢且有断更风险。**必须做好异常捕获**，断更时使用上次有效值并降低权重
+- **AI产业/机器人/新能源**：当前数据来自akshare默认接口，标注为"国家能源局-第二/第三产业"，大概率是占位数据。**需替换为工信部/乘联会等真实数据源**
+
+### 5.2 数据更新策略（现有架构不变）
+
+```
+后端Cron(16:30) → get-all-data.py（含时间衰减计算）→ market-data.json → 自动部署到Cloudflare
+前端(60秒轮询) → fetch /data/market-data.json（纯静态JSON，不触发后端接口）
+```
+
+**重要**：当前架构已经是「Cron异步生成静态JSON + 前端轮询」，无需修改。前端60秒轮询读取的是已生成好的JSON文件，不会触发后端API重跑，不会导致数据源IP被封禁，请放心。
+
+### 5.3 当前数据时效性问题及修复计划
+
+| 指标 | 数据时间 | 延迟 | 根因 | 修复方案 |
+| :--- | :---: | :---: | :--- | :------- |
+| China PMI | 2025-08 | ~9月 | akshare接口卡住 | `pip install -U akshare` + 切换备用源 |
+| US GDP | 2025-Q3 | ~8月 | 未获取最新季 | 修复采集脚本 |
+| 核心PCE | 2025-08 | ~9月 | akshare接口失效 | 同PMI修复 |
+| CPI/PPI | 2025-08 | ~9月 | akshare国家统计局接口失效 | 同PMI修复 |
+| M2 | 2025-08 | ~9月 | akshare央行接口失效 | 同PMI修复 |
+| EPU | 2023-11 | ~18月 | akshare停更 | 直爬PolicyUncertainty.com |
+
+**分阶段修复**：
+- P0（本周）：`pip install -U akshare` + 重启采集
+- P1（Phase 2）：对EPU直爬原始网站
+- P2（Phase 3）：关键指标设置2个以上数据源冗余
+
+---
+
+## 六、前端展示方案
+
+### 6.1 布局设计（CRITICAL：突出异常指标）
+
+当前6格栅格展示30个指标，信息密度很高。**必须优化信噪比：**
+
+1. **顶部突出异常**：在IAS卡片下方增加「异常指标速览」条，只展示触发黄色/红色预警的指标
+2. **各维度卡片内部**：异常指标行用高亮颜色标记，正常指标灰色常规显示
+3. **「今日变动最大」**：在页面右侧/底部附加「今日变动最大Top 3」模块（可选）
+
+### 6.2 数据新鲜度标注
+
+每个指标行右侧附带新鲜度标识：
+- 🟢 正常（延迟在合理范围内）
+- 🟡 偏旧（黄色预警，α=0.5）
+- 🔴 过期（红色预警，α=0）
+
+过期指标的数值用灰色/斜体表示。
+
+### 6.3 技术栈
+
+React + TypeScript + Vite + Tailwind CSS + Framer Motion（维持现有架构）
+
+---
+
+## 七、国家覆盖
+
+| 区域 | v3.0 | v4.1 | 变化 |
+| :--- | :--: | :--: | :--: |
+| 🇨🇳 中国 | 12 | 15 | +3 |
+| 🇺🇸 美国 | 6 | 8 | +3 |
+| 🇪🇺 欧元区 | 0 | 1 | **新增** |
+| 🌐 全球 | 2 | 5 | +3 |
+| **合计** | **20** | **30** | +10 |
+
+v4.1首次引入欧洲覆盖。日本、英国、新兴市场列为远期扩展项。
+
+---
+
+## 八、实施路径（评审后修正）
+
+1. ✅ 设计文档 v4.1 修正（当前）
+2. ✅ kouding编码（延期到文档修正后启动）
+3. 龙六代码评审
+4. 泰斯特测试验证
+5. 部署上线 🚀
+
+### 编码阶段分工
+
+| 模块 | 负责人 | 预估工时 | 依赖 |
+| :--- | :---- | :------ | :--- |
+| 后端：修正评分公式+时间衰减因子 | kouding | 1天 | — |
+| 后端：修复akshare数据源 | kouding | 0.5天 | — |
+| 前端：维度卡片重构(5→6维) | kouding | 1.5天 | 后端数据格式确认 |
+| 前端：新增北向资金/成交额/BDI卡片 | kouding | 0.5天 | 数据采集就绪 |
+| 前端：异常指标高亮+新鲜度标注 | kouding | 1天 | — |
+| 前端：信用利差/科技绿色指标展示 | kouding | 0.5天 | — |
+| 代码评审 | longliu | 0.5天 | 编码完成 |
+| 测试验证 | taist | 1天 | 编码+评审完成 |
+
+**总计：约5天**
