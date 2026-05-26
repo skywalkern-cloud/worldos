@@ -64,9 +64,9 @@ const DIMENSION_LABELS: Record<string, { name: string; icon: string }> = {
 
 // 每个维度下按国家排序的指标key列表
 const DIMENSION_INDICATORS: Record<string, string[]> = {
-  economic:  ['chinaGdp', 'chinaPmi', 'servicePmi', 'electricity', 'usGdp'],
+  economic:  ['chinaGdp', 'chinaPmi', 'servicePmi', 'electricity', 'usGdp', 'usNonFarm'],
   inflation: ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
-  liquidity: ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex'],
+  liquidity: ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
   sentiment: ['vix', 'epu'],
   resource:  ['oilPrice', 'naturalGas', 'carbonPrice'],
   techGreen: ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
