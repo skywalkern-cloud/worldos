@@ -340,20 +340,56 @@ def get_fed_rate():
     return 3.75, '2026-03-19', 'monthly'
 
 
-@with_timeout(20)
-def get_us_bond_10y():
-    """美国10年期国债收益率 - akshare"""
+_bond_yields_cache = None
+
+
+def _fetch_bond_yields():
+    """获取中美债券收益率（缓存，避免重复调用akshare）"""
+    global _bond_yields_cache
+    if _bond_yields_cache is not None:
+        return _bond_yields_cache
     import akshare as ak
     import pandas as pd
     try:
         df = ak.bond_zh_us_rate()
-        valid = df[df['美国国债收益率10年'].notna()]
-        if not valid.empty:
-            val = float(valid.iloc[-1]['美国国债收益率10年'])
-            d = str(valid.iloc[-1]['日期'])[:10]
-            return round(val, 2), d, 'daily'
+        result = {}
+        for col, key in [('美国国债收益率2年', '2Y'), ('美国国债收益率5年', '5Y'), ('美国国债收益率10年', '10Y')]:
+            valid = df[df[col].notna()]
+            if not valid.empty:
+                result[key] = (float(valid.iloc[-1][col]), str(valid.iloc[-1]['日期'])[:10])
+        _bond_yields_cache = result
+        return result
     except Exception:
-        pass
+        return {}
+
+
+@with_timeout(20)
+def get_us_bond_2y():
+    """美国2年期国债收益率"""
+    data = _fetch_bond_yields()
+    if '2Y' in data:
+        val, d = data['2Y']
+        return round(val, 2), d, 'daily'
+    return None, None, None
+
+
+@with_timeout(20)
+def get_us_bond_5y():
+    """美国5年期国债收益率"""
+    data = _fetch_bond_yields()
+    if '5Y' in data:
+        val, d = data['5Y']
+        return round(val, 2), d, 'daily'
+    return None, None, None
+
+
+@with_timeout(20)
+def get_us_bond_10y():
+    """美国10年期国债收益率"""
+    data = _fetch_bond_yields()
+    if '10Y' in data:
+        val, d = data['10Y']
+        return round(val, 2), d, 'daily'
     return None, None, None
 
 
@@ -667,6 +703,8 @@ INDICATOR_DEFS = {
     'oilPrice': {'name': 'WTI原油', 'unit': '$/桶', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_oil_price},
     'naturalGas': {'name': '天然气', 'unit': '$/MMBtu', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_nat_gas},
     'fedRate': {'name': '美联储基准利率', 'unit': '%', 'frequency': 'monthly', 'source': 'FOMC会议记录', 'func': get_fed_rate},
+    'usBond2Y': {'name': '美债2年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_2y},
+    'usBond5Y': {'name': '美债5年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_5y},
     'usBond10Y': {'name': '美债10年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_10y},
     'usNonFarm': {'name': '非农就业', 'unit': '万人', 'frequency': 'monthly', 'source': '东方财富-美国劳工部', 'func': get_us_nonfarm},
     'dollarIndex': {'name': '美元指数代理', 'unit': '', 'frequency': 'daily', 'source': 'akshare-汇率加权计算', 'func': get_dollar_index},
