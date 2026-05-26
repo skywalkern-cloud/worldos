@@ -193,32 +193,37 @@ def get_us_cpi():
 
 @with_timeout(20)
 def get_core_pce():
-    """美国核心PCE同比 - FRED API (PCEPILFE)"""
-    if not FRED_API_KEY:
-        return get_core_pce_fallback()
-
-    try:
-        series_id = "PCEPILFE"
-        url = "https://api.stlouisfed.org/fred/series/observations"
-        params = {
-            "series_id": series_id,
-            "api_key": FRED_API_KEY,
-            "file_type": "json",
-            "sort_order": "desc",
-            "limit": 3,
-        }
-        r = requests.get(url, params=params, timeout=15)
-        data = r.json()
-        if "observations" not in data:
-            return None, None, None
-
-        for obs in data["observations"]:
-            val = obs.get("value")
-            if val and val != ".":
-                return round(float(val), 1), obs.get("date", "")[:7], "monthly"
-        return None, None, None
-    except Exception:
-        return get_core_pce_fallback()
+    """美国核心PCE同比 - FRED API (PCEPILFE指数→YoY%)"""
+    if FRED_API_KEY:
+        try:
+            series_id = "PCEPILFE"
+            url = "https://api.stlouisfed.org/fred/series/observations"
+            params = {
+                "series_id": series_id,
+                "api_key": FRED_API_KEY,
+                "file_type": "json",
+                "sort_order": "desc",
+                "limit": 15,
+            }
+            r = requests.get(url, params=params, timeout=15)
+            data = r.json()
+            if "observations" in data:
+                obs = data["observations"]
+                # 计算同比: 找12个月前同月的指数值
+                for i in range(len(obs)):
+                    o = obs[i]
+                    if o["value"] == ".":
+                        continue
+                    y, m = o["date"][:4], o["date"][5:7]
+                    prev_y = str(int(y) - 1)
+                    for j in range(i + 1, len(obs)):
+                        o2 = obs[j]
+                        if o2["date"].startswith(f"{prev_y}-{m}") and o2["value"] != ".":
+                            yoy = (float(o["value"]) - float(o2["value"])) / float(o2["value"]) * 100
+                            return round(yoy, 1), o["date"][:7], "monthly"
+        except Exception:
+            pass
+    return get_core_pce_fallback()
 
 
 @with_timeout(20)
@@ -809,10 +814,14 @@ def main():
 
         # Fallback to previous data if fetch failed
         if val is None:
-            prev_val, prev_dd = prev.get(key, (None, None))
-            if prev_val is not None:
-                val = prev_val
-                dd = prev_dd
+            prev_item = prev.get(key)
+            if prev_item is not None:
+                if isinstance(prev_item, dict):
+                    val = prev_item.get('value')
+                    dd = prev_item.get('dataDate')
+                else:
+                    val = prev_item
+                    dd = None
 
         # geoRisk: VIX × 10
         if key == 'geoRisk':
