@@ -401,18 +401,25 @@ def get_us_bond_10y():
 @with_timeout(20)
 @with_timeout(20)
 def get_fear_greed():
-    """恐惧贪婪指数 - alternative.me API"""
-    import requests
+    """恐惧贪婪指数 - CNN Fear & Greed Index"""
+    import requests, os
     try:
-        url = "https://api.alternative.me/fng/?limit=1"
-        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-        data = r.json()
-        if data.get("data") and len(data["data"]) > 0:
-            val = int(data["data"][0]["value"])
-            ts = int(data["data"][0]["timestamp"])
-            from datetime import datetime
-            d = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
-            return val, d, "daily"
+        # 绕过代理直接连CNN
+        for key in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
+            os.environ.pop(key, None)
+        url = "https://production.dataviz.cnn.io/index/fearandgreed/current"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Origin": "https://www.cnn.com",
+            "Referer": "https://www.cnn.com/markets/fear-and-greed",
+        }
+        r = requests.get(url, headers=headers, timeout=15, proxies={"https": "", "http": ""})
+        if r.status_code == 200:
+            data = r.json()
+            val = round(data.get("score", 0), 1)
+            rating = data.get("rating", "")
+            ts = data.get("timestamp", "")[:10]
+            return val, ts, "daily"
     except Exception:
         pass
     return None, None, None
