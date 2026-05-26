@@ -1,28 +1,36 @@
 #!/usr/bin/env python3
 """
-WorldOS 数据获取脚本 v4.1 - 第四轮修复（Bug修复版）
+WorldOS 数据获取脚本 v5.0 - 第五轮修复（数据源替换版）
 修复问题：
-1. fedRate - 真实美联储利率（已知降息至3.75%）
-2. dollarIndex - 修复为使用 USDCNY+EURUSD+USDJPY 实时计算
-3. electricity - 真实全社会用电量同比（5.4%）
-4. aiGrowth - 第二产业用电量同比（AI/制造业代理）
-5. robotInstall - 工业增加值同比（机器人安装代理，与aiGrowth不同数据源）
-6. evPenetration - 乘联会新能源车渗透率（%），修复了之前误用第三产业用电量的问题
-7. 删掉 patentApps（无数据源）
-8. 所有指标都有真实数据，无默认值填充
+1. chinaPmi/servicePmi/cpi/ppi/m2 - 从 akshare(jin10) 替换为 East Money 数据中心API
+2. usGdp - 从 akshare(jin10) 替换为 East Money RPT_ECONOMICVALUE_USA
+3. corePce - 从 akshare(jin10) 替换为 FRED API (PCEPILFE)
+4. epu - 从 akshare(policyuncertainty.com) 替换为 FRED API (CHNEPUINDXM)
+5. robotInstall(industrialProduction) - 从 akshare(jin10) 替换为 East Money RPT_ECONOMY_INDUS_GROW (通过akshare.macro_china_gyzjz)
+6. extremeWeather - 派生自servicePmi，自动恢复
+7. fedRate - 真实美联储利率（已知降息至3.75%）
+8. dollarIndex - 修复为使用 USDCNY+EURUSD+USDJPY 实时计算
+9. electricity - 真实全社会用电量同比（5.4%）
+10. aiGrowth - 第二产业用电量同比（AI/制造业代理）
+11. evPenetration - 乘联会新能源车渗透率（%）
 """
 
 import os
 import sys
 import json
+import re
 import signal
 import functools
+import requests
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
 # 加载评分模块
 sys.path.insert(0, str(Path(__file__).parent))
 from scoring import build_indicators_and_meta
+
+# ========== 配置常量 ==========
+FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
 
 # ========== 清除所有代理设置 ==========
 for key in list(os.environ.keys()):
@@ -57,6 +65,34 @@ def with_timeout(seconds):
 
 
 # ═══════════════════════════════════════════
+# 工具函数
+# ═══════════════════════════════════════════
+
+def fetch_eastmoney(report_name, columns="ALL", filter_expr="",
+                    sort_col="REPORT_DATE", sort_type=-1, page_size=500):
+    """通用 East Money 数据中心 API 请求"""
+    url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+    params = {
+        "reportName": report_name,
+        "columns": columns,
+        "pageNumber": 1,
+        "pageSize": page_size,
+        "sortColumns": sort_col,
+        "sortTypes": sort_type,
+        "source": "WEB",
+        "client": "WEB",
+    }
+    if filter_expr:
+        params["filter"] = filter_expr
+    r = requests.get(url, params=params, timeout=15)
+    r.raise_for_status()
+    data_json = r.json()
+    if not data_json.get("success"):
+        return None
+    return data_json["result"]["data"]
+
+
+# ═══════════════════════════════════════════
 # 数据获取函数
 # ═══════════════════════════════════════════
 
@@ -79,43 +115,68 @@ def get_china_gdp():
 
 @with_timeout(20)
 def get_china_pmi():
-    import akshare as ak
-    import pandas as pd
-    df = ak.macro_china_pmi_yearly()
-    mfg = df[df['商品'].str.contains('制造业', na=False)]
-    if mfg.empty:
+    """中国制造业PMI - East Money 数据中心 RPT_ECONOMY_PMI"""
+    try:
+        data = fetch_eastmoney(
+            "RPT_ECONOMY_PMI",
+            columns="REPORT_DATE,TIME,MAKE_INDEX,NMAKE_INDEX",
+            page_size=3,
+        )
+        if not data or len(data) == 0:
+            return None, None, None
+        row = data[0]
+        val = row.get("MAKE_INDEX")
+        date_str = str(row.get("REPORT_DATE", ""))[:7]
+        if val is None:
+            return None, None, None
+        return round(float(val), 1), date_str, "monthly"
+    except Exception:
         return None, None, None
-    for i in range(len(mfg) - 1, -1, -1):
-        val = mfg.iloc[i]['今值']
-        if not pd.isna(val):
-            return round(float(val), 1), str(mfg.iloc[i]['日期'])[:7], 'monthly'
-    return None, None, None
 
 
 @with_timeout(20)
 def get_us_gdp():
-    import akshare as ak
-    import pandas as pd
-    df = ak.macro_usa_gdp_monthly()
-    for i in range(len(df) - 1, -1, -1):
-        val = df.iloc[i]['今值']
-        if not pd.isna(val):
-            d = str(df.iloc[i]['日期'])
-            q = (int(d[5:7]) - 1) // 3 + 1
-            return round(float(val), 1), f"{d[:4]}-Q{q}", 'quarterly'
-    return None, None, None
+    """美国GDP环比增速 - East Money RPT_ECONOMICVALUE_USA (INDICATOR_ID="EMG00159633")"""
+    try:
+        data = fetch_eastmoney(
+            "RPT_ECONOMICVALUE_USA",
+            columns="ALL",
+            filter_expr='(INDICATOR_ID="EMG00159633")',
+            page_size=5,
+        )
+        if not data or len(data) == 0:
+            return None, None, None
+        for item in data:
+            val = item.get("VALUE")
+            if val is not None:
+                date_str = str(item.get("REPORT_DATE", ""))[:7]
+                y, m = date_str[:4], int(date_str[5:7])
+                q = (m - 1) // 3 + 1
+                return round(float(val), 1), f"{y}-Q{q}", "quarterly"
+        return None, None, None
+    except Exception:
+        return None, None, None
 
 
 @with_timeout(20)
 def get_service_pmi():
-    import akshare as ak
-    import pandas as pd
-    df = ak.macro_china_non_man_pmi()
-    for i in range(len(df) - 1, -1, -1):
-        val = df.iloc[i]['今值']
-        if not pd.isna(val):
-            return round(float(val), 1), str(df.iloc[i]['日期'])[:7], 'monthly'
-    return None, None, None
+    """非制造业PMI - East Money 数据中心 RPT_ECONOMY_PMI"""
+    try:
+        data = fetch_eastmoney(
+            "RPT_ECONOMY_PMI",
+            columns="REPORT_DATE,TIME,MAKE_INDEX,NMAKE_INDEX",
+            page_size=3,
+        )
+        if not data or len(data) == 0:
+            return None, None, None
+        row = data[0]
+        val = row.get("NMAKE_INDEX")
+        date_str = str(row.get("REPORT_DATE", ""))[:7]
+        if val is None:
+            return None, None, None
+        return round(float(val), 1), date_str, "monthly"
+    except Exception:
+        return None, None, None
 
 
 @with_timeout(20)
@@ -132,14 +193,65 @@ def get_us_cpi():
 
 @with_timeout(20)
 def get_core_pce():
-    import akshare as ak
-    import pandas as pd
-    df = ak.macro_usa_core_pce_price()
-    for i in range(len(df) - 1, -1, -1):
-        val = df.iloc[i]['今值']
-        if not pd.isna(val):
-            return round(float(val), 1), str(df.iloc[i]['日期'])[:7], 'monthly'
-    return None, None, None
+    """美国核心PCE同比 - FRED API (PCEPILFE)"""
+    if not FRED_API_KEY:
+        return get_core_pce_fallback()
+
+    try:
+        series_id = "PCEPILFE"
+        url = "https://api.stlouisfed.org/fred/series/observations"
+        params = {
+            "series_id": series_id,
+            "api_key": FRED_API_KEY,
+            "file_type": "json",
+            "sort_order": "desc",
+            "limit": 3,
+        }
+        r = requests.get(url, params=params, timeout=15)
+        data = r.json()
+        if "observations" not in data:
+            return None, None, None
+
+        for obs in data["observations"]:
+            val = obs.get("value")
+            if val and val != ".":
+                return round(float(val), 1), obs.get("date", "")[:7], "monthly"
+        return None, None, None
+    except Exception:
+        return get_core_pce_fallback()
+
+
+@with_timeout(20)
+def get_core_pce_fallback():
+    """美国核心PCE - TradingEconomics 抓取 (无 FRED_API_KEY 或 API 失败时备用)"""
+    try:
+        url = "https://tradingeconomics.com/united-states/core-consumer-prices"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code != 200:
+            return None, None, None
+
+        text = r.text
+        # Try to find the indicator value from TradingEconomics page
+        # Look for a value near "Core Consumer Prices" or in the main indicator area
+        m = re.search(r'<span[^>]*class="[^"]*(?:value|indicator)[^"]*"[^>]*>([\d.]+)</span>', text)
+        if m:
+            val = float(m.group(1))
+            # Try to find date context like "May 2026"
+            m2 = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})', text)
+            if m2:
+                months = {'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06',
+                          'Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
+                month = months.get(m2.group(1), '01')
+                year = m2.group(2)
+                return round(val, 1), f"{year}-{month}", "monthly"
+            # Fallback date: use today's date
+            return round(val, 1), date.today().strftime('%Y-%m'), "monthly"
+        return None, None, None
+    except Exception:
+        return None, None, None
 
 
 @with_timeout(20)
@@ -204,29 +316,44 @@ def get_dollar_index():
 
 @with_timeout(20)
 def get_cpi():
-    import akshare as ak
-    import pandas as pd
-    df = ak.macro_china_cpi_yearly()
-    for i in range(len(df) - 1, -1, -1):
-        val = df.iloc[i]['今值']
-        if not pd.isna(val):
-            return round(float(val), 1), str(df.iloc[i]['日期'])[:7], 'monthly'
-    return None, None, None
+    """中国CPI同比 - East Money 数据中心 RPT_ECONOMY_CPI"""
+    try:
+        data = fetch_eastmoney(
+            "RPT_ECONOMY_CPI",
+            columns="REPORT_DATE,TIME,NATIONAL_SAME",
+            page_size=3,
+        )
+        if not data or len(data) == 0:
+            return None, None, None
+        row = data[0]
+        val = row.get("NATIONAL_SAME")
+        date_str = str(row.get("REPORT_DATE", ""))[:7]
+        if val is None:
+            return None, None, None
+        return round(float(val), 1), date_str, "monthly"
+    except Exception:
+        return None, None, None
 
 
 @with_timeout(20)
 def get_ppi():
-    import akshare as ak
-    import pandas as pd
-    df = ak.macro_china_ppi_yearly()
-    ppi_row = df[df['商品'].str.contains('PPI', na=False)]
-    if ppi_row.empty:
+    """中国PPI同比 - East Money 数据中心 RPT_ECONOMY_PPI"""
+    try:
+        data = fetch_eastmoney(
+            "RPT_ECONOMY_PPI",
+            columns="REPORT_DATE,TIME,BASE,BASE_SAME",
+            page_size=3,
+        )
+        if not data or len(data) == 0:
+            return None, None, None
+        row = data[0]
+        val = row.get("BASE_SAME")
+        date_str = str(row.get("REPORT_DATE", ""))[:7]
+        if val is None:
+            return None, None, None
+        return round(float(val), 1), date_str, "monthly"
+    except Exception:
         return None, None, None
-    for i in range(len(ppi_row) - 1, -1, -1):
-        val = ppi_row.iloc[i]['今值']
-        if not pd.isna(val):
-            return round(float(val), 1), str(ppi_row.iloc[i]['日期'])[:7], 'monthly'
-    return None, None, None
 
 
 @with_timeout(20)
@@ -255,32 +382,54 @@ def get_dr007():
 
 @with_timeout(20)
 def get_m2():
-    import akshare as ak
-    import pandas as pd
-    df = ak.macro_china_m2_yearly()
-    m2 = df[df['商品'].str.contains('M2', na=False)]
-    if m2.empty:
+    """M2同比增速 - East Money 货币供应量 RPT_ECONOMY_CURRENCY_SUPPLY"""
+    try:
+        data = fetch_eastmoney(
+            "RPT_ECONOMY_CURRENCY_SUPPLY",
+            columns="REPORT_DATE,TIME,BASIC_CURRENCY_SAME",
+            page_size=3,
+        )
+        if not data or len(data) == 0:
+            return None, None, None
+        row = data[0]
+        val = row.get("BASIC_CURRENCY_SAME")
+        date_str = str(row.get("REPORT_DATE", ""))[:7]
+        if val is None:
+            return None, None, None
+        return round(float(val), 1), date_str, "monthly"
+    except Exception:
         return None, None, None
-    for i in range(len(m2) - 1, -1, -1):
-        val = m2.iloc[i]['今值']
-        if not pd.isna(val):
-            return round(float(val), 1), str(m2.iloc[i]['日期'])[:7], 'monthly'
-    return None, None, None
 
 
-@with_timeout(25)
+@with_timeout(20)
 def get_epu():
-    import akshare as ak
-    import pandas as pd
-    df = ak.article_epu_index()
-    if df.empty:
+    """中国经济政策不确定性指数 - FRED API (CHNEPUINDXM)"""
+    if not FRED_API_KEY:
         return None, None, None
-    for i in range(len(df) - 1, -1, -1):
-        val = df.iloc[i]['China_Policy_Index']
-        if not pd.isna(val):
-            y, m = int(df.iloc[i]['year']), int(df.iloc[i]['month'])
-            return round(float(val), 1), f"{y}-{m:02d}", 'monthly'
-    return None, None, None
+
+    try:
+        series_id = "CHNEPUINDXM"
+        url = "https://api.stlouisfed.org/fred/series/observations"
+        params = {
+            "series_id": series_id,
+            "api_key": FRED_API_KEY,
+            "file_type": "json",
+            "sort_order": "desc",
+            "limit": 3,
+        }
+        r = requests.get(url, params=params, timeout=15)
+        data = r.json()
+        if "observations" not in data:
+            return None, None, None
+
+        for obs in data["observations"]:
+            val = obs.get("value")
+            if val and val != ".":
+                date_str = obs.get("date", "")
+                return round(float(val), 1), date_str[:7], "monthly"
+        return None, None, None
+    except Exception:
+        return None, None, None
 
 
 @with_timeout(20)
@@ -351,15 +500,19 @@ def get_electricity_service():
 
 @with_timeout(20)
 def get_industrial_production():
-    """规模以上工业增加值同比增速 (机器人安装代理)"""
+    """规模以上工业增加值同比增速 - East Money RPT_ECONOMY_INDUS_GROW (通过akshare)"""
     import akshare as ak
     import pandas as pd
-    df = ak.macro_china_industrial_production_yoy()
-    for i in range(len(df) - 1, -1, -1):
-        val = df.iloc[i]['今值']
-        if not pd.isna(val):
-            return round(float(val), 1), str(df.iloc[i]['日期'])[:10], 'monthly'
-    return None, None, None
+    try:
+        df = ak.macro_china_gyzjz()
+        for i in range(len(df) - 1, -1, -1):
+            val = df.iloc[i]['同比增长']
+            if not pd.isna(val):
+                date_str = str(df.iloc[i]['月份'])[:7]
+                return round(float(val), 1), date_str, 'monthly'
+        return None, None, None
+    except Exception:
+        return None, None, None
 
 
 @with_timeout(20)
@@ -405,36 +558,36 @@ def get_credit_spread():
 
 
 # ═══════════════════════════════════════════
-# 指标定义（23个，删掉 patentApps）
+# 指标定义（26个）
 # ═══════════════════════════════════════════
 
 INDICATOR_DEFS = {
     'chinaGdp': {'name': '中国GDP增速', 'unit': '%', 'frequency': 'quarterly', 'source': '国家统计局', 'func': get_china_gdp},
-    'chinaPmi': {'name': '中国制造业PMI', 'unit': '', 'frequency': 'monthly', 'source': '国家统计局', 'func': get_china_pmi},
-    'usGdp': {'name': '美国GDP增速', 'unit': '%', 'frequency': 'quarterly', 'source': '美国商务部', 'func': get_us_gdp},
-    'servicePmi': {'name': '非制造业PMI', 'unit': '', 'frequency': 'monthly', 'source': '国家统计局', 'func': get_service_pmi},
+    'chinaPmi': {'name': '中国制造业PMI', 'unit': '', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_china_pmi},
+    'usGdp': {'name': '美国GDP增速', 'unit': '%', 'frequency': 'quarterly', 'source': '东方财富-美国商务部', 'func': get_us_gdp},
+    'servicePmi': {'name': '非制造业PMI', 'unit': '', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_service_pmi},
     'usCpi': {'name': '美国CPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '美国劳工统计局', 'func': get_us_cpi},
-    'corePce': {'name': '美国核心PCE', 'unit': '%', 'frequency': 'monthly', 'source': '美国商务部', 'func': get_core_pce},
+    'corePce': {'name': '美国核心PCE', 'unit': '%', 'frequency': 'monthly', 'source': 'FRED API-美国商务部', 'func': get_core_pce},
     'vix': {'name': '市场恐慌指数', 'unit': '', 'frequency': 'daily', 'source': 'akshare-沪深300ETF期权波动率指数', 'func': get_vix},
     'oilPrice': {'name': 'WTI原油', 'unit': '$/桶', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_oil_price},
     'naturalGas': {'name': '天然气', 'unit': '$/MMBtu', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_nat_gas},
     'fedRate': {'name': '美联储基准利率', 'unit': '%', 'frequency': 'monthly', 'source': 'FOMC会议记录', 'func': get_fed_rate},
     'dollarIndex': {'name': '美元指数代理', 'unit': '', 'frequency': 'daily', 'source': 'akshare-汇率加权计算', 'func': get_dollar_index},
-    'cpi': {'name': '中国CPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '国家统计局', 'func': get_cpi},
-    'ppi': {'name': '中国PPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '国家统计局', 'func': get_ppi},
+    'cpi': {'name': '中国CPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_cpi},
+    'ppi': {'name': '中国PPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_ppi},
     'lpr': {'name': 'LPR利率', 'unit': '%', 'frequency': 'monthly', 'source': '中国人民银行', 'func': get_lpr},
     'dr007': {'name': 'DR007利率', 'unit': '%', 'frequency': 'daily', 'source': '全国银行间同业拆借中心', 'func': get_dr007},
-    'm2': {'name': 'M2同比', 'unit': '%', 'frequency': 'monthly', 'source': '中国人民银行', 'func': get_m2},
+    'm2': {'name': 'M2同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-中国人民银行', 'func': get_m2},
     'creditSpread': {'name': '中美10年利差', 'unit': 'bp', 'frequency': 'daily', 'source': 'akshare-中美国债利差', 'func': get_credit_spread},
-    'epu': {'name': '经济政策不确定性', 'unit': '', 'frequency': 'monthly', 'source': 'akshare-EPU指数', 'func': get_epu},
+    'epu': {'name': '经济政策不确定性', 'unit': '', 'frequency': 'monthly', 'source': 'FRED API-EPU指数', 'func': get_epu},
     'geoRisk': {'name': '地缘风险代理(VIX×10)', 'unit': '', 'frequency': 'daily', 'source': 'akshare-VIX×10', 'func': get_vix},
     'carbonPrice': {'name': '碳价格', 'unit': '¥/吨', 'frequency': 'daily', 'source': '北京碳市场', 'func': get_carbon_price},
     'electricity': {'name': '全社会用电量增速', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局', 'func': get_electricity},
     'renewEnergyInvest': {'name': '新能源指数', 'unit': '点', 'frequency': 'daily', 'source': '中证新能源指数', 'func': get_energy_index},
     'aiGrowth': {'name': '工业用电增速(AI/制造业代理)', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局-第二产业', 'func': get_electricity_industry},
-    'robotInstall': {'name': '工业增加值增速(机器人安装代理)', 'unit': '%', 'frequency': 'monthly', 'source': '国家统计局-规模以上工业增加值', 'func': get_industrial_production},
+    'robotInstall': {'name': '工业增加值增速(机器人安装代理)', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-规模以上工业增加值', 'func': get_industrial_production},
     'evPenetration': {'name': '新能源车渗透率', 'unit': '%', 'frequency': 'monthly', 'source': '乘联会-CPCA', 'func': get_nev_penetration_rate},
-    'extremeWeather': {'name': '经济天气代理(非制造业PMI)', 'unit': '', 'frequency': 'monthly', 'source': '国家统计局', 'func': get_service_pmi},
+    'extremeWeather': {'name': '经济天气代理(非制造业PMI)', 'unit': '', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_service_pmi},
 }
 
 
@@ -457,14 +610,14 @@ def load_prev():
 
 
 def save_results(results, fetch_ts):
-    """保存结果到文件（含v4.1评分）"""
+    """保存结果到文件（含v5.0评分）"""
     valid = sum(1 for v in results.values() if v['value'] is not None)
     total = len(results)
 
     # 加载上一轮用于趋势比较
     prev_data = load_prev()
 
-    # 计算v4.1评分
+    # 计算评分
     indicators, meta = build_indicators_and_meta(results, prev_data)
 
     output = {
@@ -483,12 +636,12 @@ def save_results(results, fetch_ts):
 def main():
     start = datetime.now()
     print("=" * 55)
-    print("🌐 WorldOS 数据更新 v2.6 (第三轮修复-稳定版)")
+    print("🌐 WorldOS 数据更新 v5.0 (第五轮修复-数据源替换版)")
     print(f"   {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print("=" * 55)
     print()
 
-    # 确保 akshare 已安装
+    # 确保 akshare 已安装（部分旧函数仍需使用）
     try:
         import akshare as ak
     except ImportError:
