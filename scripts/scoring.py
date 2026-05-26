@@ -61,11 +61,11 @@ BIDIRECTIONAL_PARAMS = {
 # ═══════════════════════════════════════════
 
 TIMELINESS_RULES = {
-    'daily':     {'yellow_days': 3, 'red_days': 5},
-    'monthly':   {'yellow_days': 45, 'red_days': 60},
-    'quarterly': {'yellow_days': 120, 'red_days': 150},
+    'daily':     {'yellow_days': 5, 'red_days': 10},
+    'monthly':   {'yellow_days': 60, 'red_days': 90},
+    'quarterly': {'yellow_days': 180, 'red_days': 270},
     'yearly':    {'yellow_days': 180, 'red_days': 365},
-    'other':     {'yellow_days': 30, 'red_days': 60},
+    'other':     {'yellow_days': 60, 'red_days': 90},
 }
 
 # ═══════════════════════════════════════════
