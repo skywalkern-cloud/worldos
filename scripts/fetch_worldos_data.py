@@ -341,6 +341,50 @@ def get_fed_rate():
 
 
 @with_timeout(20)
+def get_us_bond_10y():
+    """美国10年期国债收益率 - akshare"""
+    import akshare as ak
+    import pandas as pd
+    try:
+        df = ak.bond_zh_us_rate()
+        valid = df[df['美国国债收益率10年'].notna()]
+        if not valid.empty:
+            val = float(valid.iloc[-1]['美国国债收益率10年'])
+            d = str(valid.iloc[-1]['日期'])[:10]
+            return round(val, 2), d, 'daily'
+    except Exception:
+        pass
+    return None, None, None
+
+
+@with_timeout(20)
+def get_us_nonfarm():
+    """美国新增非农就业人数 - 东方财富"""
+    import requests
+    try:
+        url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+        params = {
+            "reportName": "RPT_ECONOMICVALUE_USA",
+            "columns": "REPORT_DATE,VALUE",
+            "filter": '(INDICATOR_ID="EMG00152118")',
+            "pageNumber": 1, "pageSize": 3,
+            "sortColumns": "REPORT_DATE", "sortTypes": -1,
+            "source": "WEB", "client": "WEB",
+        }
+        r = requests.get(url, params=params, timeout=15)
+        data = r.json()
+        if data.get('success') and data.get('result', {}).get('data'):
+            for item in data['result']['data']:
+                val = item.get('VALUE')
+                if val is not None:
+                    date_str = str(item.get('REPORT_DATE', ''))[:7]
+                    return round(float(val), 1), date_str, 'monthly'
+    except Exception:
+        pass
+    return None, None, None
+
+
+@with_timeout(20)
 def get_dollar_index():
     """美元指数代理: 使用 USDCNY × EURUSD × USDJPY 加权计算
     
@@ -623,6 +667,8 @@ INDICATOR_DEFS = {
     'oilPrice': {'name': 'WTI原油', 'unit': '$/桶', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_oil_price},
     'naturalGas': {'name': '天然气', 'unit': '$/MMBtu', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_nat_gas},
     'fedRate': {'name': '美联储基准利率', 'unit': '%', 'frequency': 'monthly', 'source': 'FOMC会议记录', 'func': get_fed_rate},
+    'usBond10Y': {'name': '美债10年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_10y},
+    'usNonFarm': {'name': '非农就业', 'unit': '万人', 'frequency': 'monthly', 'source': '东方财富-美国劳工部', 'func': get_us_nonfarm},
     'dollarIndex': {'name': '美元指数代理', 'unit': '', 'frequency': 'daily', 'source': 'akshare-汇率加权计算', 'func': get_dollar_index},
     'cpi': {'name': '中国CPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_cpi},
     'ppi': {'name': '中国PPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_ppi},
@@ -643,7 +689,7 @@ INDICATOR_DEFS = {
 
 
 def load_prev():
-    """加载上次数据用于 fallback"""
+    """加载上次数据用于 trend 比较"""
     if DATA_FILE.exists():
         try:
             with open(DATA_FILE, 'r') as f:
@@ -651,9 +697,9 @@ def load_prev():
             result = {}
             for k, v in d.get('data', {}).items():
                 if isinstance(v, dict):
-                    result[k] = (v.get('value'), v.get('dataDate'))
+                    result[k] = {'value': v.get('value'), 'dataDate': v.get('dataDate')}
                 else:
-                    result[k] = (v, None)
+                    result[k] = {'value': v, 'dataDate': None}
             return result
         except:
             pass
