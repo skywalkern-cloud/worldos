@@ -750,7 +750,7 @@ def load_prev():
 
 
 def save_results(results, fetch_ts):
-    """保存结果到文件（含v5.0评分）"""
+    """保存结果到文件（含v5.0评分 + 评论生成）"""
     valid = sum(1 for v in results.values() if v['value'] is not None)
     total = len(results)
 
@@ -770,6 +770,22 @@ def save_results(results, fetch_ts):
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
+
+    # 新增：生成评论
+    try:
+        from commentary_generator import generate_commentary, load_prev_commentary
+        prev_commentary = load_prev_commentary(workspace=WORKSPACE)
+        commentary = generate_commentary(indicators, meta, prev_commentary)
+        COMMENTARY_FILE = WORKSPACE / 'public' / 'data' / 'commentary.json'
+        COMMENTARY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(COMMENTARY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(commentary, f, ensure_ascii=False, indent=2)
+        print(f"\n📝 评论已生成: {COMMENTARY_FILE}")
+    except ImportError as e:
+        print(f"\n⚠️ 评论生成模块未找到: {e}")
+    except Exception as e:
+        print(f"\n⚠️ 评论生成失败: {e}")
+
     return valid, total
 
 

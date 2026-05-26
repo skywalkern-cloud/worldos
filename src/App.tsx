@@ -1,5 +1,5 @@
 import React from "react";
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useMarketData, MarketDataSkeleton } from './hooks/useMarketData'
 import './index.css'
 
@@ -49,6 +49,36 @@ interface V4Data {
   }
 }
 
+// ====== 评论数据类型定义 ======
+
+interface CommentaryHighlight {
+  indicator: string
+  value: number | null
+  unit: string
+  key: string
+}
+
+interface DimensionCommentary {
+  score: number
+  signal: string
+  commentary: string
+  highlights: CommentaryHighlight[]
+}
+
+interface CommentaryData {
+  version: string
+  generatedAt: string
+  dataTimestamp: string
+  ias: {
+    score: number
+    signal: string
+    summary: string
+    keyDivergences: string[]
+    keyRisks: string[]
+  }
+  dimensions: Record<string, DimensionCommentary>
+}
+
 // ====== 6维度配置 ======
 
 const DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
@@ -76,6 +106,32 @@ const COUNTRY_ORDER: Record<string, number> = {
   '🇨🇳': 0,
   '🇺🇸': 1,
   '🌐': 2,
+}
+
+// ====== useCommentaryData Hook ======
+
+function useCommentaryData(shouldFetch: boolean): CommentaryData | null {
+  const [commentary, setCommentary] = useState<CommentaryData | null>(null)
+
+  const fetchCommentary = useCallback(async () => {
+    try {
+      const res = await fetch('/data/commentary.json')
+      if (!res.ok) return
+      const data = await res.json()
+      setCommentary(data as CommentaryData)
+    } catch {
+      // 优雅降级：commentary.json 加载失败时静默忽略
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!shouldFetch) return
+    fetchCommentary()
+    const interval = setInterval(fetchCommentary, 60000)
+    return () => clearInterval(interval)
+  }, [shouldFetch, fetchCommentary])
+
+  return commentary
 }
 
 // ====== 主组件 ======
@@ -107,6 +163,8 @@ function App() {
     })
     return result.slice(0, 6)
   }, [indicators])
+
+  const commentary = useCommentaryData(!isLoading)
 
   if (isLoading || !v4Data) {
     return <MarketDataSkeleton />
@@ -151,6 +209,9 @@ function App() {
           />
         ))}
       </div>
+
+      {/* 数据解读评论栏目 */}
+      {commentary && <CommentarySection commentary={commentary} meta={meta.dimensions} />}
 
       {/* Footer */}
       <footer className="mt-8 text-center text-xs text-gray-600">
@@ -376,6 +437,214 @@ function IndicatorRowV4({ info }: { info: IndicatorInfo }) {
         </div>
       )}
     </div>
+  )
+}
+
+// ====== Markdown 轻量渲染组件 ======
+
+function MarkdownText({ text }: { text: string }) {
+  // 只处理 **加粗** 和 \n 换行
+  const lines = text.split('\n').filter(Boolean)
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        // 处理 **加粗**
+        const parts = line.split(/\*\*(.*?)\*\*/g)
+        return (
+          <p key={i} className="text-sm text-gray-300 leading-relaxed">
+            {parts.map((part, j) =>
+              j % 2 === 1 ? <strong key={j} className="text-white font-semibold">{part}</strong> : part
+            )}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
+// ====== 评分颜色映射 ======
+
+function getScoreBadgeColor(signal: string): string {
+  switch (signal) {
+    case 'green':
+    case 'lightgreen':
+      return 'bg-green-500/20 text-green-400'
+    case 'yellow':
+      return 'bg-yellow-500/20 text-yellow-400'
+    case 'red':
+      return 'bg-red-500/20 text-red-400'
+    default:
+      return 'bg-gray-500/20 text-gray-400'
+  }
+}
+
+function getSignalEmoji(signal: string): string {
+  switch (signal) {
+    case 'green':
+    case 'lightgreen':
+      return '🟢'
+    case 'yellow':
+      return '🟡'
+    case 'red':
+      return '🔴'
+    default:
+      return '⚪'
+  }
+}
+
+// ====== 单个维度解读（可折叠） ======
+
+function DimensionCommentaryItem(props: {
+  dimId: string
+  dimCommentary: DimensionCommentary
+  dimLabel: { name: string; icon: string }
+}) {
+  const { dimCommentary, dimLabel } = props
+  const [expanded, setExpanded] = useState(false)
+  const signalEmoji = getSignalEmoji(dimCommentary.signal)
+
+  return (
+    <div className="border border-gray-700 rounded-lg overflow-hidden">
+      {/* 标题栏（可点击） */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-800/50 hover:bg-gray-700/50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{dimLabel.icon}</span>
+          <span className="text-sm font-medium text-gray-200">{dimLabel.name}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${getScoreBadgeColor(dimCommentary.signal)}`}>
+            {signalEmoji} {dimCommentary.score > 0 ? '+' : ''}{dimCommentary.score.toFixed(2)}
+          </span>
+        </div>
+        <span className="text-gray-500 text-sm transition-transform" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          ▼
+        </span>
+      </button>
+
+      {/* 展开内容 */}
+      {expanded && (
+        <div className="px-4 py-3 bg-gray-800/30 border-t border-gray-700/50">
+          <MarkdownText text={dimCommentary.commentary} />
+          {/* 高亮指标快照 */}
+          {dimCommentary.highlights.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {dimCommentary.highlights.map((h, idx) => (
+                <span
+                  key={idx}
+                  className="text-xs px-2 py-1 bg-gray-700/40 rounded text-gray-400"
+                >
+                  {h.key}: {h.value !== null ? h.value.toLocaleString() : 'N/A'}
+                  {h.unit ? h.unit : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ====== 评论栏目容器 ======
+
+function CommentarySection({
+  commentary,
+}: {
+  commentary: CommentaryData
+  meta?: Record<string, DimensionMeta>
+}) {
+  const [iasExpanded, setIasExpanded] = useState(true) // 默认展开
+  const DIM_COMMENT_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
+  const DIM_COMMENT_LABELS: Record<string, { name: string; icon: string }> = {
+    economic:  { name: '经济增长', icon: '📈' },
+    inflation: { name: '通胀与政策', icon: '💰' },
+    liquidity: { name: '流动性', icon: '💧' },
+    sentiment: { name: '市场情绪', icon: '🧠' },
+    resource:  { name: '资源与供应链', icon: '🛢️' },
+    techGreen: { name: '科技与绿色', icon: '🌱' },
+  }
+
+  return (
+    <section className="mt-8">
+      {/* 栏目标题 */}
+      <h2 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
+        <span>📝</span>
+        <span>数据解读</span>
+        <span className="text-xs text-gray-500 font-normal">
+          基于模板引擎自动生成
+        </span>
+      </h2>
+
+      {/* IAS 整体解读（默认展开） */}
+      <div className="mb-4 border border-gray-700 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setIasExpanded(!iasExpanded)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-900/40 to-purple-900/40 hover:from-blue-800/40 hover:to-purple-800/40 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔍</span>
+            <span className="text-sm font-semibold text-blue-200">IAS 整体解读</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+              {commentary.ias.score > 0 ? '+' : ''}{commentary.ias.score.toFixed(2)}
+            </span>
+            <span className="text-xs text-gray-400">{commentary.ias.signal}</span>
+          </div>
+          <span className="text-gray-500 text-sm">{iasExpanded ? '收起' : '展开'}</span>
+        </button>
+        {iasExpanded && (
+          <div className="px-4 py-3 bg-gray-800/20 border-t border-gray-700/50">
+            <MarkdownText text={commentary.ias.summary} />
+
+            {/* 关键矛盾标签 */}
+            {commentary.ias.keyDivergences.length > 0 && (
+              <div className="mt-3">
+                <span className="text-xs text-yellow-400 font-medium">⚠️ 关键矛盾</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {commentary.ias.keyDivergences.map((d, i) => (
+                    <span key={i} className="text-xs px-2 py-1 bg-yellow-500/10 text-yellow-300 border border-yellow-500/20 rounded">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 关键风险标签 */}
+            {commentary.ias.keyRisks.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs text-red-400 font-medium">⛔ 尾部风险</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {commentary.ias.keyRisks.map((r, i) => (
+                    <span key={i} className="text-xs px-2 py-1 bg-red-500/10 text-red-300 border border-red-500/20 rounded">
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 6个板块解读（默认折叠） */}
+      <div className="space-y-2">
+        <h3 className="text-xs text-gray-500 font-medium px-1">各维度解读</h3>
+        {DIM_COMMENT_ORDER.map(dimId => {
+          const dimCommentary = commentary.dimensions[dimId]
+          const dimLabel = DIM_COMMENT_LABELS[dimId]
+          if (!dimCommentary || !dimLabel) return null
+          return (
+            <DimensionCommentaryItem
+              key={dimId}
+              dimId={dimId}
+              dimCommentary={dimCommentary}
+              dimLabel={dimLabel}
+            />
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
