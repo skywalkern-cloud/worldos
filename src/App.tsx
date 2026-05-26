@@ -210,7 +210,6 @@ function AnomalyBar({
             <span className="font-medium">{info.name}</span>
             <span className="mx-1 opacity-60">{info.value ?? '待接入'}</span>
             <span className="opacity-60">{info.unit}</span>
-            <span className="ml-1">{info.freshness}</span>
           </div>
         ))}
       </div>
