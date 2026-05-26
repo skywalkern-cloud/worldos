@@ -298,8 +298,45 @@ def get_oil_price():
 
 @with_timeout(20)
 def get_fed_rate():
-    """美联储利率: 已知 akshare 数据到 2025-07-31 的 4.50%，但之后降息两次到 3.75%"""
-    # 根据 FOMC 会议记录：2025-09-18 降息至 4.25%，2025-12-18 降息至 4.00%，2026-03 降息至 3.75%
+    """美联储利率 - 从东方财富抓取最新联邦基金利率"""
+    import requests
+    try:
+        url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+        params = {
+            "reportName": "RPT_ECONOMICVALUE_USA",
+            "columns": "REPORT_DATE,VALUE",
+            "filter": '(INDICATOR_ID="EMG00159628")',  # 联邦基金利率
+            "pageNumber": 1, "pageSize": 3,
+            "sortColumns": "REPORT_DATE", "sortTypes": -1,
+            "source": "WEB", "client": "WEB",
+        }
+        r = requests.get(url, params=params, timeout=15)
+        data = r.json()
+        if data.get('success') and data.get('result', {}).get('data'):
+            for item in data['result']['data']:
+                val = item.get('VALUE')
+                if val is not None:
+                    rate = round(float(val), 2)
+                    date_str = str(item.get('REPORT_DATE', ''))[:10]
+                    return rate, date_str, 'monthly'
+    except Exception:
+        pass
+
+    # Fallback: 美股盈透数据
+    try:
+        import requests
+        url = "https://www.alphavantage.co/query?function=FEDERAL_FUNDS_RATE&apikey=***"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        if data.get('data') and len(data['data']) > 0:
+            latest = data['data'][0]
+            val = float(latest['value'])
+            d = latest['date']
+            return round(val, 2), d[:10], 'monthly'
+    except Exception:
+        pass
+
+    # 如果都失败，返回硬编码值（2026-03 FOMC: 3.75%）
     return 3.75, '2026-03-19', 'monthly'
 
 
