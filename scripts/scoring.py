@@ -62,10 +62,10 @@ BIDIRECTIONAL_PARAMS = {
 
 TIMELINESS_RULES = {
     'daily':     {'yellow_days': 3, 'red_days': 5},
-    'monthly':   {'yellow_days': 30, 'red_days': 45},
-    'quarterly': {'yellow_days': 90, 'red_days': 120},
+    'monthly':   {'yellow_days': 45, 'red_days': 60},
+    'quarterly': {'yellow_days': 120, 'red_days': 150},
     'yearly':    {'yellow_days': 180, 'red_days': 365},
-    'other':     {'yellow_days': 30, 'red_days': 45},
+    'other':     {'yellow_days': 30, 'red_days': 60},
 }
 
 # ═══════════════════════════════════════════
