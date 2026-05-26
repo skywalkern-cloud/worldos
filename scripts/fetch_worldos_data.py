@@ -399,6 +399,25 @@ def get_us_bond_10y():
 
 
 @with_timeout(20)
+@with_timeout(20)
+def get_fear_greed():
+    """恐惧贪婪指数 - alternative.me API"""
+    import requests
+    try:
+        url = "https://api.alternative.me/fng/?limit=1"
+        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        data = r.json()
+        if data.get("data") and len(data["data"]) > 0:
+            val = int(data["data"][0]["value"])
+            ts = int(data["data"][0]["timestamp"])
+            from datetime import datetime
+            d = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+            return val, d, "daily"
+    except Exception:
+        pass
+    return None, None, None
+
+
 def get_us_nonfarm():
     """美国新增非农就业人数 - 东方财富"""
     import requests
@@ -712,6 +731,7 @@ INDICATOR_DEFS = {
     'usBond5Y': {'name': '美债5年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_5y},
     'usBond10Y': {'name': '美债10年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_10y},
     'usNonFarm': {'name': '非农就业', 'unit': '万人', 'frequency': 'monthly', 'source': '东方财富-美国劳工部', 'func': get_us_nonfarm},
+    'fearGreed': {'name': '恐惧贪婪指数', 'unit': '', 'frequency': 'daily', 'source': 'alternative.me', 'func': get_fear_greed},
     'dollarIndex': {'name': '美元指数代理', 'unit': '', 'frequency': 'daily', 'source': 'akshare-汇率加权计算', 'func': get_dollar_index},
     'cpi': {'name': '中国CPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_cpi},
     'ppi': {'name': '中国PPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_ppi},

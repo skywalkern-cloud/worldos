@@ -30,7 +30,7 @@ DIMENSION_INDICATORS = {
     'economic':  ['chinaGdp', 'chinaPmi', 'usGdp', 'servicePmi', 'electricity', 'usNonFarm'],
     'inflation': ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
     'liquidity': ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
-    'sentiment': ['vix', 'epu'],
+    'sentiment': ['vix', 'fearGreed'],
     'resource':  ['oilPrice', 'naturalGas', 'carbonPrice'],
     'techGreen': ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
 }
@@ -57,7 +57,7 @@ INDICATOR_SHORT = {
     'usBond5Y':       '美债5Y',
     'usBond10Y':      '美债10Y',
     'vix':            'VIX',
-    'epu':            'EPU指数',
+    'fearGreed':     '恐惧贪婪指数',
     'oilPrice':       'WTI原油',
     'naturalGas':     '天然气',
     'carbonPrice':    '碳价',
@@ -73,7 +73,7 @@ INDICATOR_COUNTRY = {
     'usCpi': '🇺🇸', 'corePce': '🇺🇸', 'fedRate': '🇺🇸', 'lpr': '🇨🇳',
     'dr007': '🇨🇳', 'm2': '🇨🇳', 'creditSpread': '🌐', 'dollarIndex': '🌐',
     'usBond2Y': '🇺🇸', 'usBond5Y': '🇺🇸', 'usBond10Y': '🇺🇸',
-    'vix': '🇺🇸', 'epu': '🌐', 'oilPrice': '🌐', 'naturalGas': '🌐',
+    'vix': '🇺🇸', 'fearGreed': '🌐', 'oilPrice': '🌐', 'naturalGas': '🌐',
     'carbonPrice': '🇨🇳', 'aiGrowth': '🇨🇳', 'robotInstall': '🇨🇳',
     'evPenetration': '🇨🇳', 'renewEnergyInvest': '🇨🇳',
 }

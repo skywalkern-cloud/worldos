@@ -97,7 +97,7 @@ const DIMENSION_INDICATORS: Record<string, string[]> = {
   economic:  ['chinaGdp', 'chinaPmi', 'servicePmi', 'electricity', 'usGdp', 'usNonFarm'],
   inflation: ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
   liquidity: ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
-  sentiment: ['vix', 'epu'],
+  sentiment: ['vix', 'fearGreed'],
   resource:  ['oilPrice', 'naturalGas', 'carbonPrice'],
   techGreen: ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
 }
