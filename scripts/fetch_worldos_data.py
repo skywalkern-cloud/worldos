@@ -223,35 +223,53 @@ def get_core_pce():
 
 @with_timeout(20)
 def get_core_pce_fallback():
-    """美国核心PCE - TradingEconomics 抓取 (无 FRED_API_KEY 或 API 失败时备用)"""
+    """美国核心PCE备选 - 优先TradingEconomics，然后East Money核心CPI"""
+    # 备选1: TradingEconomics 抓取
     try:
         url = "https://tradingeconomics.com/united-states/core-consumer-prices"
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code != 200:
-            return None, None, None
-
-        text = r.text
-        # Try to find the indicator value from TradingEconomics page
-        # Look for a value near "Core Consumer Prices" or in the main indicator area
-        m = re.search(r'<span[^>]*class="[^"]*(?:value|indicator)[^"]*"[^>]*>([\d.]+)</span>', text)
-        if m:
-            val = float(m.group(1))
-            # Try to find date context like "May 2026"
-            m2 = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})', text)
-            if m2:
-                months = {'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06',
-                          'Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
-                month = months.get(m2.group(1), '01')
-                year = m2.group(2)
-                return round(val, 1), f"{year}-{month}", "monthly"
-            # Fallback date: use today's date
-            return round(val, 1), date.today().strftime('%Y-%m'), "monthly"
-        return None, None, None
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            text = r.text
+            m = re.search(r'<span[^>]*class="[^"]*(?:value|indicator)[^"]*"[^>]*>([\d.]+)</span>', text)
+            if m:
+                val = float(m.group(1))
+                m2 = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})', text)
+                if m2:
+                    months = {'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06',
+                              'Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
+                    return round(val, 1), f"{m2.group(2)}-{months.get(m2.group(1), '01')}", "monthly"
+                return round(val, 1), date.today().strftime('%Y-%m'), "monthly"
     except Exception:
-        return None, None, None
+        pass
+
+    # 备选2: East Money 核心CPI (核心PCE ≈ 核心CPI - 0.3%)
+    try:
+        url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+        params = {
+            "reportName": "RPT_ECONOMICVALUE_USA",
+            "columns": "REPORT_DATE,VALUE",
+            "filter": '(INDICATOR_ID="EMG00000746")',
+            "pageNumber": 1, "pageSize": 3,
+            "sortColumns": "REPORT_DATE", "sortTypes": -1,
+            "source": "WEB", "client": "WEB",
+        }
+        r = requests.get(url, params=params, timeout=10)
+        data = r.json()
+        if data.get('success') and data.get('result', {}).get('data'):
+            for item in data['result']['data']:
+                val = item.get('VALUE')
+                if val is not None:
+                    # 核心CPI转核心PCE: 通常PCE比CPI低0.3-0.5%
+                    pce_val = round(float(val) - 0.3, 1)
+                    date_str = str(item.get('REPORT_DATE', ''))[:7]
+                    return pce_val, date_str, "monthly"
+    except Exception:
+        pass
+
+    return None, None, None
 
 
 @with_timeout(20)
@@ -404,32 +422,28 @@ def get_m2():
 @with_timeout(20)
 def get_epu():
     """中国经济政策不确定性指数 - FRED API (CHNEPUINDXM)"""
-    if not FRED_API_KEY:
-        return None, None, None
-
-    try:
-        series_id = "CHNEPUINDXM"
-        url = "https://api.stlouisfed.org/fred/series/observations"
-        params = {
-            "series_id": series_id,
-            "api_key": FRED_API_KEY,
-            "file_type": "json",
-            "sort_order": "desc",
-            "limit": 3,
-        }
-        r = requests.get(url, params=params, timeout=15)
-        data = r.json()
-        if "observations" not in data:
-            return None, None, None
-
-        for obs in data["observations"]:
-            val = obs.get("value")
-            if val and val != ".":
-                date_str = obs.get("date", "")
-                return round(float(val), 1), date_str[:7], "monthly"
-        return None, None, None
-    except Exception:
-        return None, None, None
+    if FRED_API_KEY:
+        try:
+            series_id = "CHNEPUINDXM"
+            url = "https://api.stlouisfed.org/fred/series/observations"
+            params = {
+                "series_id": series_id,
+                "api_key": FRED_API_KEY,
+                "file_type": "json",
+                "sort_order": "desc",
+                "limit": 3,
+            }
+            r = requests.get(url, params=params, timeout=15)
+            data = r.json()
+            if "observations" in data:
+                for obs in data["observations"]:
+                    val = obs.get("value")
+                    if val and val != ".":
+                        date_str = obs.get("date", "")
+                        return round(float(val), 1), date_str[:7], "monthly"
+        except Exception:
+            pass
+    return None, None, None
 
 
 @with_timeout(20)
