@@ -31,7 +31,7 @@ POSITIVE_PARAMS = {
     'exportGrowth':      (-5.0, 5.0, 15.0),
     'aiGrowth':          (0, 10, 25),
     'robotInstall':      (-5.0, 10, 25),
-    'usNonFarm':         (50, 200, 400),
+    'usNonFarm':         (5, 20, 40),
     'evPenetration':     (20, 40, 60),
     'carbonPrice':       (30, 60, 90),
     'renewEnergyInvest': (800, 1200, 1600),
@@ -59,6 +59,8 @@ BIDIRECTIONAL_PARAMS = {
     'oilPrice':          (40, 60, 90, 120),
     'naturalGas':        (2.0, 2.5, 4.5, 7.0),
     'fedRate':           (1.0, 2.0, 4.0, 5.0),
+    'lmeIndex':          (3000, 6000, 12000, 15000),
+    'shanghaiCopper':    (40000, 55000, 75000, 90000),
 }
 
 # ═══════════════════════════════════════════
@@ -111,7 +113,7 @@ DIMENSION_CONFIG = [
         'name': '资源与供应链',
         'icon': '🛢️',
         'weight': 0.6,
-        'indicators': ['oilPrice', 'naturalGas', 'carbonPrice'],
+        'indicators': ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
     },
     {
         'id': 'techGreen',
@@ -162,6 +164,8 @@ INDICATOR_COUNTRY = {
     'evPenetration': '🇨🇳',
     'carbonPrice': '🇨🇳',
     'renewEnergyInvest': '🇨🇳',
+    'lmeIndex': '🌐',
+    'shanghaiCopper': '🇨🇳',
 }
 
 INDICATOR_NAMES = {
@@ -200,6 +204,8 @@ INDICATOR_NAMES = {
     'evPenetration': '新能源渗透率',
     'carbonPrice': '碳价',
     'renewEnergyInvest': '新能源指数',
+    'lmeIndex': 'LME金属指数',
+    'shanghaiCopper': '沪铜',
 }
 
 

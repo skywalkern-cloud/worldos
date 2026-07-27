@@ -445,7 +445,9 @@ def get_us_nonfarm():
                 val = item.get('VALUE')
                 if val is not None:
                     date_str = str(item.get('REPORT_DATE', ''))[:7]
-                    return round(float(val), 1), date_str, 'monthly'
+                    # 东方财富单位是千人，WorldOS 配置单位是万人，除以10转换
+                    val = float(val) / 10
+                    return round(val, 1), date_str, 'monthly'
     except Exception:
         pass
     return None, None, None
@@ -455,20 +457,28 @@ def get_us_nonfarm():
 def get_dollar_index():
     """美元指数代理: 使用 USDCNY × EURUSD × USDJPY 加权计算
     
-    注意：如果所有数据源都失败，返回 None（不用错误数据填充）
+    通过 exchangerate-api.com API 获取实时汇率（akshare的东方财富源有代理问题）
     """
-    import akshare as ak
-    import pandas as pd
+    import requests
     try:
-        usdcny = ak.forex_hist_em(symbol='USDCNH')
-        usd_jpy = ak.forex_hist_em(symbol='USDJPY')
-        eur_usd = ak.forex_hist_em(symbol='EURUSD')
-
-        cny = float(usdcny.iloc[-1]['最新价'])
-        jpy = float(usd_jpy.iloc[-1]['最新价'])
-        eur = float(eur_usd.iloc[-1]['最新价'])
-        d = str(usdcny.iloc[-1]['日期'])[:10]
-
+        r = requests.get('https://api.exchangerate-api.com/v4/latest/USD', timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        rates = data.get('rates', {})
+        
+        cny = rates.get('CNY')
+        jpy = rates.get('JPY')
+        eur = rates.get('EUR')
+        
+        if not all([cny, jpy, eur]):
+            return None, None, None
+        
+        cny = float(cny)
+        jpy = float(jpy)
+        eur = 1.0 / float(eur)  # EURUSD 汇率为 1/EUR
+        
+        d = data.get('date', datetime.now().strftime('%Y-%m-%d'))
+        
         base_cny, base_jpy, base_eur = 7.24, 150.0, 1.08
         cny_factor = (cny / base_cny) ** 0.35
         jpy_factor = (jpy / base_jpy) ** 0.20
@@ -476,7 +486,6 @@ def get_dollar_index():
         index = round(100 * cny_factor * jpy_factor * eur_factor, 1)
         return index, d, 'daily'
     except Exception:
-        # 不要用错误的代理数据！返回 None 让上层使用历史数据
         return None, None, None
 
 
@@ -719,8 +728,50 @@ def get_credit_spread():
     return None, None, None
 
 
+@with_timeout(15)
+def get_lme_index():
+    """LME金属指数 - 使用LME铜3个月期货作为核心代表"""
+    import akshare as ak
+    import pandas as pd
+    try:
+        # 使用 futures_global_spot_em 获取 LME 铜(综合铜03)价格
+        df = ak.futures_global_spot_em()
+        lme_cu = df[df['代码'] == 'LCPT']
+        if not lme_cu.empty:
+            price = lme_cu.iloc[0]['最新价']
+            if not pd.isna(price):
+                return round(float(price), 2), date.today().strftime('%Y-%m-%d'), 'daily'
+    except Exception:
+        pass
+    return None, None, None
+
+
+@with_timeout(15)
+def get_shanghai_copper():
+    """沪铜期货主力合约价格 - 通过新浪财经实时行情"""
+    import requests
+    import re
+    try:
+        headers = {'Referer': 'https://finance.sina.com.cn'}
+        r = requests.get('https://hq.sinajs.cn/list=nf_CU0', headers=headers, timeout=10)
+        r.encoding = 'gbk'
+        text = r.text
+        # 格式: var hq_str_nf_CU0="铜连续,ID,开盘价,最高价,最低价,昨收,最新价,买价,卖价,..."
+        # 最新价在索引6（从0开始）
+        match = re.search(r'"([^"]+)"', text)
+        if match:
+            parts = match.group(1).split(',')
+            if len(parts) > 8:
+                latest_price = parts[6].strip()
+                if latest_price and latest_price != '0.000':
+                    return round(float(latest_price), 0), date.today().strftime('%Y-%m-%d'), 'daily'
+    except Exception:
+        pass
+    return None, None, None
+
+
 # ═══════════════════════════════════════════
-# 指标定义（26个）
+# 指标定义（28个）
 # ═══════════════════════════════════════════
 
 INDICATOR_DEFS = {
@@ -747,7 +798,7 @@ INDICATOR_DEFS = {
     'm2': {'name': 'M2同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-中国人民银行', 'func': get_m2},
     'creditSpread': {'name': '中美10年利差', 'unit': 'bp', 'frequency': 'daily', 'source': 'akshare-中美国债利差', 'func': get_credit_spread},
     'epu': {'name': '经济政策不确定性', 'unit': '', 'frequency': 'monthly', 'source': 'FRED API-EPU指数', 'func': get_epu},
-    'geoRisk': {'name': '地缘风险代理(VIX×10)', 'unit': '', 'frequency': 'daily', 'source': 'akshare-VIX×10', 'func': get_vix},
+
     'carbonPrice': {'name': '碳价格', 'unit': '¥/吨', 'frequency': 'daily', 'source': '北京碳市场', 'func': get_carbon_price},
     'electricity': {'name': '全社会用电量增速', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局', 'func': get_electricity},
     'renewEnergyInvest': {'name': '新能源指数', 'unit': '点', 'frequency': 'daily', 'source': '中证新能源指数', 'func': get_energy_index},
@@ -755,6 +806,8 @@ INDICATOR_DEFS = {
     'robotInstall': {'name': '工业增加值增速(机器人安装代理)', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-规模以上工业增加值', 'func': get_industrial_production},
     'evPenetration': {'name': '新能源车渗透率', 'unit': '%', 'frequency': 'monthly', 'source': '乘联会-CPCA', 'func': get_nev_penetration_rate},
     'extremeWeather': {'name': '经济天气代理(非制造业PMI)', 'unit': '', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_service_pmi},
+    'lmeIndex': {'name': 'LME金属指数', 'unit': '$/吨', 'frequency': 'daily', 'source': 'LME-综合铜03', 'func': get_lme_index},
+    'shanghaiCopper': {'name': '沪铜期货', 'unit': '¥/吨', 'frequency': 'daily', 'source': '上期所-新浪财经', 'func': get_shanghai_copper},
 }
 
 
@@ -787,31 +840,28 @@ def save_results(results, fetch_ts):
     # 计算评分
     indicators, meta = build_indicators_and_meta(results, prev_data)
 
+    # 找出获取失败的指标
+    failed_indicators = []
+    for key, info in INDICATOR_DEFS.items():
+        v = results.get(key, {})
+        if v.get('value') is None:
+            failed_indicators.append({'key': key, 'name': info['name'], 'source': info['source']})
+    
     output = {
         'timestamp': fetch_ts,
         'data': results,
         'indicators': indicators,
         'meta': meta,
-        'validity_report': {'total': total, 'valid': valid, 'invalid': total - valid},
+        'validity_report': {
+            'total': total, 
+            'valid': valid, 
+            'invalid': total - valid,
+            'failed': failed_indicators,
+        },
     }
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
-
-    # 新增：生成评论
-    try:
-        from commentary_generator import generate_commentary, load_prev_commentary
-        prev_commentary = load_prev_commentary(workspace=WORKSPACE)
-        commentary = generate_commentary(indicators, meta, prev_commentary)
-        COMMENTARY_FILE = WORKSPACE / 'public' / 'data' / 'commentary.json'
-        COMMENTARY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(COMMENTARY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(commentary, f, ensure_ascii=False, indent=2)
-        print(f"\n📝 评论已生成: {COMMENTARY_FILE}")
-    except ImportError as e:
-        print(f"\n⚠️ 评论生成模块未找到: {e}")
-    except Exception as e:
-        print(f"\n⚠️ 评论生成失败: {e}")
 
     return valid, total
 
@@ -865,14 +915,6 @@ def main():
                 else:
                     val = prev_item
                     dd = None
-
-        # geoRisk: VIX × 10
-        if key == 'geoRisk':
-            vix_val = results.get('vix', {}).get('value')
-            vix_dd = results.get('vix', {}).get('dataDate')
-            if vix_val is not None:
-                val = round(vix_val * 10, 1)
-                dd = vix_dd
 
         # extremeWeather: 50 + (servicePmi - 50) × 2
         if key == 'extremeWeather':

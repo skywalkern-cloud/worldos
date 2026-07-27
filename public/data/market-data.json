@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-05-27T16:45:23.151620",
+  "timestamp": "2026-07-27T16:40:06.078792",
   "data": {
     "chinaGdp": {
-      "value": 5.0,
+      "value": 4.7,
       "unit": "%",
       "frequency": "quarterly",
       "source": "国家统计局",
-      "dataDate": "2026-Q1",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-Q1-Q2",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "chinaPmi": {
       "value": 50.3,
       "unit": "",
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "usGdp": {
       "value": 2.0,
@@ -23,159 +23,159 @@
       "frequency": "quarterly",
       "source": "东方财富-美国商务部",
       "dataDate": "2026-Q1",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "servicePmi": {
-      "value": 49.4,
+      "value": 50.2,
       "unit": "",
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "usCpi": {
-      "value": 3.8,
+      "value": 3.5,
       "unit": "%",
       "frequency": "monthly",
       "source": "美国劳工统计局",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "corePce": {
-      "value": 2.4,
+      "value": 2.3,
       "unit": "%",
       "frequency": "monthly",
       "source": "FRED API-美国商务部",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "vix": {
-      "value": 19.51,
+      "value": 19.95,
       "unit": "",
       "frequency": "daily",
       "source": "akshare-沪深300ETF期权波动率指数",
-      "dataDate": "2026-05-26",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-24",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "oilPrice": {
-      "value": 90.44,
+      "value": 90.47,
       "unit": "$/桶",
       "frequency": "daily",
       "source": "NYMEX期货",
-      "dataDate": "2026-05-27",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-26",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "naturalGas": {
-      "value": 2.985,
+      "value": 2.908,
       "unit": "$/MMBtu",
       "frequency": "daily",
       "source": "NYMEX期货",
-      "dataDate": "2026-05-27",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-26",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "fedRate": {
-      "value": 3.75,
+      "value": 3.63,
       "unit": "%",
       "frequency": "monthly",
       "source": "FOMC会议记录",
-      "dataDate": "2026-03-19",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06-01",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "usBond2Y": {
-      "value": 4.01,
+      "value": 4.33,
       "unit": "%",
       "frequency": "daily",
       "source": "akshare-中美债券",
-      "dataDate": "2026-05-26",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-24",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "usBond5Y": {
-      "value": 4.19,
+      "value": 4.43,
       "unit": "%",
       "frequency": "daily",
       "source": "akshare-中美债券",
-      "dataDate": "2026-05-26",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-24",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "usBond10Y": {
-      "value": 4.5,
+      "value": 4.69,
       "unit": "%",
       "frequency": "daily",
       "source": "akshare-中美债券",
-      "dataDate": "2026-05-26",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-24",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "usNonFarm": {
-      "value": 115.0,
+      "value": 5.7,
       "unit": "万人",
       "frequency": "monthly",
       "source": "东方财富-美国劳工部",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "fearGreed": {
-      "value": 61.4,
+      "value": 39.4,
       "unit": "",
       "frequency": "daily",
       "source": "alternative.me",
-      "dataDate": "2026-05-27",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-27",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "dollarIndex": {
-      "value": "value",
+      "value": 97.1,
       "unit": "",
-      "frequency": "other",
+      "frequency": "daily",
       "source": "akshare-汇率加权计算",
-      "dataDate": "dataDate",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-27",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "cpi": {
-      "value": 1.2,
+      "value": 1.0,
       "unit": "%",
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "ppi": {
-      "value": 2.8,
+      "value": 4.1,
       "unit": "%",
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "lpr": {
       "value": 3.0,
       "unit": "%",
       "frequency": "monthly",
       "source": "中国人民银行",
-      "dataDate": "2026-05-20",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-20",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "dr007": {
-      "value": 1.317,
+      "value": 1.418,
       "unit": "%",
       "frequency": "daily",
       "source": "全国银行间同业拆借中心",
-      "dataDate": "2026-05-27",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-27",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "m2": {
-      "value": 8.6,
+      "value": 8.0,
       "unit": "%",
       "frequency": "monthly",
       "source": "东方财富-中国人民银行",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "creditSpread": {
-      "value": 276,
+      "value": 296,
       "unit": "bp",
       "frequency": "daily",
       "source": "akshare-中美国债利差",
-      "dataDate": "2026-05-26",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-24",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "epu": {
       "value": null,
@@ -183,89 +183,97 @@
       "frequency": "other",
       "source": "FRED API-EPU指数",
       "dataDate": null,
-      "lastFetched": "2026-05-27T16:45:23.151620"
-    },
-    "geoRisk": {
-      "value": 195.1,
-      "unit": "",
-      "frequency": "daily",
-      "source": "akshare-VIX×10",
-      "dataDate": "2026-05-26",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "carbonPrice": {
-      "value": 105.0,
+      "value": 104.27,
       "unit": "¥/吨",
       "frequency": "daily",
       "source": "北京碳市场",
-      "dataDate": "2026-05-25",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-27",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "electricity": {
-      "value": 5.4,
+      "value": 5.3,
       "unit": "%",
       "frequency": "monthly",
       "source": "国家能源局",
-      "dataDate": "2026.4",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026.6",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "renewEnergyInvest": {
-      "value": 978.0,
+      "value": 1027.0,
       "unit": "点",
       "frequency": "daily",
       "source": "中证新能源指数",
-      "dataDate": "2026-05-26",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-07-26",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "aiGrowth": {
-      "value": 4.9,
+      "value": 5.1,
       "unit": "%",
       "frequency": "monthly",
       "source": "国家能源局-第二产业",
-      "dataDate": "2026.4",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026.6",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "robotInstall": {
-      "value": 4.1,
+      "value": 5.3,
       "unit": "%",
       "frequency": "monthly",
       "source": "东方财富-规模以上工业增加值",
-      "dataDate": "2026年04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026年06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "evPenetration": {
-      "value": 58.0,
+      "value": 62.9,
       "unit": "%",
       "frequency": "monthly",
       "source": "乘联会-CPCA",
-      "dataDate": "2026-4月",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-6月",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     },
     "extremeWeather": {
-      "value": 48.8,
+      "value": 50.4,
       "unit": "",
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
-      "dataDate": "2026-04",
-      "lastFetched": "2026-05-27T16:45:23.151620"
+      "dataDate": "2026-06",
+      "lastFetched": "2026-07-27T16:40:06.078792"
+    },
+    "lmeIndex": {
+      "value": 13611.5,
+      "unit": "$/吨",
+      "frequency": "other",
+      "source": "LME-综合铜03",
+      "dataDate": "2026-07-26",
+      "lastFetched": "2026-07-27T16:40:06.078792"
+    },
+    "shanghaiCopper": {
+      "value": 105030.0,
+      "unit": "¥/吨",
+      "frequency": "daily",
+      "source": "上期所-新浪财经",
+      "dataDate": "2026-07-27",
+      "lastFetched": "2026-07-27T16:40:06.078792"
     }
   },
   "indicators": {
     "chinaGdp": {
-      "value": 5.0,
-      "score": 0.0,
+      "value": 4.7,
+      "score": -0.15,
       "trend": "neutral",
-      "signal": "gray",
+      "signal": "yellow",
       "category": "economic",
       "country": "🇨🇳",
       "name": "GDP增速",
       "frequency": "quarterly",
-      "dataDate": "2026-Q1",
+      "dataDate": "2026-Q1-Q2",
       "source": "国家统计局",
       "unit": "%",
-      "timeliness": 1.0,
-      "freshness": "🟢",
-      "freshness_level": "fresh"
+      "timeliness": 0.5,
+      "freshness": "🟡",
+      "freshness_level": "stale"
     },
     "chinaPmi": {
       "value": 50.3,
@@ -276,7 +284,7 @@
       "country": "🇨🇳",
       "name": "制造业PMI",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "东方财富-国家统计局",
       "unit": "",
       "timeliness": 1.0,
@@ -295,20 +303,20 @@
       "dataDate": "2026-Q1",
       "source": "东方财富-美国商务部",
       "unit": "%",
-      "timeliness": 1.0,
-      "freshness": "🟢",
-      "freshness_level": "fresh"
+      "timeliness": 0.5,
+      "freshness": "🟡",
+      "freshness_level": "stale"
     },
     "servicePmi": {
-      "value": 49.4,
-      "score": -0.2,
+      "value": 50.2,
+      "score": 0.067,
       "trend": "neutral",
-      "signal": "yellow",
+      "signal": "gray",
       "category": "economic",
       "country": "🇨🇳",
       "name": "服务业PMI",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "东方财富-国家统计局",
       "unit": "",
       "timeliness": 1.0,
@@ -316,15 +324,15 @@
       "freshness_level": "fresh"
     },
     "usCpi": {
-      "value": 3.8,
-      "score": -0.2,
+      "value": 3.5,
+      "score": 0.0,
       "trend": "neutral",
-      "signal": "yellow",
+      "signal": "gray",
       "category": "inflation",
       "country": "🇺🇸",
       "name": "CPI",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "美国劳工统计局",
       "unit": "%",
       "timeliness": 1.0,
@@ -332,7 +340,7 @@
       "freshness_level": "fresh"
     },
     "corePce": {
-      "value": 2.4,
+      "value": 2.3,
       "score": 0.0,
       "trend": "neutral",
       "signal": "gray",
@@ -340,7 +348,7 @@
       "country": "🇺🇸",
       "name": "核心PCE",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "FRED API-美国商务部",
       "unit": "%",
       "timeliness": 1.0,
@@ -348,15 +356,15 @@
       "freshness_level": "fresh"
     },
     "vix": {
-      "value": 19.51,
-      "score": 0.061,
+      "value": 19.95,
+      "score": 0.006,
       "trend": "neutral",
       "signal": "gray",
       "category": "sentiment",
       "country": "🇺🇸",
       "name": "VIX恐慌指数",
       "frequency": "daily",
-      "dataDate": "2026-05-26",
+      "dataDate": "2026-07-24",
       "source": "akshare-沪深300ETF期权波动率指数",
       "unit": "",
       "timeliness": 1.0,
@@ -364,15 +372,15 @@
       "freshness_level": "fresh"
     },
     "oilPrice": {
-      "value": 90.44,
-      "score": -0.015,
-      "trend": "down",
+      "value": 90.47,
+      "score": -0.016,
+      "trend": "neutral",
       "signal": "gray",
       "category": "resource",
       "country": "🌐",
       "name": "WTI原油",
       "frequency": "daily",
-      "dataDate": "2026-05-27",
+      "dataDate": "2026-07-26",
       "source": "NYMEX期货",
       "unit": "$/桶",
       "timeliness": 1.0,
@@ -380,15 +388,15 @@
       "freshness_level": "fresh"
     },
     "naturalGas": {
-      "value": 2.985,
+      "value": 2.908,
       "score": 0.0,
-      "trend": "down",
+      "trend": "neutral",
       "signal": "gray",
       "category": "resource",
       "country": "🌐",
       "name": "天然气",
       "frequency": "daily",
-      "dataDate": "2026-05-27",
+      "dataDate": "2026-07-26",
       "source": "NYMEX期货",
       "unit": "$/MMBtu",
       "timeliness": 1.0,
@@ -396,31 +404,31 @@
       "freshness_level": "fresh"
     },
     "fedRate": {
-      "value": 3.75,
+      "value": 3.63,
       "score": 0.0,
-      "trend": "up",
+      "trend": "neutral",
       "signal": "gray",
       "category": "inflation",
       "country": "🇺🇸",
       "name": "联邦基金利率",
       "frequency": "monthly",
-      "dataDate": "2026-03-19",
+      "dataDate": "2026-06-01",
       "source": "FOMC会议记录",
       "unit": "%",
-      "timeliness": 0.5,
-      "freshness": "🟡",
-      "freshness_level": "stale"
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh"
     },
     "usBond2Y": {
-      "value": 4.01,
+      "value": 4.33,
       "score": 0.0,
-      "trend": "down",
+      "trend": "neutral",
       "signal": "gray",
       "category": "liquidity",
       "country": "🇺🇸",
       "name": "美债2年收益率",
       "frequency": "daily",
-      "dataDate": "2026-05-26",
+      "dataDate": "2026-07-24",
       "source": "akshare-中美债券",
       "unit": "%",
       "timeliness": 1.0,
@@ -428,15 +436,15 @@
       "freshness_level": "fresh"
     },
     "usBond5Y": {
-      "value": 4.19,
+      "value": 4.43,
       "score": 0.0,
-      "trend": "down",
+      "trend": "neutral",
       "signal": "gray",
       "category": "liquidity",
       "country": "🇺🇸",
       "name": "美债5年收益率",
       "frequency": "daily",
-      "dataDate": "2026-05-26",
+      "dataDate": "2026-07-24",
       "source": "akshare-中美债券",
       "unit": "%",
       "timeliness": 1.0,
@@ -444,15 +452,15 @@
       "freshness_level": "fresh"
     },
     "usBond10Y": {
-      "value": 4.5,
+      "value": 4.69,
       "score": 0.0,
-      "trend": "down",
+      "trend": "neutral",
       "signal": "gray",
       "category": "liquidity",
       "country": "🇺🇸",
       "name": "美债10年收益率",
       "frequency": "daily",
-      "dataDate": "2026-05-26",
+      "dataDate": "2026-07-24",
       "source": "akshare-中美债券",
       "unit": "%",
       "timeliness": 1.0,
@@ -460,15 +468,15 @@
       "freshness_level": "fresh"
     },
     "usNonFarm": {
-      "value": 115.0,
-      "score": -0.567,
+      "value": 5.7,
+      "score": -0.953,
       "trend": "neutral",
       "signal": "red",
       "category": "economic",
       "country": "🇺🇸",
       "name": "非农就业",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "东方财富-美国劳工部",
       "unit": "万人",
       "timeliness": 1.0,
@@ -476,15 +484,15 @@
       "freshness_level": "fresh"
     },
     "fearGreed": {
-      "value": 61.4,
-      "score": -0.07,
-      "trend": "up",
+      "value": 39.4,
+      "score": -0.03,
+      "trend": "neutral",
       "signal": "gray",
       "category": "sentiment",
       "country": "🌐",
       "name": "恐惧贪婪指数",
       "frequency": "daily",
-      "dataDate": "2026-05-27",
+      "dataDate": "2026-07-27",
       "source": "alternative.me",
       "unit": "",
       "timeliness": 1.0,
@@ -492,15 +500,15 @@
       "freshness_level": "fresh"
     },
     "dollarIndex": {
-      "value": "value",
-      "score": null,
-      "trend": "neutral",
-      "signal": "gray",
+      "value": 97.1,
+      "score": 0.363,
+      "trend": "down",
+      "signal": "lightgreen",
       "category": "liquidity",
       "country": "🌐",
       "name": "美元指数",
-      "frequency": "other",
-      "dataDate": "dataDate",
+      "frequency": "daily",
+      "dataDate": "2026-07-27",
       "source": "akshare-汇率加权计算",
       "unit": "",
       "timeliness": 1.0,
@@ -508,7 +516,7 @@
       "freshness_level": "fresh"
     },
     "cpi": {
-      "value": 1.2,
+      "value": 1.0,
       "score": 0.0,
       "trend": "neutral",
       "signal": "gray",
@@ -516,7 +524,7 @@
       "country": "🇨🇳",
       "name": "CPI",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "东方财富-国家统计局",
       "unit": "%",
       "timeliness": 1.0,
@@ -524,15 +532,15 @@
       "freshness_level": "fresh"
     },
     "ppi": {
-      "value": 2.8,
-      "score": 0.933,
+      "value": 4.1,
+      "score": 1.0,
       "trend": "neutral",
       "signal": "green",
       "category": "inflation",
       "country": "🇨🇳",
       "name": "PPI",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "东方财富-国家统计局",
       "unit": "%",
       "timeliness": 1.0,
@@ -548,7 +556,7 @@
       "country": "🇨🇳",
       "name": "LPR利率",
       "frequency": "monthly",
-      "dataDate": "2026-05-20",
+      "dataDate": "2026-07-20",
       "source": "中国人民银行",
       "unit": "%",
       "timeliness": 1.0,
@@ -556,15 +564,15 @@
       "freshness_level": "fresh"
     },
     "dr007": {
-      "value": 1.317,
-      "score": 0.604,
-      "trend": "neutral",
-      "signal": "green",
+      "value": 1.418,
+      "score": 0.478,
+      "trend": "up",
+      "signal": "lightgreen",
       "category": "liquidity",
       "country": "🇨🇳",
       "name": "DR007",
       "frequency": "daily",
-      "dataDate": "2026-05-27",
+      "dataDate": "2026-07-27",
       "source": "全国银行间同业拆借中心",
       "unit": "%",
       "timeliness": 1.0,
@@ -572,15 +580,15 @@
       "freshness_level": "fresh"
     },
     "m2": {
-      "value": 8.6,
-      "score": -0.2,
+      "value": 8.0,
+      "score": -0.5,
       "trend": "neutral",
-      "signal": "yellow",
+      "signal": "red",
       "category": "liquidity",
       "country": "🇨🇳",
       "name": "M2增速",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "东方财富-中国人民银行",
       "unit": "%",
       "timeliness": 1.0,
@@ -588,47 +596,31 @@
       "freshness_level": "fresh"
     },
     "creditSpread": {
-      "value": 276,
-      "score": -0.38,
-      "trend": "down",
+      "value": 296,
+      "score": -0.48,
+      "trend": "neutral",
       "signal": "yellow",
       "category": "liquidity",
       "country": "🌐",
       "name": "信用利差",
       "frequency": "daily",
-      "dataDate": "2026-05-26",
+      "dataDate": "2026-07-24",
       "source": "akshare-中美国债利差",
       "unit": "bp",
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh"
     },
-    "geoRisk": {
-      "value": 195.1,
-      "score": null,
-      "trend": "neutral",
-      "signal": "gray",
-      "category": "other",
-      "country": "🌐",
-      "name": "geoRisk",
-      "frequency": "daily",
-      "dataDate": "2026-05-26",
-      "source": "akshare-VIX×10",
-      "unit": "",
-      "timeliness": 1.0,
-      "freshness": "🟢",
-      "freshness_level": "fresh"
-    },
     "carbonPrice": {
-      "value": 105.0,
+      "value": 104.27,
       "score": 1.0,
-      "trend": "neutral",
+      "trend": "up",
       "signal": "green",
       "category": "resource",
       "country": "🇨🇳",
       "name": "碳价",
       "frequency": "daily",
-      "dataDate": "2026-05-25",
+      "dataDate": "2026-07-27",
       "source": "北京碳市场",
       "unit": "¥/吨",
       "timeliness": 1.0,
@@ -636,15 +628,15 @@
       "freshness_level": "fresh"
     },
     "electricity": {
-      "value": 5.4,
-      "score": 0.133,
+      "value": 5.3,
+      "score": 0.1,
       "trend": "neutral",
       "signal": "lightgreen",
       "category": "economic",
       "country": "🇨🇳",
       "name": "用电量",
       "frequency": "monthly",
-      "dataDate": "2026.4",
+      "dataDate": "2026.6",
       "source": "国家能源局",
       "unit": "%",
       "timeliness": 1.0,
@@ -652,15 +644,15 @@
       "freshness_level": "fresh"
     },
     "renewEnergyInvest": {
-      "value": 978.0,
-      "score": -0.555,
+      "value": 1027.0,
+      "score": -0.432,
       "trend": "neutral",
-      "signal": "red",
+      "signal": "yellow",
       "category": "techGreen",
       "country": "🇨🇳",
       "name": "新能源指数",
       "frequency": "daily",
-      "dataDate": "2026-05-26",
+      "dataDate": "2026-07-26",
       "source": "中证新能源指数",
       "unit": "点",
       "timeliness": 1.0,
@@ -668,15 +660,15 @@
       "freshness_level": "fresh"
     },
     "aiGrowth": {
-      "value": 4.9,
-      "score": -0.51,
+      "value": 5.1,
+      "score": -0.49,
       "trend": "neutral",
-      "signal": "red",
+      "signal": "yellow",
       "category": "techGreen",
       "country": "🇨🇳",
       "name": "AI产业增速",
       "frequency": "monthly",
-      "dataDate": "2026.4",
+      "dataDate": "2026.6",
       "source": "国家能源局-第二产业",
       "unit": "%",
       "timeliness": 1.0,
@@ -684,15 +676,15 @@
       "freshness_level": "fresh"
     },
     "robotInstall": {
-      "value": 4.1,
-      "score": -0.393,
+      "value": 5.3,
+      "score": -0.313,
       "trend": "neutral",
       "signal": "yellow",
       "category": "techGreen",
       "country": "🇨🇳",
       "name": "工业机器人",
       "frequency": "monthly",
-      "dataDate": "2026年04",
+      "dataDate": "2026年06",
       "source": "东方财富-规模以上工业增加值",
       "unit": "%",
       "timeliness": 1.0,
@@ -700,15 +692,15 @@
       "freshness_level": "fresh"
     },
     "evPenetration": {
-      "value": 58.0,
-      "score": 0.9,
+      "value": 62.9,
+      "score": 1.0,
       "trend": "neutral",
       "signal": "green",
       "category": "techGreen",
       "country": "🇨🇳",
       "name": "新能源渗透率",
       "frequency": "monthly",
-      "dataDate": "2026-4月",
+      "dataDate": "2026-6月",
       "source": "乘联会-CPCA",
       "unit": "%",
       "timeliness": 1.0,
@@ -716,7 +708,7 @@
       "freshness_level": "fresh"
     },
     "extremeWeather": {
-      "value": 48.8,
+      "value": 50.4,
       "score": null,
       "trend": "neutral",
       "signal": "gray",
@@ -724,9 +716,41 @@
       "country": "🌐",
       "name": "extremeWeather",
       "frequency": "monthly",
-      "dataDate": "2026-04",
+      "dataDate": "2026-06",
       "source": "东方财富-国家统计局",
       "unit": "",
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh"
+    },
+    "lmeIndex": {
+      "value": 13611.5,
+      "score": -0.537,
+      "trend": "neutral",
+      "signal": "red",
+      "category": "resource",
+      "country": "🌐",
+      "name": "LME金属指数",
+      "frequency": "other",
+      "dataDate": "2026-07-26",
+      "source": "LME-综合铜03",
+      "unit": "$/吨",
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh"
+    },
+    "shanghaiCopper": {
+      "value": 105030.0,
+      "score": -1.0,
+      "trend": "up",
+      "signal": "red",
+      "category": "resource",
+      "country": "🇨🇳",
+      "name": "沪铜",
+      "frequency": "daily",
+      "dataDate": "2026-07-27",
+      "source": "上期所-新浪财经",
+      "unit": "¥/吨",
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh"
@@ -734,7 +758,7 @@
   },
   "meta": {
     "ias": {
-      "score": 0.22,
+      "score": -0.05,
       "max_possible": 4.6,
       "signal": "持有",
       "position": "40-60%",
@@ -745,7 +769,7 @@
         "name": "经济增长",
         "icon": "📈",
         "weight": 1.0,
-        "score": -0.117,
+        "score": -0.169,
         "signal": "yellow",
         "valid_count": 6
       },
@@ -753,7 +777,7 @@
         "name": "通胀与政策",
         "icon": "💰",
         "weight": 1.0,
-        "score": 0.163,
+        "score": 0.2,
         "signal": "lightgreen",
         "valid_count": 5
       },
@@ -761,15 +785,15 @@
         "name": "流动性",
         "icon": "💧",
         "weight": 0.8,
-        "score": 0.051,
+        "score": 0.024,
         "signal": "gray",
-        "valid_count": 7
+        "valid_count": 8
       },
       "sentiment": {
         "name": "市场情绪",
         "icon": "🧠",
         "weight": 0.8,
-        "score": -0.005,
+        "score": -0.012,
         "signal": "gray",
         "valid_count": 2
       },
@@ -777,23 +801,30 @@
         "name": "资源与供应链",
         "icon": "🛢️",
         "weight": 0.6,
-        "score": 0.328,
-        "signal": "lightgreen",
-        "valid_count": 3
+        "score": -0.111,
+        "signal": "yellow",
+        "valid_count": 5
       },
       "techGreen": {
         "name": "科技与绿色",
         "icon": "🌱",
         "weight": 0.4,
-        "score": -0.14,
-        "signal": "yellow",
+        "score": -0.059,
+        "signal": "gray",
         "valid_count": 4
       }
     }
   },
   "validity_report": {
-    "total": 31,
-    "valid": 30,
-    "invalid": 1
+    "total": 32,
+    "valid": 31,
+    "invalid": 1,
+    "failed": [
+      {
+        "key": "epu",
+        "name": "经济政策不确定性",
+        "source": "FRED API-EPU指数"
+      }
+    ]
   }
 }

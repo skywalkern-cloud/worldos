@@ -1,6 +1,7 @@
 import React from "react";
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useMarketData, MarketDataSkeleton } from './hooks/useMarketData'
+import { getKeyword } from './data/score-keywords'
 import './index.css'
 
 // ====== v4.1 类型定义 ======
@@ -98,7 +99,7 @@ const DIMENSION_INDICATORS: Record<string, string[]> = {
   inflation: ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
   liquidity: ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
   sentiment: ['vix', 'fearGreed'],
-  resource:  ['oilPrice', 'naturalGas', 'carbonPrice'],
+  resource:  ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
   techGreen: ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
 }
 
@@ -166,11 +167,48 @@ function App() {
 
   const commentary = useCommentaryData(!isLoading)
 
+  // ====== 数据质量检查：统计获取失败的指标 ======
+  const fetchFailures = useMemo(() => {
+    const failed: { key: string; name: string }[] = []
+    for (const [key, info] of Object.entries(indicators)) {
+      if (info.value === null || info.value === undefined) {
+        failed.push({ key, name: info.name || key })
+      }
+    }
+    return failed
+  }, [indicators])
+
+  // 有效性报告（从数据中获取）
+  const validityReport = useMemo(() => {
+    return (rawData as any)?.validity_report || null
+  }, [rawData])
+
   if (isLoading || !v4Data) {
     return <MarketDataSkeleton />
   }
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
+      {/* 数据质量告警 */}
+      {fetchFailures.length > 0 && (
+        <div className={`mb-4 p-3 rounded-lg border ${
+          fetchFailures.length > 5
+            ? 'bg-red-500/15 border-red-500/30 text-red-200'
+            : 'bg-yellow-500/15 border-yellow-500/30 text-yellow-200'
+        }`}>
+          <div className="text-sm font-medium mb-1">
+            ⚠️ 数据获取异常：{fetchFailures.length} 个指标获取失败
+            {validityReport && `（有效 ${validityReport.valid}/${validityReport.total}）`}
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {fetchFailures.map(({ key, name }) => (
+              <span key={key} className="text-xs px-2 py-0.5 rounded bg-black/20">
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="mb-6">
         <div className="flex items-center justify-between">
@@ -232,17 +270,26 @@ function IASCard({ ias }: { ias: IASMeta }) {
     return 'from-red-600 to-red-500'
   }
 
+  const kw = getKeyword('ias', ias.score)
+
   return (
     <div className={`bg-gradient-to-r ${getGradient()} rounded-xl p-5 mb-4 text-center shadow-lg`}>
       <div className="text-sm text-white/70 mb-1">IAS 综合投资评分</div>
       <div className="text-4xl font-bold text-white mb-1">
         {ias.score > 0 ? '+' : ''}{ias.score.toFixed(2)}
       </div>
-      <div className="text-xl font-semibold text-white flex items-center justify-center gap-2">
-        <span>{ias.signal_icon}</span>
-        <span>{ias.signal}</span>
+      <div className="text-lg font-medium text-white/90 flex items-center justify-center gap-1.5">
+        <span>{kw.emoji}</span>
+        <span>{kw.keyword}</span>
+        <span className="mx-1.5 opacity-30">·</span>
+        <span className="text-sm opacity-80">建议仓位: {ias.position}</span>
       </div>
-      <div className="text-white/70 mt-1">建议仓位: {ias.position}</div>
+      <div className="flex items-center justify-center gap-1 mt-0.5">
+        <span className="text-sm text-white/70">
+          <span className="opacity-60">IAS信号: </span>
+          <span>{ias.signal_icon} {ias.signal}</span>
+        </span>
+      </div>
     </div>
   )
 }
@@ -285,6 +332,7 @@ function DimensionBar({ dimensions }: { dimensions: Record<string, DimensionMeta
     <div className="flex flex-wrap justify-center gap-2 mb-4">
       {DIMENSION_ORDER.map(dimId => {
         const dim = dimensions[dimId]
+        const kw = getKeyword(dimId, dim.score)
         return (
           <div
             key={dimId}
@@ -296,7 +344,7 @@ function DimensionBar({ dimensions }: { dimensions: Record<string, DimensionMeta
                 : 'bg-gray-500/15 text-gray-400'
             }`}
           >
-            {dim.icon} {dim.name} {dim.score > 0 ? '+' : ''}{dim.score.toFixed(2)}
+            {dim.icon} {dim.name} {dim.score > 0 ? '+' : ''}{dim.score.toFixed(2)} {kw.emoji} {kw.keyword}
           </div>
         )
       })}
@@ -325,6 +373,8 @@ function DimensionCardV4({
     return 'text-gray-400'
   }
 
+  const kw = getKeyword(dimId, dimMeta.score)
+
   // Group indicators by country
   const grouped = useMemo(() => {
     const groups: Record<string, { key: string; info: IndicatorInfo }[]> = {}
@@ -350,9 +400,14 @@ function DimensionCardV4({
           <h2 className="text-base font-semibold text-gray-100">{label.name}</h2>
           <span className="text-xs text-gray-500">w={dimMeta.weight}</span>
         </div>
-        <span className={`text-lg font-bold ${getScoreColor()}`}>
-          {dimMeta.score > 0 ? '+' : ''}{dimMeta.score.toFixed(2)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">
+            {kw.emoji} {kw.keyword}
+          </span>
+          <span className={`text-lg font-bold ${getScoreColor()}`}>
+            {dimMeta.score > 0 ? '+' : ''}{dimMeta.score.toFixed(2)}
+          </span>
+        </div>
       </div>
 
       {/* 按国家分组的指标 */}

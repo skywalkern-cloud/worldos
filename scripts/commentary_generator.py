@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-WorldOS 数据解读评论生成器 v1.0
+WorldOS 数据解读评论生成器 v1.0 (模板引擎)
+
+⚠️  此文件已被 v2.0 (generate_commentary_llm.py) 替代。
+    保留作为 LLM 调用失败时的 fallback 使用。
+    主入口：generate_commentary_llm.py
 
 根据评分后的 indicators 和 meta 数据，自动生成6个维度 + IAS整体解读的评论。
 完全基于模板引擎，无需 LLM 或外部依赖。
@@ -31,7 +35,7 @@ DIMENSION_INDICATORS = {
     'inflation': ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
     'liquidity': ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
     'sentiment': ['vix', 'fearGreed'],
-    'resource':  ['oilPrice', 'naturalGas', 'carbonPrice'],
+    'resource':  ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
     'techGreen': ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
 }
 
@@ -61,6 +65,8 @@ INDICATOR_SHORT = {
     'oilPrice':       'WTI原油',
     'naturalGas':     '天然气',
     'carbonPrice':    '碳价',
+    'lmeIndex':       'LME铜期货',
+    'shanghaiCopper': '沪铜期货',
     'aiGrowth':       'AI产业增速',
     'robotInstall':   '工业机器人增速',
     'evPenetration':  '新能源渗透率',
@@ -74,7 +80,7 @@ INDICATOR_COUNTRY = {
     'dr007': '🇨🇳', 'm2': '🇨🇳', 'creditSpread': '🌐', 'dollarIndex': '🌐',
     'usBond2Y': '🇺🇸', 'usBond5Y': '🇺🇸', 'usBond10Y': '🇺🇸',
     'vix': '🇺🇸', 'fearGreed': '🌐', 'oilPrice': '🌐', 'naturalGas': '🌐',
-    'carbonPrice': '🇨🇳', 'aiGrowth': '🇨🇳', 'robotInstall': '🇨🇳',
+    'carbonPrice': '🇨🇳', 'lmeIndex': '🌐', 'shanghaiCopper': '🇨🇳', 'aiGrowth': '🇨🇳', 'robotInstall': '🇨🇳',
     'evPenetration': '🇨🇳', 'renewEnergyInvest': '🇨🇳',
 }
 
@@ -354,19 +360,18 @@ def _dim_commentary_sentiment(indicators: dict, dim_meta: dict) -> str:
 
     vix_v = vix.get('value')
     if vix_v is not None:
-        below = "低于" if vix_v < 20 else "高于"
-        lines.append(f"VIX指数{value_str(vix)}{below}20的中性线，显示市场恐慌程度在可控范围内。")
+        if vix_v < 15:
+            lines.append(f"VIX指数{value_str(vix)}低于15，市场情绪非常平静。")
+        elif vix_v < 20:
+            lines.append(f"VIX指数{value_str(vix)}处于15-20的常规区间，市场情绪正常。")
+        elif vix_v < 25:
+            lines.append(f"VIX指数{value_str(vix)}略高于20的中性线，市场存在一定紧张情绪，资产定价中不可忽视隐含的风险溢价。")
+        elif vix_v < 30:
+            lines.append(f"VIX指数{value_str(vix)}超过25，市场恐慌情绪明显升温，需警惕地缘事件或流动性冲击的传导风险。")
+        else:
+            lines.append(f"VIX指数{value_str(vix)}突破30，市场处于极端恐慌状态，系统性风险显著上升。")
     else:
         lines.append("VIX指数暂无有效数据，情绪指标缺失。")
-
-    # 地缘风险（geoRisk 从 meta 看 is vix*10 的派生指标）
-    geo_risk = get_indicator(indicators, 'geoRisk')
-    gr_v = geo_risk.get('value')
-    if gr_v is not None:
-        if gr_v > 150:
-            lines.append(f"地缘风险代理值**{gr_v:.1f}**处于极高水平，资产定价中隐含的地缘溢价不可忽视。")
-        else:
-            lines.append(f"地缘风险代理值**{gr_v:.1f}**处于中等水平。")
 
     epu_v = epu.get('value')
     if epu_v is not None:
@@ -416,6 +421,38 @@ def _dim_commentary_resource(indicators: dict, dim_meta: dict) -> str:
             lines.append(f"碳价{value_str(carbon)}持续高于90¥/吨H值，碳市场定价机制运转良好，绿色转型信号积极。")
         else:
             lines.append(f"碳价{value_str(carbon)}在合理区间。")
+
+    # ── LME铜期货 ──
+    lme = get_indicator(indicators, 'lmeIndex')
+    lme_v = lme.get('value')
+    if lme_v is not None:
+        # bidirectional: L=3000, T_low=6000, T_high=12000, H=15000
+        if lme_v < 3000:
+            lines.append(f"LME铜{value_str(lme)}处于3000$/吨以下极低位，需求萎缩风险突出。")
+        elif lme_v <= 6000:
+            lines.append(f"LME铜{value_str(lme)}处于3000-6000$/吨偏低区间，关注低位修复机会。")
+        elif lme_v <= 12000:
+            lines.append(f"LME铜{value_str(lme)}处于6000-12000$/吨理想区间内，供需格局健康。")
+        elif lme_v <= 15000:
+            lines.append(f"LME铜{value_str(lme)}处于12000-15000$/吨偏高区间，铜价上行压力显现，关注下游成本传导。")
+        else:
+            lines.append(f"LME铜{value_str(lme)}突破15000$/吨高位，铜价过热风险上升，警惕需求抑制。")
+
+    # ── 沪铜期货 ──
+    sh_copper = get_indicator(indicators, 'shanghaiCopper')
+    sh_v = sh_copper.get('value')
+    if sh_v is not None:
+        # bidirectional: L=40000, T_low=55000, T_high=75000, H=90000
+        if sh_v < 40000:
+            lines.append(f"沪铜{value_str(sh_copper)}处于40000¥/吨以下极低位，需求疲软。")
+        elif sh_v <= 55000:
+            lines.append(f"沪铜{value_str(sh_copper)}处于40000-55000¥/吨偏低区间，等待需求回暖。")
+        elif sh_v <= 75000:
+            lines.append(f"沪铜{value_str(sh_copper)}处于55000-75000¥/吨理想区间内，国内市场供需均衡。")
+        elif sh_v <= 90000:
+            lines.append(f"沪铜{value_str(sh_copper)}处于75000-90000¥/吨偏高区间，铜价上行压力显现。")
+        else:
+            lines.append(f"沪铜{value_str(sh_copper)}突破90000¥/吨高位，国内铜价过热，需关注下游企业成本压力及政策调控动向。")
 
     lines.append("整体资源端未构成系统性风险，但对油价上行通道需保持关注。" if oil_v is None or oil_v <= 90 else "整体资源端构成一定压力，需持续监控。")
 
@@ -595,9 +632,9 @@ def _extract_key_risks(indicators: dict, meta: dict) -> list:
     if credit.get('value') is not None and credit['value'] > 250:
         risks.append(f"中美利差{credit['value']}bp持续扩大，人民币承压")
 
-    geo_risk = get_indicator(indicators, 'geoRisk')
-    if geo_risk.get('value') is not None and geo_risk['value'] > 150:
-        risks.append(f"地缘风险{geo_risk['value']:.1f}处于极端区间")
+    vix_risk = get_indicator(indicators, 'vix')
+    if vix_risk.get('value') is not None and vix_risk['value'] > 25:
+        risks.append(f"VIX指数{vix_risk['value']:.1f}超过25，市场风险溢价攀升")
 
     # Fed rate risk
     fed = get_indicator(indicators, 'fedRate')
