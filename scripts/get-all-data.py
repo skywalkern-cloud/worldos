@@ -421,30 +421,6 @@ def get_all_data():
             validity['creditSpread'] = {'is_valid': False, 'status': 'error', 'message': str(e)}
             print(f"❌ 信用利差: {e}")
 
-        # 16. 地缘风险 - EPU中的地缘政治子指数代理，或使用VIX变化
-        try:
-            # 用VIX作为地缘风险代理
-            if data.get('vix') not in ('NA', None):
-                # 地缘风险指数 = VIX * (1 + EPU变化率)
-                base_risk = float(data['vix']) * 10
-                if meta.get('epu', {}).get('yoy'):
-                    risk_adj = base_risk * (1 + meta['epu']['yoy'])
-                else:
-                    risk_adj = base_risk
-                data['geoRisk'] = round(risk_adj, 1)
-                date_val = meta.get('vix', {}).get('date')
-                meta['geoRisk'] = {'date': date_val, 'dateLabel': fmt_date(date_val), 'note': '地缘风险指数(代理: VIX×10)'}
-                sources['geoRisk'] = 'AKShare-index_option_300etf_qvix(VIX×10代理)'
-                validity['geoRisk'] = check_validity(data['geoRisk'], sources['geoRisk'], 'daily')
-                print(f"✅ 地缘风险(代理): {data['geoRisk']} {meta['geoRisk']['dateLabel']}")
-            else:
-                raise Exception("无VIX数据无法计算")
-        except Exception as e:
-            data['geoRisk'] = 'NA'
-            meta['geoRisk'] = {'dateLabel': '-'}
-            validity['geoRisk'] = {'is_valid': False, 'status': 'error', 'message': str(e)}
-            print(f"❌ 地缘风险: {e}")
-
         # ═══════════════════════════════════════════
         # 维度5: 技术与生产力（4个）
         # ═══════════════════════════════════════════
@@ -634,7 +610,7 @@ def get_all_data():
         'globalGdp', 'chinaGdp', 'chinaPmi', 'usGdp',
         'oilPrice', 'corePce', 'cpi', 'ppi',
         'fedBalance', 'lpr', 'dr007', 'dollarIndex',
-        'vix', 'epu', 'creditSpread', 'geoRisk',
+        'vix', 'epu', 'creditSpread',
         'aiGrowth', 'evPenetration', 'patentApps', 'robotInstall',
         'natGas', 'carbonPrice', 'extremeWeather', 'renewEnergyInvest',
     ]
@@ -701,7 +677,7 @@ if __name__ == "__main__":
         },
         'riskUncertainty': {
             'label': '风险与不确定性',
-            'fields': ['vix', 'epu', 'creditSpread', 'geoRisk'],
+            'fields': ['vix', 'epu', 'creditSpread'],
         },
         'techProductivity': {
             'label': '技术与生产力',
