@@ -24,6 +24,8 @@ import {
   formatSigned,
   formatDecimal,
   resolveIasKeyword,
+  resolveIasLevel,
+  stripSignalSuffix,
   FRESHNESS_STATE_META,
 } from '../src/lib/caliber.ts'
 import { getKeyword } from '../src/data/score-keywords.ts'
@@ -394,6 +396,35 @@ console.log('\n[15] IAS 关键词读 ias.signal，不按 score 另算一套阈�
   const suffixed = resolveIasKeyword({ signal: '减仓（部分维度缺失·参考）', signal_icon: '⚠️' })
   check('带后缀 signal 原样透传', suffixed?.keyword === '减仓（部分维度缺失·参考）', suffixed?.keyword)
   check('缺 signal 时返回 null（调用方回退中性）', resolveIasKeyword({}) === null)
+}
+
+// ------------------------------------------------------- [16] IAS 档位收归后端 signal（含渐变）
+console.log('\n[16] IAS 档位只读 signal，前端不再比数字阈值')
+{
+  check('持有 → hold', resolveIasLevel('持有') === 'hold')
+  check('强烈买入 → strong-buy', resolveIasLevel('强烈买入') === 'strong-buy')
+  check('增持 → buy', resolveIasLevel('增持') === 'buy')
+  check('减仓 → reduce', resolveIasLevel('减仓') === 'reduce')
+  check('清仓/防御 → sell', resolveIasLevel('清仓/防御') === 'sell')
+  check('数据不足 → insufficient', resolveIasLevel('数据不足') === 'insufficient')
+  check('空值 → unknown（不猜）', resolveIasLevel('') === 'unknown')
+  check('null → unknown', resolveIasLevel(null) === 'unknown')
+  check('未知文案 → unknown', resolveIasLevel('随便写的') === 'unknown')
+
+  // 后缀必须被切掉，否则一加「部分维度缺失」就掉档
+  check('全角括号后缀被切', stripSignalSuffix('减仓（部分维度缺失·参考）') === '减仓')
+  check('半角括号也切', stripSignalSuffix('减仓(部分维度缺失)') === '减仓')
+  check('带后缀仍能判档', resolveIasLevel('减仓（部分维度缺失·参考）') === 'reduce')
+  check('带后缀的买入档不掉', resolveIasLevel('增持（部分维度缺失·参考）') === 'buy')
+
+  check('真实 ias.signal → hold', resolveIasLevel(real.meta.ias.signal) === 'hold', real.meta.ias.signal)
+
+  // 回归护栏：App.tsx 不允许再出现 IAS 数字阈值比较
+  const appSrc = readFileSync(resolve(here, '../src/App.tsx'), 'utf8')
+  const thresholdPatterns = [/score\s*>=\s*2\.5/, /score\s*>=\s*1\.0/, /score\s*<=\s*-1\.5/, /getKeyword\('ias'/]
+  for (const re of thresholdPatterns) {
+    check(`App.tsx 无 ${re} 残留`, !re.test(appSrc))
+  }
 }
 
 // ------------------------------------------------------- 汇总

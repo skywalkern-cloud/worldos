@@ -12,6 +12,7 @@ import {
   resolveScoreTone,
   describeFailureStatus,
   resolveIasKeyword,
+  resolveIasLevel,
   formatSigned,
   type DataDateKind,
   type ContributionEntry,
@@ -492,20 +493,28 @@ function DataErrorPanel({ error, onRetry }: { error: string | null; onRetry: () 
 
 function IASCard({ ias }: { ias: IASMeta }) {
   const score = Number.isFinite(ias?.score) ? ias.score : 0
-  // 渐变仍按 score 5 档（契约 A：ias.normalized 仅展示，禁用于染渐变）。
-  // ⚠️ 这 4 个阈值与后端 indicator_meta.IAS_THRESHOLDS 同值，属于最后一份副本：
-  //    score 是数值，稳定可比较；ias.signal 是带后缀的中文串（「减仓（部分维度缺失·参考）」），
-  //    拿它做颜色匹配很脆。改后端阈值时必须同步这里。
+  // 颜色只按后端 signal 档位映射，不再比数字阈值（第 10 份副本归零）。
+  // ⚠️ 与龙五给的骨架不同处：unknown / insufficient 走灰而非黄。
+  //    黄色在 5 档里就是「持有」档，和「数据不足」并列会被误读成中性偏多；
+  //    灰色才是「无结论」。要改回黄色只需改这两行。
   const getGradient = () => {
-    if (score >= 2.5) return 'from-green-600 to-green-500'
-    if (score >= 1.0) return 'from-green-500 to-emerald-400'
-    if (score >= -0.5) return 'from-yellow-500 to-orange-400'
-    if (score >= -1.5) return 'from-orange-500 to-red-400'
-    return 'from-red-600 to-red-500'
+    switch (resolveIasLevel(ias.signal)) {
+      case 'strong-buy':
+        return 'from-green-600 to-green-500'
+      case 'buy':
+        return 'from-green-500 to-emerald-400'
+      case 'hold':
+        return 'from-yellow-500 to-orange-400'
+      case 'reduce':
+        return 'from-orange-500 to-red-400'
+      case 'sell':
+        return 'from-red-600 to-red-500'
+      default:
+        return 'from-gray-700 to-gray-600'
+    }
   }
 
   // 关键词与图标：后端 ias.signal / signal_icon 为真源，前端不按 score 判级
-  // （原先 getKeyword('ias', score) 用的是另一套阈值，score=-0.34 时会出「偏空」）
   const kw = resolveIasKeyword(ias) ?? { keyword: '—', emoji: '' }
   const grayed = ias.grayed_dimensions ?? []
 

@@ -299,6 +299,40 @@ export function resolveScoreTone(
   return 'neutral'
 }
 
+/**
+ * 后端可能带后缀（如「减仓（部分维度缺失·参考）」），取主干做判级。
+ * 全角/半角括号都切，避免生成器改文案就掉档。
+ */
+export function stripSignalSuffix(signal?: string | null): string {
+  return (signal ?? '').split(/[（(]/)[0].trim()
+}
+
+/** IAS 档位（颜色/图标的唯一依据，前端不再用数字阈值判档） */
+export type IasLevel = 'strong-buy' | 'buy' | 'hold' | 'reduce' | 'sell' | 'insufficient' | 'unknown'
+
+/** 取值域真源：scripts/indicator_meta.IAS_THRESHOLDS + IAS_POSITION_ERROR + 覆盖不足档 */
+const IAS_SIGNAL_LEVEL: Record<string, IasLevel> = {
+  强烈买入: 'strong-buy',
+  增持: 'buy',
+  持有: 'hold',
+  减仓: 'reduce',
+  '清仓/防御': 'sell',
+  数据不足: 'insufficient',
+}
+
+/**
+ * IAS 信号 → 档位。
+ *
+ * ⚠️ 禁在前端按 score 比阈值：那是第 10 份副本。
+ *   曾经同一张卡上渐变按 2.5/1.0/-0.5/-1.5、关键词按 ±0.1/±0.5，
+ *   score=-0.34 时渐变说「持有档」、关键词说「偏空」—— 半截对半截错。
+ */
+export function resolveIasLevel(signal?: string | null): IasLevel {
+  const base = stripSignalSuffix(signal)
+  if (!base) return 'unknown'
+  return IAS_SIGNAL_LEVEL[base] ?? 'unknown'
+}
+
 export interface IasKeyword {
   keyword: string
   emoji: string
