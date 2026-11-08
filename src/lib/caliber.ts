@@ -64,15 +64,21 @@ export function resolveCadence(info: CadenceInput): Cadence {
 
 export interface StalenessInput extends CadenceInput {
   days_stale?: number | null
+  /** 后端 freshness_level 现多一个值：realtime（实时报价·源未提供日期，days_stale=null） */
+  freshness_level?: string | null
 }
 
+export type StalenessKind = 'known' | 'realtime' | 'unknown'
+
 export interface StalenessInfo {
-  /** 归一化天数；null = 时效未知 */
+  /** 归一化天数；null = 无日期（realtime 或未知） */
   days: number | null
   overdue: boolean
   cadence: Cadence
   thresholdDays: number
-  /** 展示文案：「今天」「昨天」「N 天前」「时效未知」 */
+  /** known = 有日期；realtime = 实时报价无日期；unknown = 时效未知 */
+  kind: StalenessKind
+  /** 展示文案：「今天」「昨天」「N 天前」「实时」「时效未知」 */
   label: string
   /** 悬浮说明 */
   title: string
@@ -80,6 +86,10 @@ export interface StalenessInfo {
 
 /**
  * 时效计算。只读后端 days_stale，不重算日期。
+ *
+ * ⚠️ realtime 不能当 unknown 也不能当 0：
+ *   ⚪ = 实时报价、数据源不提供日期（naturalGas / lmeIndex），timeliness 仍为 1.0
+ *   它与「不知道多旧」语义相反 —— 前者是「够新以至于无需日期」，后者是「不知道」。
  */
 export function computeStaleness(info: StalenessInput): StalenessInfo {
   const cadence = resolveCadence(info)
@@ -91,18 +101,63 @@ export function computeStaleness(info: StalenessInput): StalenessInfo {
   const days = known ? Math.max(0, Math.trunc(raw as number)) : null
   const overdue = days !== null && days > thresholdDays
 
-  let label: string
-  let title: string
-  if (days === null) {
-    label = '时效未知'
-    title = '后端未能确定数据所属期，时效未知（非 0 天）'
-  } else {
-    label = days === 0 ? '今天' : days === 1 ? '昨天' : `${days} 天前`
-    title = `${CADENCE_LABEL[cadence]}数据，数据所属期距今 ${days} 天（超阈值线 ${thresholdDays} 天）`
+  if (days !== null) {
+    const label = days === 0 ? '今天' : days === 1 ? '昨天' : `${days} 天前`
+    let title = `${CADENCE_LABEL[cadence]}数据，数据所属期距今 ${days} 天（超阈值线 ${thresholdDays} 天）`
     if (overdue) title += ' —— 已超阈值，数据可能已失效'
+    return { days, overdue, cadence, thresholdDays, kind: 'known', label, title }
   }
 
-  return { days, overdue, cadence, thresholdDays, label, title }
+  if (info.freshness_level === 'realtime') {
+    return {
+      days: null,
+      overdue: false,
+      cadence,
+      thresholdDays,
+      kind: 'realtime',
+      label: '实时',
+      title: '实时报价：数据源未提供数据所属期，不做时效描灰（不等于过期）',
+    }
+  }
+
+  return {
+    days: null,
+    overdue: false,
+    cadence,
+    thresholdDays,
+    kind: 'unknown',
+    label: '时效未知',
+    title: '后端未能确定数据所属期，时效未知（非 0 天）',
+  }
+}
+
+/** freshness 徽标语义（后端 P0/D+ 收窄定义） */
+export function describeFreshness(freshness?: string | null, freshnessLevel?: string | null): string {
+  if (freshnessLevel === 'realtime' || freshness === '⚪') return '实时报价·数据源未提供日期'
+  switch (freshness) {
+    case '🟢':
+      return '已核验新鲜（有日期且未超阈值）'
+    case '🟡':
+      return '偏旧'
+    case '🔴':
+      return '已过期'
+    default:
+      return '新鲜度未知'
+  }
+}
+
+/** excluded_from_scoring 的原因文案（后端 exclusion_reason） */
+export function describeExclusion(reason?: string | null): string {
+  switch (reason) {
+    case 'reference_only':
+      return '参考项：仅展示，不参与打分'
+    case 'no_score':
+      return '无评分参数或无值，未计入综合评分'
+    case 'expired_alpha0':
+      return '数据过期 α=0，已剔出加权'
+    default:
+      return '未计入综合评分'
+  }
 }
 
 // ====== 名称解析（T1 单一真源） ======

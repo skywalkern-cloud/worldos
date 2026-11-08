@@ -6,6 +6,8 @@ import {
   computeStaleness,
   resolveDisplayName,
   describeFailReason,
+  describeFreshness,
+  describeExclusion,
   type DataDateKind,
   type ContributionEntry,
 } from './lib/caliber'
@@ -38,8 +40,10 @@ interface IndicatorInfo {
   // === 抓取失败兜底 ===
   used_fallback?: boolean
   fetchError?: FetchErrorInfo | null
-  // === P0/T4 新增（龙五 Q3：α=0 / reference_only 的独立语义，后端待补） ===
+  // === P0/T4 新增（龙五 Q3：α=0 / reference_only 的独立语义） ===
   excluded_from_scoring?: boolean
+  /** reference_only | no_score | expired_alpha0 */
+  exclusion_reason?: string
   frequency: string
   dataDate: string | null
   source: string
@@ -61,6 +65,10 @@ interface DimensionMeta {
   reference_only_count?: number
   insufficient_data?: boolean
   avg_alpha?: number
+  // === P0/D+ 权重可审计 ===
+  weight_design?: number
+  weight_effective?: number
+  weight_reason?: string
   // P1 预留：后端将来给指标级贡献度明细
   indicators?: Record<string, ContributionEntry>
 }
@@ -79,6 +87,11 @@ interface IASMeta {
   grayed_dimensions?: string[]
   is_actionable?: boolean
   note?: string
+  // === P0/D+ 标尺可审计 ===
+  ias_scale?: number
+  weight_design_sum?: number
+  weight_effective_sum?: number
+  scale_coverage?: number
 }
 
 interface ValidityFailure {
@@ -452,17 +465,37 @@ function IASCard({ ias }: { ias: IASMeta }) {
           {ias.note || '未回测·非投资建议'}
         </span>
         {typeof ias.data_coverage === 'number' && (
-          <span className="text-[11px] text-white/65">
+          <span
+            className="text-[11px] text-white/65"
+            title="数据覆盖 = 计入评分的维度权重占比；≥0.8 正常，0.6~0.8 仅参考，<0.6 降级为「数据不足」"
+          >
             数据覆盖 {(ias.data_coverage * 100).toFixed(0)}%
-            {typeof ias.valid_weight === 'number' && ` · 有效权重 ${ias.valid_weight.toFixed(1)}/${ias.max_possible}`}
+          </span>
+        )}
+        {typeof ias.scale_coverage === 'number' && (
+          <span
+            className="text-[11px] text-white/60"
+            title="有效权重 / 设计权重。权重收缩来自有效性收缩与市场错配，是设计决定，不是数据缺失 —— 仅披露，不参与降级判断（降级只看 data_coverage）"
+          >
+            有效权重 {(ias.weight_effective_sum ?? ias.valid_weight ?? 0).toFixed(1)}/
+            {ias.weight_design_sum ?? ias.max_possible ?? '—'}（覆盖 {(ias.scale_coverage * 100).toFixed(0)}%）
           </span>
         )}
         {typeof ias.normalized === 'number' && (
-          <span className="text-[11px] text-white/65">
+          <span className="text-[11px] text-white/65" title="归一化刻度 -1~1，供横向比较；不参与渐变染色">
             归一化 {ias.normalized > 0 ? '+' : ''}{ias.normalized.toFixed(3)}
           </span>
         )}
       </div>
+
+      {/* 数据覆盖中间档（0.6~0.8）：出分但信号仅参考 */}
+      {typeof ias.data_coverage === 'number' && ias.data_coverage >= 0.6 && ias.data_coverage < 0.8 && (
+        <div className="mt-1.5">
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/30 text-yellow-100 border border-yellow-200/40">
+            ⚠️ 部分维度缺失，信号仅参考（后端 signal 已带后缀）
+          </span>
+        </div>
+      )}
       {ias.is_actionable === false && (
         <div className="mt-1.5">
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/35 text-yellow-100 border border-yellow-200/50">
@@ -585,6 +618,12 @@ function DimensionCardV4({
 
   const kw = score === null ? null : getKeyword(dimId, score)
 
+  // 权重可审计（P0/D+）：设计权重 vs 有效权重，收缩时披露原因
+  const wDesign = dimMeta?.weight_design ?? dimMeta?.weight
+  const wEffective = dimMeta?.weight_effective ?? dimMeta?.weight
+  const weightShrunk =
+    typeof wDesign === 'number' && typeof wEffective === 'number' && Math.abs(wEffective - wDesign) > 1e-9
+
   // 计数口径（龙六 P0）：active_count = 计分项；reference_only_count 单列，
   // 不能把 valid_count 直接当「有效项」展示，否则 techGreen 会自相矛盾
   const activeCount = dimMeta?.active_count ?? dimMeta?.valid_count ?? 0
@@ -622,7 +661,13 @@ function DimensionCardV4({
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xl">{dimIcon}</span>
           <h2 className="text-base font-semibold text-gray-100 truncate">{dimName}</h2>
-          <span className="text-xs text-gray-500 flex-shrink-0">w={dimMeta?.weight ?? '-'}</span>
+          <span
+            className="text-xs text-gray-500 flex-shrink-0"
+            title={weightShrunk ? dimMeta?.weight_reason : '设计权重'}
+          >
+            w={weightShrunk ? wEffective : (wDesign ?? '-')}
+            {weightShrunk && <span className="text-amber-500/80">（设计 {wDesign}）</span>}
+          </span>
           <span className="text-[10px] text-gray-600 flex-shrink-0">
             {expanded ? '▲' : '▼'}
           </span>
@@ -672,6 +717,11 @@ function DimensionCardV4({
       {/* T5-5：指标贡献度（后端给 indicators 明细则渲染，否则占位） */}
       {expanded && (
         <div className="mt-2 pt-2 border-t border-gray-700/60">
+          {weightShrunk && dimMeta?.weight_reason && (
+            <div className="text-[10px] text-amber-600/90 mb-1.5">
+              权重 {wDesign} → {wEffective}：{dimMeta.weight_reason}
+            </div>
+          )}
           <div className="text-[10px] text-gray-500 mb-1.5">指标贡献度 · contribution = score × weight</div>
           {dimMeta?.indicators && Object.keys(dimMeta.indicators).length > 0 ? (
             <div className="space-y-1">
@@ -722,11 +772,27 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
   // 优先级：reference_only 只挂「参考项」，**不再叠加任何其他标**（龙五：一行挂两个标 = 视觉过载）。
   const isRef = info.reference_only === true
   const isFallback = info.used_fallback === true
+  // 轴一 dimmed（数据旧了）：单一真源 = 超阈值天数。reference_only 优先挂「参考项」，不再叠描灰。
+  const dimmed = stale.overdue && !isRef
+  // 轴二 not_counted（没进综合评分）：直接读后端 excluded_from_scoring（b6d8e65 已上线）
   const excluded = typeof info.excluded_from_scoring === 'boolean'
     ? info.excluded_from_scoring
-    : isRef || info.timeliness === 0
+    : isRef || info.timeliness === 0 // 老快照（无新字段）回退
   const notCounted = excluded && !isRef
-  const dimmed = stale.overdue && !isRef
+  // 物理上只可能挂一个标（龙五：一行挂两个标 = 视觉过载）
+  const exclusionBadge: { text: string; title: string } | null = isRef
+    ? { text: '参考项', title: describeExclusion('reference_only') }
+    : notCounted
+    ? {
+        text:
+          info.exclusion_reason === 'no_score'
+            ? '无评分'
+            : info.exclusion_reason === 'expired_alpha0'
+            ? '过期剔除'
+            : '不计分',
+        title: describeExclusion(info.exclusion_reason),
+      }
+    : null
 
   // Determine background color based on signal
   const rowBg = info.signal === 'red'
@@ -767,21 +833,14 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
               ⓘ
             </span>
           )}
-          {isRef ? (
+          {exclusionBadge && (
             <span
               className="text-[9px] px-1 rounded bg-gray-700/60 text-gray-400 flex-shrink-0"
-              title="参考项：仅展示，不参与打分"
+              title={exclusionBadge.title}
             >
-              参考项
+              {exclusionBadge.text}
             </span>
-          ) : notCounted ? (
-            <span
-              className="text-[9px] px-1 rounded bg-gray-700/50 text-gray-500 flex-shrink-0"
-              title="该项已失效或无时效（α=0），未计入综合评分"
-            >
-              不计分
-            </span>
-          ) : null}
+          )}
           {isFallback && (
             <span
               className="text-[9px] px-1 rounded bg-yellow-500/20 text-yellow-300 flex-shrink-0"
@@ -790,7 +849,7 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
               兜底
             </span>
           )}
-          <span className="text-xs flex-shrink-0" title={stale.title}>{info.freshness}</span>
+          <span className="text-xs flex-shrink-0" title={describeFreshness(info.freshness, info.freshness_level)}>{info.freshness}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className={`font-mono text-xs text-right min-w-[3.5rem] ${
@@ -819,7 +878,7 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
         <div className="flex items-center gap-2 px-2 text-[10px] text-gray-600">
           {info.source && <span className="truncate max-w-[55%]" title={info.source}>{info.source}</span>}
           {info.dataDate && <span className="flex-shrink-0">· {info.dataDate}</span>}
-          <span className={`flex-shrink-0 ${stale.overdue ? 'text-amber-500/90 font-medium' : stale.days === null ? 'text-amber-600/70' : ''}`} title={stale.title}>
+          <span className={`flex-shrink-0 ${stale.overdue ? 'text-amber-500/90 font-medium' : stale.kind === 'unknown' ? 'text-amber-600/70' : ''}`} title={stale.title}>
             （{stale.label}）
           </span>
         </div>
