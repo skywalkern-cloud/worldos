@@ -495,6 +495,17 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
                 prev_value = prev_info.get('value')
         trend = calc_trend(value, prev_value)
 
+        # 超期判定（单一份口径，前端不再抄阈值表；扣钉只需读 overdue/overdue_level）
+        rule = TIMELINESS_RULES.get(freq, TIMELINESS_RULES['other'])
+        if stale_days is None:
+            overdue, overdue_level, days_overdue = False, 'none', None
+        elif stale_days > rule['red_days']:
+            overdue, overdue_level, days_overdue = True, 'red', stale_days - rule['red_days']
+        elif stale_days > rule['yellow_days']:
+            overdue, overdue_level, days_overdue = True, 'yellow', stale_days - rule['yellow_days']
+        else:
+            overdue, overdue_level, days_overdue = False, 'none', 0
+
         period = parse_period(data_date)
         name = INDICATOR_NAMES.get(key, key)
         ref_only = is_reference_only(key)
@@ -536,6 +547,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'dataDateISO': period['end'].isoformat() if period else None,
             'dataDateKind': period['kind'] if period else None,
             'days_stale': stale_days,
+            'overdue': overdue,
+            'overdue_level': overdue_level,     # none | yellow | red
+            'days_overdue': days_overdue,       # 超出对应阈值的天数；未超为 0，无日期为 null
+            'staleness_rule': {'yellow_days': rule['yellow_days'], 'red_days': rule['red_days']},
             'realtime': realtime,
             'dateNote': fresh['date_note'] or info.get('dateNote') or None,
             'source': info.get('source', ''),
