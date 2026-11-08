@@ -37,6 +37,8 @@ interface IndicatorInfo {
   dataDateISO?: string | null
   dataDateKind?: DataDateKind | null
   days_stale?: number | null
+  /** T13：实时报价标记（→ freshness_level='realtime'、图标 🔵） */
+  realtime?: boolean
   // === 抓取失败兜底 ===
   used_fallback?: boolean
   fetchError?: FetchErrorInfo | null
@@ -113,14 +115,24 @@ interface ValidityDegradedItem {
   reasonText?: string
 }
 
+/** 后端原始形态：degraded 在 T13 由数字变成了列表，两种都要能吃 */
+interface ValidityReportRaw {
+  total?: number
+  valid?: number
+  invalid?: number
+  degraded?: number | ValidityDegradedItem[]
+  degraded_count?: number
+  failed?: ValidityFailure[]
+}
+
+/** 前端归一化形态：degraded 恒为数字，明细单列（避免调用处每次判联合类型） */
 interface ValidityReport {
   total: number
   valid: number
   invalid: number
-  /** T13：后端改为「带 reason 的列表」；老快照仍是数字，两种都要能读 */
-  degraded?: number | ValidityDegradedItem[]
-  degraded_count?: number
-  failed?: ValidityFailure[]
+  degraded: number
+  degradedItems: ValidityDegradedItem[]
+  failed: ValidityFailure[]
 }
 
 interface V4Data {
@@ -131,7 +143,7 @@ interface V4Data {
     ias: IASMeta
     dimensions: Record<string, DimensionMeta>
   }
-  validity_report?: ValidityReport
+  validity_report?: ValidityReportRaw
 }
 
 // ====== 评论数据类型定义 ======
@@ -270,7 +282,7 @@ function App() {
   // ====== 有效性报告：后端 P0 起，validity_report.failed 是失败信息的唯一真源 ======
   // （旧实现遍历 indicators 抓 value===null，会漏掉不在 indicators 里的 epu）
   const validityReport = useMemo<ValidityReport | null>(() => {
-    const vr = v4Data?.validity_report
+    const vr = v4Data?.validity_report as ValidityReportRaw | undefined
     if (!vr || typeof vr !== 'object') return null
     return {
       total: typeof vr.total === 'number' ? vr.total : 0,
@@ -284,6 +296,7 @@ function App() {
           : typeof vr.degraded_count === 'number'
           ? vr.degraded_count
           : 0,
+      degradedItems: Array.isArray(vr.degraded) ? vr.degraded : [],
       failed: Array.isArray(vr.failed) ? vr.failed : [],
     }
   }, [v4Data])
@@ -332,8 +345,10 @@ function App() {
         </div>
       )}
 
-      {/* 数据质量告警：失效 ≠ 兜底，分两色（后端 P0 契约） */}
-      {(failureGroups.hard.length > 0 || failureGroups.fallback.length > 0) && (
+      {/* 数据质量告警：失效 ≠ 兜底 ≠ 降级（T13：degraded 是「有值但可信度被削」） */}
+      {(failureGroups.hard.length > 0 ||
+        failureGroups.fallback.length > 0 ||
+        (validityReport?.degraded ?? 0) > 0) && (
         <div className="mb-4 p-3 rounded-lg border bg-gray-800/60 border-gray-700">
           <div className="text-sm font-medium mb-2 flex items-center gap-2 flex-wrap">
             <span className="text-gray-200">🔎 数据质量</span>
@@ -348,6 +363,18 @@ function App() {
             {failureGroups.fallback.length > 0 && (
               <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-300 border border-yellow-500/30">
                 兜底 {failureGroups.fallback.length}
+              </span>
+            )}
+            {(validityReport?.degraded ?? 0) > 0 && (
+              <span
+                className="text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                title={
+                  (validityReport?.degradedItems ?? [])
+                    .map(d => `${d.displayName || d.key}：${d.reasonText || d.reason || '可信度降低'}`)
+                    .join('\n') || '有值但可信度被削（不扣出数据完整性）'
+                }
+              >
+                降级 {validityReport?.degraded}
               </span>
             )}
           </div>

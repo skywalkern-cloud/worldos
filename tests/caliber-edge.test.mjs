@@ -2,10 +2,10 @@
 //
 // 运行：node --experimental-strip-types tests/caliber-edge.test.mjs
 // 夹具：tests/fixtures/market-data-edge-cases.json（scripts/make_fixture_edge_cases.py 生成）
+// 契约：docs/freshness-contract.md（T13 五态互斥，2026-11-09 冻结）
 //
-// 2026-11-09 加：线上真实数据里 no_score / expired_alpha0 / insufficient_data /
-// 覆盖率中间档 全部零触发，等于没验证过。本脚本让它们各自必须在夹具里被踩到，
-// 任何一个分支没触发就 exit 1。
+// 2026-11-09 T13：新鲜度从三态改五态（🟢🔵⚪🟡🔴），⚪ 语义反转（原 realtime → 现 unknown）。
+// 本脚本重点钉住「以 freshness_level 为准、图标只当兜底」，因为线上快照会有一段时间仍是旧图标。
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -13,9 +13,11 @@ import { dirname, resolve } from 'node:path'
 import {
   describeIndicatorState,
   resolveCoverageTier,
+  resolveFreshnessState,
   computeStaleness,
   resolveDisplayName,
   describeFreshness,
+  FRESHNESS_STATE_META,
 } from '../src/lib/caliber.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -37,65 +39,115 @@ function check(name, cond, detail = '') {
   }
 }
 
-// ---------------------------------------------------------------- 夹具六分支
-console.log('\n[1] reference_only → 参考项，且不描灰')
+// ------------------------------------------------------- [0] 五态表完整性
+console.log('\n[0] T13 五态表与文档一致（图标/α 唯一）')
 {
-  const refs = Object.entries(fixture.indicators).filter(([, v]) => v.reference_only === true)
-  check('夹具里存在 reference_only 样本', refs.length > 0, `count=${refs.length}`)
-  for (const [k, v] of refs) {
-    const st = describeIndicatorState(v)
-    check(`${k}: 标=参考项`, st.exclusionBadge?.text === '参考项')
-    check(`${k}: 不描灰`, st.dimmed === false)
-    check(`${k}: not_counted=false（参考项单独走标）`, st.notCounted === false)
+  const expect = {
+    fresh: ['🟢', 1.0],
+    realtime: ['🔵', 1.0],
+    unknown: ['⚪', 0.5],
+    stale: ['🟡', 0.5],
+    expired: ['🔴', 0.0],
+  }
+  check('五个状态不多不少', Object.keys(FRESHNESS_STATE_META).length === 5)
+  for (const [k, [icon, alpha]] of Object.entries(expect)) {
+    const m = FRESHNESS_STATE_META[k]
+    check(`${k}: 图标 ${icon}`, m?.icon === icon, m?.icon)
+    check(`${k}: α=${alpha}`, m?.alpha === alpha, String(m?.alpha))
+  }
+  const icons = Object.values(FRESHNESS_STATE_META).map(m => m.icon)
+  check('一态一图标，无重复', new Set(icons).size === icons.length, icons.join(''))
+  check('⚪ 不再是 realtime 的图标', FRESHNESS_STATE_META.realtime.icon !== '⚪')
+}
+
+// ------------------------------------------------------- [1] 老快照兼容（最关键）
+console.log('\n[1] 老快照兼容：图标仍是旧语义 ⚪，但 freshness_level=realtime')
+{
+  const legacy = Object.entries(real.indicators).filter(([, v]) => v.freshness === '⚪')
+  check('真实快照里确实还有 ⚪ 图标', legacy.length > 0, `count=${legacy.length}`)
+  for (const [k, v] of legacy) {
+    const st = resolveFreshnessState(v)
+    check(`${k}: 按 level 解析为 realtime（不是 unknown）`, st === 'realtime', `level=${v.freshness_level} → ${st}`)
+    const cs = computeStaleness(v)
+    check(`${k}: label=实时（不是「时效未知」）`, cs.label === '实时', cs.label)
+    check(`${k}: days=null 且不描灰`, cs.days === null && cs.overdue === false)
+    check(`${k}: 不描灰`, describeIndicatorState(v).dimmed === false)
   }
 }
 
-console.log('\n[2] expired_alpha0 → 过期剔除标，且不再叠描灰（排除标更强）')
+// ------------------------------------------------------- [2] 五态语义（夹具）
+console.log('\n[2] 夹具五态 → kind / label 映射正确')
 {
-  const items = Object.entries(fixture.indicators).filter(
-    ([, v]) => v.exclusion_reason === 'expired_alpha0'
-  )
-  check('夹具里存在 expired_alpha0 样本', items.length > 0, `count=${items.length}`)
-  for (const [k, v] of items) {
-    const st = describeIndicatorState(v)
-    check(`${k}: 标=过期剔除`, st.exclusionBadge?.text === '过期剔除')
-    check(`${k}: 不叠描灰（排除标已含过期语义）`, st.dimmed === false, `days=${v.days_stale}`)
-    // 信息不丢：旧到什么程度仍然由副行展示
-    check(`${k}: 副行仍显示具体天数`, /天前$/.test(st.stale.label), st.stale.label)
+  const byState = {}
+  for (const [k, v] of Object.entries(fixture.indicators)) {
+    const s = resolveFreshnessState(v)
+    ;(byState[s] ??= []).push(k)
+  }
+  check('夹具覆盖 fresh', (byState.fresh ?? []).length > 0)
+  check('夹具覆盖 realtime', (byState.realtime ?? []).length > 0)
+  check('夹具覆盖 unknown', (byState.unknown ?? []).length > 0)
+  check('夹具覆盖 expired', (byState.expired ?? []).length > 0)
+
+  for (const [k, v] of Object.entries(fixture.indicators)) {
+    const s = resolveFreshnessState(v)
+    const cs = computeStaleness(v)
+    if (s === 'realtime') check(`${k}: realtime → kind=realtime/label=实时`, cs.kind === 'realtime' && cs.label === '实时')
+    if (s === 'unknown') check(`${k}: unknown → kind=unknown/label=时效未知`, cs.kind === 'unknown' && cs.label === '时效未知', cs.label)
+    if (cs.days !== null) check(`${k}: 有日期 → kind=known`, cs.kind === 'known')
   }
 }
 
-console.log('\n[3] no_score → 无评分（线上零触发分支）')
+// ------------------------------------------------------- [3] 描灰口径（冻结契约）
+console.log('\n[3] 描灰只看「有日期的超阈值」，days_stale=null 不描灰（unknown ≠ 0 天）')
 {
-  const items = Object.entries(fixture.indicators).filter(([, v]) => v.exclusion_reason === 'no_score')
-  check('夹具里存在 no_score 样本', items.length > 0, `count=${items.length}`)
-  for (const [k, v] of items) {
+  for (const [k, v] of Object.entries(fixture.indicators)) {
     const st = describeIndicatorState(v)
-    check(`${k}: 标=无评分`, st.exclusionBadge?.text === '无评分')
-    check(`${k}: 不描灰（数据本身是新的）`, st.dimmed === false, `days=${v.days_stale}`)
+    if (v.days_stale === null) {
+      check(`${k}: 无日期 → 不描灰`, st.dimmed === false, `state=${st.state}`)
+    }
+  }
+  const unknownItems = Object.entries(fixture.indicators).filter(([, v]) => resolveFreshnessState(v) === 'unknown')
+  check('unknown 项存在且全部不描灰', unknownItems.length > 0 && unknownItems.every(([, v]) => !describeIndicatorState(v).dimmed))
+}
+
+// ------------------------------------------------------- [4] 排除标三态
+console.log('\n[4] 排除标：reference_only / no_score / expired_alpha0 文案各异，且不与描灰叠加')
+{
+  const groups = {
+    reference_only: ['参考项', 'reference_only'],
+    no_score: ['无评分', 'no_score'],
+    expired_alpha0: ['过期剔除', 'expired_alpha0'],
+  }
+  for (const [reason, [text, key]] of Object.entries(groups)) {
+    const items = Object.entries(fixture.indicators).filter(([, v]) => v.exclusion_reason === key)
+    check(`夹具存在 ${key} 样本`, items.length > 0, `count=${items.length}`)
+    for (const [k, v] of items) {
+      const st = describeIndicatorState(v)
+      check(`${k}: 标=${text}`, st.exclusionBadge?.text === text, st.exclusionBadge?.text)
+      check(`${k}: 不描灰（排除标更强）`, st.dimmed === false)
+    }
   }
 }
 
-console.log('\n[4] 维度置灰 → insufficient_data=true 且 score=null（渲染层 toFixed 守卫的前置条件）')
+// ------------------------------------------------------- [5] 维度置灰
+console.log('\n[5] 维度置灰 → insufficient_data=true 且 score=null')
 {
   const greyed = Object.entries(fixture.meta.dimensions).filter(([, d]) => d.insufficient_data === true)
-  check('夹具里存在置灰维度', greyed.length > 0, `count=${greyed.length}`)
+  check('夹具存在置灰维度', greyed.length > 0, `count=${greyed.length}`)
   for (const [k, d] of greyed) {
     check(`${k}: insufficient_data=true`, d.insufficient_data === true)
-    check(`${k}: score=null（不是 0）`, d.score === null, `score=${JSON.stringify(d.score)}`)
+    check(`${k}: score=null（不是 0）`, d.score === null, JSON.stringify(d.score))
   }
   const live = Object.values(fixture.meta.dimensions).filter(d => d.insufficient_data !== true)
   check('非置灰维度 score 非 null', live.every(d => typeof d.score === 'number'))
 }
 
-console.log('\n[5] 覆盖率中间档 0.6~0.8 → partial（出分但仅参考）')
+// ------------------------------------------------------- [6] 覆盖率分档
+console.log('\n[6] 覆盖率分档：降级只看 data_coverage，scale_coverage 仅披露')
 {
-  const tier = resolveCoverageTier(fixture.meta.ias.data_coverage)
-  check('夹具 data_coverage 落在 partial 档', tier === 'partial', `coverage=${fixture.meta.ias.data_coverage}`)
-  check('is_actionable 仍为 true', fixture.meta.ias.is_actionable === true)
+  check('夹具 data_coverage 落 partial', resolveCoverageTier(fixture.meta.ias.data_coverage) === 'partial', `coverage=${fixture.meta.ias.data_coverage}`)
+  check('is_actionable 仍 true', fixture.meta.ias.is_actionable === true)
   check('signal 带「部分维度缺失」后缀', /部分维度缺失/.test(fixture.meta.ias.signal), fixture.meta.ias.signal)
-  check('grayed_dimensions 非空', (fixture.meta.ias.grayed_dimensions ?? []).length > 0)
-  // 分档边界
   check('0.59 → insufficient', resolveCoverageTier(0.59) === 'insufficient')
   check('0.60 → partial', resolveCoverageTier(0.6) === 'partial')
   check('0.79 → partial', resolveCoverageTier(0.79) === 'partial')
@@ -103,118 +155,70 @@ console.log('\n[5] 覆盖率中间档 0.6~0.8 → partial（出分但仅参考�
   check('null → ok（不降级）', resolveCoverageTier(null) === 'ok')
 }
 
-console.log('\n[6] realtime 🔵 vs 兜底无日期 —— 两者都 days_stale=null 但语义相反')
+// ------------------------------------------------------- [7] degraded 结构变更
+console.log('\n[7] validity_report.degraded 由计数改为列表（T13 契约变更）')
 {
-  const rt = Object.entries(fixture.indicators).filter(([, v]) => v.freshness_level === 'realtime')
-  check('夹具里存在 realtime 样本', rt.length > 0, `count=${rt.length}`)
-  for (const [k, v] of rt) {
-    const st = computeStaleness(v)
-    check(`${k}: kind=realtime`, st.kind === 'realtime')
-    check(`${k}: label=实时`, st.label === '实时')
-    check(`${k}: days=null（不当 0）`, st.days === null)
-    check(`${k}: 不描灰`, st.overdue === false)
-  }
+  const vr = fixture.validity_report
+  check('夹具 degraded 是列表', Array.isArray(vr.degraded), typeof vr.degraded)
+  check('有 degraded_count 兼容字段', typeof vr.degraded_count === 'number', String(vr.degraded_count))
+  check('列表长度与 degraded_count 一致', vr.degraded.length === vr.degraded_count, `${vr.degraded.length} vs ${vr.degraded_count}`)
+  const reasons = new Set(vr.degraded.map(d => d.reason))
+  check('reason 枚举只含 no_date / used_fallback', [...reasons].every(r => ['no_date', 'used_fallback'].includes(r)), [...reasons].join(','))
+  check('no_date 项确实是 unknown 态', vr.degraded.filter(d => d.reason === 'no_date').every(d => resolveFreshnessState(d) === 'unknown'))
 
-  const fb = Object.entries(fixture.indicators).filter(
-    ([, v]) => v.used_fallback === true && v.days_stale === null && v.freshness_level !== 'realtime'
-  )
-  check('夹具里存在「兜底且无日期」样本', fb.length > 0, `count=${fb.length}`)
-  for (const [k, v] of fb) {
-    const st = computeStaleness(v)
-    check(`${k}: kind=unknown（不能当 realtime）`, st.kind === 'unknown')
-    check(`${k}: label=时效未知`, st.label === '时效未知')
-    check(`${k}: 不当 0 天、不描灰`, st.days === null && st.overdue === false)
+  const realVr = real.validity_report
+  check('真实快照仍是旧结构（数字），前端需兼容', typeof realVr.degraded === 'number' || Array.isArray(realVr.degraded), typeof realVr.degraded)
+}
+
+// ------------------------------------------------------- [8] 全局不变量
+console.log('\n[8] 全局不变量')
+{
+  for (const [label, data] of [['夹具', fixture], ['真实快照', real]]) {
+    const all = Object.entries(data.indicators)
+    const doubleBadge = all.filter(([, v]) => {
+      const st = describeIndicatorState(v)
+      return st.exclusionBadge !== null && st.dimmed
+    })
+    check(`${label}: 无双标`, doubleBadge.length === 0, doubleBadge.map(([k]) => k).join(','))
+
+    const badName = all.filter(([, v]) => !resolveDisplayName(v, ''))
+    check(`${label}: 名称全部可解析`, badName.length === 0)
+
+    const unclear = all.filter(([, v]) => describeFreshness(v.freshness, v.freshness_level) === '新鲜度未知')
+    check(`${label}: freshness 全部可解释`, unclear.length === 0, unclear.map(([k]) => k).join(','))
+
+    const noState = all.filter(([, v]) => resolveFreshnessState(v) === null)
+    check(`${label}: 每个指标都有五态之一`, noState.length === 0, noState.map(([k]) => k).join(','))
   }
 }
 
-console.log('\n[6b] T13：no_date（有值·无日期·非 realtime）→ ⚪ + α=0.5 + 进 degraded')
-{
-  const items = Object.entries(fixture.indicators).filter(([, v]) => v.freshness_level === 'unknown')
-  check('夹具里存在 unknown 样本', items.length > 0, `count=${items.length}`)
-  for (const [k, v] of items) {
-    check(`${k}: 图标=⚪`, v.freshness === '⚪', v.freshness)
-    check(`${k}: α=0.5`, v.timeliness === 0.5, `timeliness=${v.timeliness}`)
-    check(`${k}: 不被当成过期剔除`, v.exclusion_reason !== 'expired_alpha0', String(v.exclusion_reason))
-    check(`${k}: 徽标=时效未知`, /时效未知/.test(describeFreshness(v.freshness, v.freshness_level)))
-    check(`${k}: 不再说成「实时报价」`, !/实时/.test(describeFreshness(v.freshness, v.freshness_level)))
-  }
-
-  const degraded = fixture.validity_report.degraded ?? []
-  check('degraded 是带 reason 的列表', Array.isArray(degraded), typeof degraded)
-  const noDate = degraded.filter(d => d.reason === 'no_date').map(d => d.key)
-  check('degraded 含 reason=no_date 的条目', noDate.length > 0, noDate.join(','))
-  check('usGdp 在 no_date 降级项里', noDate.includes('usGdp'), noDate.join(','))
-  check(
-    'degraded_count 与列表长度一致',
-    fixture.validity_report.degraded_count === degraded.length,
-    `${fixture.validity_report.degraded_count} vs ${degraded.length}`
-  )
-
-  // 反例：任何无日期且非 realtime 的指标都不允许亮绿灯
-  const fakeGreen = Object.entries(fixture.indicators).filter(
-    ([, v]) => v.days_stale === null && v.realtime !== true && v.freshness === '🟢'
-  )
-  check('无日期非 realtime 不得亮 🟢', fakeGreen.length === 0, fakeGreen.map(([k]) => k).join(','))
-}
-
-console.log('\n[7] 全局不变量')
-{
-  const all = Object.entries(fixture.indicators)
-  const doubleBadge = all.filter(([, v]) => {
-    const st = describeIndicatorState(v)
-    return st.exclusionBadge !== null && st.dimmed
-  })
-  check('无「排除标 + 描灰」同一行双标', doubleBadge.length === 0, doubleBadge.map(([k]) => k).join(','))
-
-  const badName = all.filter(([, v]) => {
-    const n = resolveDisplayName(v, '')
-    return typeof n !== 'string' || n.length === 0
-  })
-  check('每个指标都能解析出非空名称', badName.length === 0)
-
-  const freshUnclear = all.filter(([, v]) => describeFreshness(v.freshness, v.freshness_level) === '新鲜度未知')
-  check('freshness 徽标全部可解释', freshUnclear.length === 0, freshUnclear.map(([k]) => k).join(','))
-}
-
-console.log('\n[8] 真实快照回归（public/data/market-data.json）')
+// ------------------------------------------------------- [9] 真实快照回归
+console.log('\n[9] 真实快照回归（public/data/market-data.json）')
 {
   const all = Object.entries(real.indicators)
-  check('真实快照指标数 30', all.length === 30, `count=${all.length}`)
+  check('指标数 30', all.length === 30, `count=${all.length}`)
 
-  const dimmed = all.filter(([, v]) => describeIndicatorState(v).dimmed)
-  check(
-    '真实快照描灰 2 个（usGdp / oilPrice）',
-    dimmed.length === 2 && dimmed.map(([k]) => k).sort().join(',') === 'oilPrice,usGdp',
-    dimmed.map(([k]) => k).join(',')
-  )
+  const dimmed = all.filter(([, v]) => describeIndicatorState(v).dimmed).map(([k]) => k).sort()
+  check('描灰 = usGdp, oilPrice', dimmed.join(',') === 'oilPrice,usGdp', dimmed.join(','))
 
   const badges = all.filter(([, v]) => describeIndicatorState(v).exclusionBadge)
-  check(
-    '真实快照排除标 2 个（aiGrowth / robotInstall，均为参考项）',
-    badges.length === 2 && badges.every(([, v]) => v.exclusion_reason === 'reference_only'),
-    badges.map(([k]) => k).join(',')
-  )
+  check('排除标 2 个且均为参考项', badges.length === 2 && badges.every(([, v]) => v.exclusion_reason === 'reference_only'), badges.map(([k]) => k).join(','))
 
-  const dbl = all.filter(([, v]) => {
-    const st = describeIndicatorState(v)
-    return st.exclusionBadge !== null && st.dimmed
-  })
-  check('真实快照无双标', dbl.length === 0, dbl.map(([k]) => k).join(','))
+  const states = {}
+  for (const [, v] of all) {
+    const s = resolveFreshnessState(v)
+    states[s] = (states[s] ?? 0) + 1
+  }
+  check('真实快照状态分布 fresh26/stale2/realtime2', states.fresh === 26 && states.stale === 2 && states.realtime === 2, JSON.stringify(states))
 
-  const rt = all.filter(([, v]) => computeStaleness(v).kind === 'realtime')
-  check('真实快照 realtime 2 个', rt.length === 2, rt.map(([k]) => k).join(','))
-  check('realtime 全部 days=null', rt.every(([, v]) => computeStaleness(v).days === null))
+  const rt = all.filter(([, v]) => resolveFreshnessState(v) === 'realtime')
+  check('realtime 2 个且 days=null', rt.length === 2 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
 
-  // 40 天边界：月频阈值 40，严格大于 → 不描灰
-  const onBoundary = all.filter(([, v]) => computeStaleness(v).days === 40)
-  check('40 天边界样本存在', onBoundary.length > 0, `count=${onBoundary.length}`)
-  check(
-    '40 天边界全部不描灰（严格大于）',
-    onBoundary.every(([, v]) => describeIndicatorState(v).dimmed === false)
-  )
+  // 季频黄线 120：usGdp 223 天 → stale（不是 fresh）
+  check('usGdp 223 天判 stale', resolveFreshnessState(real.indicators.usGdp) === 'stale', String(resolveFreshnessState(real.indicators.usGdp)))
 }
 
-// ---------------------------------------------------------------- 汇总
+// ------------------------------------------------------- 汇总
 console.log(`\n${'─'.repeat(60)}`)
 if (failures.length === 0) {
   console.log(`✅ 全部通过：${pass} 项断言`)

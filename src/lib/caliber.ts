@@ -8,7 +8,7 @@
 
 // ====== 类型（与后端 JSON 对齐） ======
 
-export type Cadence = 'daily' | 'monthly' | 'quarterly'
+export type Cadence = 'daily' | 'monthly' | 'quarterly' | 'yearly'
 
 export type DataDateKind = 'day' | 'month' | 'quarter' | 'cumulative' | 'year'
 
@@ -22,22 +22,26 @@ export type FailReason =
   | 'not_found'
 
 /**
- * 龙五 2026-11-09 核定的描灰阈值（严格大于即超阈值）。
+ * 黄线阈值（超黄线 = 偏旧 = 描灰）。
  *
- * ⚠️ 这是**回退表**，不是真源。真源应在后端 TIMELINESS_RULES；
- * 后端一旦输出 `overdue` / `days_overdue`，describeIndicatorState() 会优先读它，
- * 本表只在老快照（无新字段）时生效。届时后端阈值变更无需改前端。
+ * ⚠️ 这不是真源。真源是后端 `scripts/indicator_meta.TIMELINESS_RULES`，
+ * 后端已把阈值结果编成 `freshness_level`（stale/expired），describeIndicatorState() 优先用它。
+ * 本表只在**老快照缺 freshness_level** 时生效，数值必须与后端黄线保持一致：
+ *   daily 5 / monthly 60 / quarterly 120 / yearly 180
+ * （T13-3 把季频 200 改回 120；之前前端抄的 3/40/120 中的 3/40 已废弃）
  */
 export const OVERDUE_THRESHOLD_DAYS: Record<Cadence, number> = {
-  daily: 3,
-  monthly: 40,
+  daily: 5,
+  monthly: 60,
   quarterly: 120,
+  yearly: 180,
 }
 
 const CADENCE_LABEL: Record<Cadence, string> = {
   daily: '日频',
   monthly: '月频',
   quarterly: '季频',
+  yearly: '年频',
 }
 
 export interface CadenceInput {
@@ -53,18 +57,20 @@ export interface CadenceInput {
  */
 export function resolveCadence(info: CadenceInput): Cadence {
   const f = info.frequency
-  if (f === 'daily' || f === 'monthly' || f === 'quarterly') return f
+  if (f === 'daily' || f === 'monthly' || f === 'quarterly' || f === 'yearly') return f
   switch (info.dataDateKind) {
     case 'day':
       return 'daily'
     case 'month':
       return 'monthly'
+    case 'year':
+      return 'yearly'
     case 'quarter':
     case 'cumulative':
       return 'quarterly'
     default:
-      // 兜底取最宽松档，宁可漏报灰化也不误报「过期」
-      return 'quarterly'
+      // 兜底跟后端 ALLOWED_FREQUENCIES 的 other → 60/90 一致（取黄线 60，即月频档）
+      return 'monthly'
   }
 }
 
@@ -76,14 +82,67 @@ export interface StalenessInput extends CadenceInput {
 
 export type StalenessKind = 'known' | 'realtime' | 'unknown'
 
+/** T13 五态互斥（单一真源：scripts/indicator_meta.FRESHNESS_STATES） */
+export type FreshnessState = 'fresh' | 'realtime' | 'unknown' | 'stale' | 'expired'
+
+export const FRESHNESS_STATE_META: Record<
+  FreshnessState,
+  { icon: string; label: string; alpha: number; note: string }
+> = {
+  fresh: { icon: '🟢', label: '已核验新鲜', alpha: 1.0, note: '有可解析日期且未超黄线' },
+  realtime: { icon: '🔵', label: '实时报价', alpha: 1.0, note: '实时数据源不提供数据所属期' },
+  unknown: {
+    icon: '⚪',
+    label: '时效未知',
+    alpha: 0.5,
+    note: '无数据所属期且非实时报价，未能验证新鲜度（按偏旧 α=0.5 计权）',
+  },
+  stale: { icon: '🟡', label: '偏旧', alpha: 0.5, note: '有日期，已超黄线未超红线' },
+  expired: { icon: '🔴', label: '已过期', alpha: 0.0, note: '有日期，已超红线' },
+}
+
+/** 旧快照图标→状态（仅当 freshness_level 缺失时使用） */
+const ICON_TO_STATE: Record<string, FreshnessState> = {
+  '🟢': 'fresh',
+  '🟡': 'stale',
+  '🔴': 'expired',
+  '⚪': 'unknown',
+  '🔵': 'realtime',
+}
+
+export interface FreshnessInput {
+  freshness_level?: string | null
+  freshness?: string | null
+  realtime?: boolean | null
+}
+
+/**
+ * 新鲜度状态解析。
+ *
+ * ⚠️ 必须 `freshness_level` 优先、图标只能当兜底：
+ *   T13 之前 ⚪ 表示 realtime，T13 之后 ⚪ 表示 unknown、🔵 才是 realtime —— 图标语义被换过。
+ *   而线上快照会有一段时间仍是旧图标（⚪ + level=realtime），只看图标会把实时报价误判成「时效未知」。
+ */
+export function resolveFreshnessState(info: FreshnessInput | null | undefined): FreshnessState | null {
+  if (!info) return null
+  const lvl = info.freshness_level
+  if (lvl && lvl in FRESHNESS_STATE_META) return lvl as FreshnessState
+  if (info.realtime === true) return 'realtime'
+  const icon = info.freshness
+  if (icon && icon in ICON_TO_STATE) return ICON_TO_STATE[icon]
+  return null
+}
+
 export interface StalenessInfo {
-  /** 归一化天数；null = 无日期（realtime 或未知） */
+  /** 归一化天数；null = 无日期（realtime 或 unknown） */
   days: number | null
   overdue: boolean
   cadence: Cadence
   thresholdDays: number
   /** known = 有日期；realtime = 实时报价无日期；unknown = 时效未知 */
   kind: StalenessKind
+  /** T13 五态；解析不出时为 null */
+  state: FreshnessState | null
   /** 展示文案：「今天」「昨天」「N 天前」「实时」「时效未知」 */
   label: string
   /** 悬浮说明 */
@@ -101,6 +160,7 @@ export interface StalenessInfo {
 export function computeStaleness(info: StalenessInput): StalenessInfo {
   const cadence = resolveCadence(info)
   const thresholdDays = OVERDUE_THRESHOLD_DAYS[cadence]
+  const state = resolveFreshnessState(info)
 
   const raw = info.days_stale
   const known = typeof raw === 'number' && Number.isFinite(raw)
@@ -110,20 +170,21 @@ export function computeStaleness(info: StalenessInput): StalenessInfo {
 
   if (days !== null) {
     const label = days === 0 ? '今天' : days === 1 ? '昨天' : `${days} 天前`
-    let title = `${CADENCE_LABEL[cadence]}数据，数据所属期距今 ${days} 天（超阈值线 ${thresholdDays} 天）`
-    if (overdue) title += ' —— 已超阈值，数据可能已失效'
-    return { days, overdue, cadence, thresholdDays, kind: 'known', label, title }
+    let title = `${CADENCE_LABEL[cadence]}数据，数据所属期距今 ${days} 天`
+    if (state) title += `；后端判定：${FRESHNESS_STATE_META[state].label}`
+    return { days, overdue, cadence, thresholdDays, kind: 'known', state, label, title }
   }
 
-  if (info.freshness_level === 'realtime') {
+  if (state === 'realtime') {
     return {
       days: null,
       overdue: false,
       cadence,
       thresholdDays,
       kind: 'realtime',
+      state,
       label: '实时',
-      title: '实时报价：数据源未提供数据所属期，不做时效描灰（不等于过期）',
+      title: `${FRESHNESS_STATE_META.realtime.label}：${FRESHNESS_STATE_META.realtime.note}`,
     }
   }
 
@@ -133,8 +194,9 @@ export function computeStaleness(info: StalenessInput): StalenessInfo {
     cadence,
     thresholdDays,
     kind: 'unknown',
+    state,
     label: '时效未知',
-    title: '后端未能确定数据所属期，时效未知（非 0 天）',
+    title: `${FRESHNESS_STATE_META.unknown.label}：${FRESHNESS_STATE_META.unknown.note}`,
   }
 }
 
@@ -192,6 +254,8 @@ export interface IndicatorStateInput extends StalenessInput {
 
 export interface IndicatorState {
   stale: StalenessInfo
+  /** T13 五态（新鲜度） */
+  state: FreshnessState | null
   /** 轴一：数据旧了（描灰） */
   dimmed: boolean
   /** 轴二：没进综合评分 */
@@ -210,11 +274,16 @@ export interface IndicatorState {
 export function describeIndicatorState(info: IndicatorStateInput): IndicatorState {
   const stale = computeStaleness(info)
   const isRef = info.reference_only === true
+  const state = stale.state
 
-  // 描灰口径：后端若给 overdue / days_overdue 则以其为唯一真源；
-  // 否则回退本地阈值表（龙五 2026-11-09 核定的 日 3 / 月 40 / 季 120）。
-  const overdue =
-    typeof info.overdue === 'boolean'
+  // 描灰口径（T13 冻结契约 docs/freshness-contract.md）：
+  //   「描灰只看有日期的超阈值，days_stale=null 不描灰（未知 ≠ 0 天）」
+  // 优先用后端状态：stale=超黄线、expired=超红线，阈值已在 TIMELINESS_RULES 里判完，
+  // 前端不再另设阈值（否则 daily 4 天后端判 fresh、前端会误描灰）。
+  const datedOverdue =
+    state !== null
+      ? state === 'stale' || state === 'expired'
+      : typeof info.overdue === 'boolean'
       ? info.overdue
       : typeof info.days_overdue === 'number'
       ? info.days_overdue > 0
@@ -228,7 +297,7 @@ export function describeIndicatorState(info: IndicatorStateInput): IndicatorStat
       : isRef || info.timeliness === 0 // 老快照（无新字段）回退
   const notCounted = excluded && !isRef
 
-  const dimmed = overdue && !excluded
+  const dimmed = datedOverdue && !excluded
 
   const exclusionBadge: IndicatorState['exclusionBadge'] = isRef
     ? { text: '参考项', title: describeExclusion('reference_only') }
@@ -244,7 +313,7 @@ export function describeIndicatorState(info: IndicatorStateInput): IndicatorStat
       }
     : null
 
-  return { stale, dimmed, excluded, notCounted, exclusionBadge }
+  return { stale, state, dimmed, excluded, notCounted, exclusionBadge }
 }
 
 /** IAS 数据覆盖分档（降级判断只看 data_coverage，不看 scale_coverage） */
