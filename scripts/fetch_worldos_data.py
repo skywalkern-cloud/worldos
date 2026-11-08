@@ -18,6 +18,7 @@ WorldOS 数据获取脚本 v5.0 - 第五轮修复（数据源替换版）
 import os
 import sys
 import json
+import math
 import re
 import signal
 import functools
@@ -67,6 +68,63 @@ def with_timeout(seconds):
 # ═══════════════════════════════════════════
 # 工具函数
 # ═══════════════════════════════════════════
+
+def _is_bad_number(value) -> bool:
+    """None / NaN / ±Infinity / 非数字 → True。
+
+    akshare 与部分 JSON API 会返回 NaN 而不抛异常，
+    必须在写盘前统一识别，否则会产出非法 JSON 字面量 NaN。
+    """
+    if value is None:
+        return True
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return True
+    return math.isnan(number) or math.isinf(number)
+
+
+def _sanitize(obj):
+    """递归把 NaN/±Infinity 转成 None，保证 allow_nan=False 可序列化。"""
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize(v) for v in obj]
+    if isinstance(obj, bool) or obj is None or isinstance(obj, (int, str)):
+        return obj
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    # numpy 标量（np.float32 等不是 float 子类）
+    try:
+        import numpy as np
+        if isinstance(obj, np.generic):
+            return _sanitize(obj.item())
+    except ImportError:
+        pass
+    return obj
+
+
+def write_json_strict(path, obj):
+    """原子写入合法 JSON：先清洗 NaN/Inf → allow_nan=False 序列化 → 严格回读自检。
+
+    任何一步失败都抛异常，绝不落盘半个非法文件。
+    """
+    path = Path(path)
+    clean = _sanitize(obj)
+    payload = json.dumps(clean, ensure_ascii=False, indent=2, allow_nan=False)
+
+    # 严格自检：遇 NaN/Infinity 立即抛错
+    def _reject_constant(token):
+        raise ValueError(f"非法 JSON 常量: {token}")
+
+    json.loads(payload, parse_constant=_reject_constant)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(path.name + '.tmp')
+    tmp_path.write_text(payload, encoding='utf-8')
+    os.replace(tmp_path, path)
+    return clean
+
 
 def fetch_eastmoney(report_name, columns="ALL", filter_expr="",
                     sort_col="REPORT_DATE", sort_type=-1, page_size=500):
@@ -280,11 +338,24 @@ def get_core_pce_fallback():
 @with_timeout(20)
 def get_vix():
     import akshare as ak
+    import pandas as pd
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         df = ak.index_option_300etf_qvix()
-    return round(float(df.iloc[-1]['close']), 2), str(df.iloc[-1]['date'])[:10], 'daily'
+    if df is None or df.empty:
+        return None, None, None
+    # akshare 会把当周剩余交易日（含未来日期）的空行一起返回，
+    # 因此 iloc[-1] 在周一~周四永远命中未来空行（close=NaN）。
+    # 必须先丢掉 NaN 行，再取最后一条有效数据（对齐 _fetch_bond_yields 的写法）。
+    valid = df[df['close'].notna()]
+    if valid.empty:
+        return None, None, None
+    row = valid.iloc[-1]
+    close = row['close']
+    if _is_bad_number(close):
+        return None, None, None
+    return round(float(close), 2), str(row['date'])[:10], 'daily'
 
 
 @with_timeout(20)
@@ -617,9 +688,9 @@ def get_nat_gas():
     return round(float(price), 3), date.today().strftime('%Y-%m-%d'), 'daily'
 
 
-@with_timeout(15)
+@with_timeout(40)
 def get_carbon_price():
-    """北京碳市场价格（15秒超时）"""
+    """北京碳市场价格（40秒超时，该接口正常需约27秒）"""
     import akshare as ak
     import pandas as pd
     df = ak.energy_carbon_bj()
@@ -763,7 +834,7 @@ def get_shanghai_copper():
             parts = match.group(1).split(',')
             if len(parts) > 8:
                 latest_price = parts[6].strip()
-                if latest_price and latest_price != '0.000':
+                if latest_price and latest_price != '0.000' and not _is_bad_number(latest_price):
                     return round(float(latest_price), 0), date.today().strftime('%Y-%m-%d'), 'daily'
     except Exception:
         pass
@@ -860,8 +931,8 @@ def save_results(results, fetch_ts):
         },
     }
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
+    # strict 写入：NaN/Inf → null，allow_nan=False + 回读自检，绝不产出非法 JSON
+    write_json_strict(DATA_FILE, output)
 
     return valid, total
 
@@ -905,6 +976,11 @@ def main():
         except Exception as e:
             pass
 
+        # 归一化：任何来源的 NaN/±Inf 一律视为获取失败（触发上一轮 fallback）
+        if val is not None and _is_bad_number(val):
+            print(" (NaN→丢弃)", end='')
+            val = None
+
         # Fallback to previous data if fetch failed
         if val is None:
             prev_item = prev.get(key)
@@ -923,6 +999,8 @@ def main():
             if svc_val is not None:
                 val = round(50 + (svc_val - 50) * 2, 1)
                 dd = svc_dd
+                if _is_bad_number(val):
+                    val = None
 
         dd_display = dd if dd else '-'
         if val is not None:

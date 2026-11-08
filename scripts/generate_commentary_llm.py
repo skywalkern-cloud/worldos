@@ -15,6 +15,7 @@ WorldOS 数据解读评论生成器 v2.0 (LLM 版)
 """
 
 import json
+import math
 import os
 import random
 import sys
@@ -28,6 +29,43 @@ SCRIPT_DIR = Path(__file__).parent
 WORKSPACE = SCRIPT_DIR.parent
 MARKET_DATA_FILE = WORKSPACE / 'public' / 'data' / 'market-data.json'
 COMMENTARY_FILE = WORKSPACE / 'public' / 'data' / 'commentary.json'
+
+
+def _sanitize(obj):
+    """递归把 NaN/±Infinity 转成 None，保证 allow_nan=False 可序列化。"""
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize(v) for v in obj]
+    if isinstance(obj, bool) or obj is None or isinstance(obj, (int, str)):
+        return obj
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    try:
+        import numpy as np
+        if isinstance(obj, np.generic):
+            return _sanitize(obj.item())
+    except ImportError:
+        pass
+    return obj
+
+
+def write_json_strict(path, obj):
+    """原子写入合法 JSON：清洗 NaN/Inf → allow_nan=False → 严格回读自检。"""
+    path = Path(path)
+    clean = _sanitize(obj)
+    payload = json.dumps(clean, ensure_ascii=False, indent=2, allow_nan=False)
+
+    def _reject_constant(token):
+        raise ValueError(f"非法 JSON 常量: {token}")
+
+    json.loads(payload, parse_constant=_reject_constant)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(path.name + '.tmp')
+    tmp_path.write_text(payload, encoding='utf-8')
+    os.replace(tmp_path, path)
+    return clean
 
 # ─── 维度配置（与 commentary_generator.py 一致）───
 DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
@@ -324,8 +362,12 @@ def build_prompt(indicators: dict, meta: dict, prev_commentary: Optional[dict] =
 # LLM API 调用
 # ═══════════════════════════════════════════
 
-def call_llm(prompt: str) -> Optional[dict]:
-    """调用 DeepSeek V4 Flash API 解析评论"""
+def call_llm(prompt: str, temperature: float = 0.8) -> Optional[dict]:
+    """调用 DeepSeek V4 Flash API 解析评论
+
+    JSON 解析失败时自动重试一次（同 prompt、temperature=0.3），
+    重试仍失败才返回 None 交给上层 fallback。
+    """
     api_key = read_api_key()
 
     # 确保 NO_PROXY 环境变量已设
@@ -340,25 +382,62 @@ def call_llm(prompt: str) -> Optional[dict]:
             api_key=api_key,
             base_url="https://api.deepseek.com",
         )
-
-        response = client.chat.completions.create(
-            model="deepseek-v4-flash",
-            messages=[
-                {"role": "system", "content": "你是一位专业投资分析师。你只输出有效的 JSON，不含任何注释、代码块标记或额外说明。"},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.8,
-            max_tokens=4096,
-            response_format={"type": "json_object"},
-        )
-
-        content = response.choices[0].message.content
-        print(f"  ✅ LLM 响应成功, tokens: {response.usage.total_tokens}")
-        return json.loads(content)
-
     except Exception as e:
-        print(f"  ❌ LLM 调用失败: {e}")
+        print(f"  ❌ LLM 客户端初始化失败: {e}")
         return None
+
+    def _request(temp: float):
+        """单次 API 调用。返回 (parsed_or_None, reason)，reason ∈ {'ok','parse','api'}。"""
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-v4-flash",
+                messages=[
+                    {"role": "system", "content": "你是一位专业投资分析师。你只输出有效的 JSON，不含任何注释、代码块标记或额外说明。"},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=temp,
+                # 8192 不够：实测完整中文输出约 5000 字，8192 会截断导致 finish_reason=length
+                max_tokens=16000,
+                response_format={"type": "json_object"},
+            )
+
+            content = response.choices[0].message.content
+            finish_reason = response.choices[0].finish_reason
+            print(f"  ✅ LLM 响应成功, tokens: {response.usage.total_tokens}, finish_reason: {finish_reason}, temperature: {temp}")
+
+            # 截断警告：finish_reason=length 说明输出被 max_tokens 截断，JSON 必然不完整
+            if finish_reason == "length":
+                print(f"  ⚠️  警告: finish_reason=length，输出被 max_tokens 截断（content {len(content) if content else 0} chars），JSON 不完整，请继续调大 max_tokens")
+
+            # 解析 JSON；失败时打印原始 content 前 500 字符，便于区分空内容 vs 格式错误
+            try:
+                return json.loads(content), 'ok'
+            except Exception as parse_error:
+                snippet = (content or '')[:500]
+                print(f"  ❌ JSON 解析失败: {parse_error}")
+                print(f"  🔍 原始 content 前 500 字符:\n  ---\n  {snippet}\n  ---")
+                return None, 'parse'
+
+        except Exception as e:
+            print(f"  ❌ LLM 调用失败: {e}")
+            return None, 'api'
+
+    result, reason = _request(temperature)
+    if result is not None:
+        return result
+
+    if reason != 'parse':
+        return None
+
+    # ── JSON 解析失败 → 自动重试一次（降 temperature 提升确定性） ──
+    print("  🔄 JSON 解析失败，自动重试一次（同 prompt，temperature=0.3）…")
+    retry_result, retry_reason = _request(0.3)
+    if retry_result is not None:
+        print("  ✅ 重试解析成功")
+        return retry_result
+
+    print(f"  ❌ 重试仍失败（reason={retry_reason}），放弃 LLM，交给 fallback")
+    return None
 
 
 # ═══════════════════════════════════════════
@@ -406,6 +485,7 @@ def generate_commentary_llm(indicators: dict, meta: dict, prev_commentary: Optio
     # 构建最终 commentary
     commentary = {
         'version': '1.0',
+        'generator': 'llm',
         'generatedAt': now,
         'dataTimestamp': now,
         'ias': {
@@ -422,10 +502,17 @@ def generate_commentary_llm(indicators: dict, meta: dict, prev_commentary: Optio
         dim = dims.get(dim_id, {})
         llm_dim = llm_dims.get(dim_id, {})
         highlights = _extract_highlights(dim_id, indicators)
+        # LLM 可能返回字符串而非字典，做兼容处理
+        if isinstance(llm_dim, dict):
+            dim_commentary = llm_dim.get('commentary', '')
+        elif isinstance(llm_dim, str):
+            dim_commentary = llm_dim
+        else:
+            dim_commentary = ''
         commentary['dimensions'][dim_id] = {
             'score': dim.get('score', 0),
             'signal': dim.get('signal', 'gray'),
-            'commentary': llm_dim.get('commentary', ''),
+            'commentary': dim_commentary,
             'highlights': highlights,
         }
 
@@ -476,7 +563,10 @@ def fallback_template(indicators: dict, meta: dict, prev_commentary: Optional[di
     """Fallback 到旧模板引擎"""
     print("  ⚠️  Fallback 到模板引擎...")
     from commentary_generator import generate_commentary
-    return generate_commentary(indicators, meta, prev_commentary)
+    result = generate_commentary(indicators, meta, prev_commentary)
+    if isinstance(result, dict):
+        result['generator'] = 'template'
+    return result
 
 
 # ═══════════════════════════════════════════
@@ -514,21 +604,29 @@ def main():
         print(f"  📖 已加载昨日评论")
 
     # 3. LLM 生成
-    commentary = generate_commentary_llm(indicators, meta, prev)
+    try:
+        commentary = generate_commentary_llm(indicators, meta, prev)
+    except Exception as e:
+        print(f"  ❌ LLM 生成异常: {e}")
+        commentary = None
 
     # 4. Fallback
+    used_fallback = False
     if commentary is None:
         print("  ⚠️  LLM 生成失败，触发 fallback")
         commentary = fallback_template(indicators, meta, prev)
+        used_fallback = True
 
     # 5. 保存
     out_path = WORKSPACE / 'public' / 'data' / 'commentary.json'
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, 'w', encoding='utf-8') as f:
-        json.dump(commentary, f, ensure_ascii=False, indent=2)
+    # strict 写入：NaN/Inf → null，绝不产出非法 JSON
+    write_json_strict(out_path, commentary)
 
-    print(f"  ✅ 评论已保存: {out_path}")
+    generator = commentary.get('generator', 'template' if used_fallback else 'llm')
+    print(f"  {'✅ 评论已保存' if not used_fallback else '⚠️  评论已保存（模板降级）'}: {out_path}")
     print(f"  📋 版本: {commentary['version']}")
+    print(f"  🏷️  生成方式: {generator}")
     print(f"  🕐 生成时间: {commentary['generatedAt']}")
 
     # 6. 打印摘要
@@ -549,6 +647,14 @@ def main():
     print(f"\n{'='*60}")
     print("  完成！")
     print(f"{'='*60}")
+
+    # 7. 降级告警：最终走 fallback 必须显式失败（退出码 3 = 模板降级，非硬失败）
+    if used_fallback:
+        print("")
+        print("❌ 本次评论为模板生成（fallback）")
+        print("   ↑ LLM 路径失败，本次内容不代表 LLM 产出，请勿当作 LLM 成功。")
+        print(f"{'='*60}")
+        sys.exit(3)
 
 
 if __name__ == '__main__':

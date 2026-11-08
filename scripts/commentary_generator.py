@@ -13,9 +13,48 @@ WorldOS 数据解读评论生成器 v1.0 (模板引擎)
 """
 
 import json
+import math
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+
+def _sanitize(obj):
+    """递归把 NaN/±Infinity 转成 None，保证 allow_nan=False 可序列化。"""
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize(v) for v in obj]
+    if isinstance(obj, bool) or obj is None or isinstance(obj, (int, str)):
+        return obj
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    try:
+        import numpy as np
+        if isinstance(obj, np.generic):
+            return _sanitize(obj.item())
+    except ImportError:
+        pass
+    return obj
+
+
+def write_json_strict(path, obj):
+    """原子写入合法 JSON：清洗 NaN/Inf → allow_nan=False → 严格回读自检。"""
+    path = Path(path)
+    clean = _sanitize(obj)
+    payload = json.dumps(clean, ensure_ascii=False, indent=2, allow_nan=False)
+
+    def _reject_constant(token):
+        raise ValueError(f"非法 JSON 常量: {token}")
+
+    json.loads(payload, parse_constant=_reject_constant)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(path.name + '.tmp')
+    tmp_path.write_text(payload, encoding='utf-8')
+    os.replace(tmp_path, path)
+    return clean
 
 # ─── 维度排序（按权重降序，与 scoring.py DIMENSION_CONFIG 一致）───
 DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
@@ -772,8 +811,8 @@ if __name__ == '__main__':
 
         out_path = workspace / 'public' / 'data' / 'commentary.json'
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_path, 'w', encoding='utf-8') as f:
-            json.dump(commentary, f, ensure_ascii=False, indent=2)
+        # strict 写入：NaN/Inf → null，绝不产出非法 JSON
+        write_json_strict(out_path, commentary)
 
         print(f"✅ 评论已生成: {out_path}")
         print(f"   版本: {commentary['version']}")

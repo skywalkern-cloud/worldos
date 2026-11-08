@@ -116,12 +116,28 @@ function useCommentaryData(shouldFetch: boolean): CommentaryData | null {
 
   const fetchCommentary = useCallback(async () => {
     try {
-      const res = await fetch('/data/commentary.json')
+      const res = await fetch('/data/commentary.json', { cache: 'no-store' })
       if (!res.ok) return
-      const data = await res.json()
-      setCommentary(data as CommentaryData)
+      const raw = await res.json()
+      // 结构校验：commentary 是可选增强，坏数据直接忽略，不能拖垮主数据渲染
+      if (!raw || typeof raw !== 'object' || !raw.ias || typeof raw.ias !== 'object') {
+        console.warn('commentary.json 结构异常，已忽略（不影响主数据渲染）')
+        return
+      }
+      // 归一化可选字段，避免 undefined.length / null.toFixed 导致整站崩溃
+      setCommentary({
+        ...raw,
+        ias: {
+          score: typeof raw.ias.score === 'number' && Number.isFinite(raw.ias.score) ? raw.ias.score : 0,
+          signal: raw.ias.signal ?? '',
+          summary: typeof raw.ias.summary === 'string' ? raw.ias.summary : '',
+          keyDivergences: Array.isArray(raw.ias.keyDivergences) ? raw.ias.keyDivergences : [],
+          keyRisks: Array.isArray(raw.ias.keyRisks) ? raw.ias.keyRisks : [],
+        },
+        dimensions: raw.dimensions && typeof raw.dimensions === 'object' ? raw.dimensions : {},
+      } as CommentaryData)
     } catch {
-      // 优雅降级：commentary.json 加载失败时静默忽略
+      // 优雅降级：commentary.json 加载/解析失败时静默忽略，不影响主数据
     }
   }, [])
 
@@ -138,7 +154,7 @@ function useCommentaryData(shouldFetch: boolean): CommentaryData | null {
 // ====== 主组件 ======
 
 function App() {
-  const { data: rawData, isLoading, isStale, refetch } = useMarketData()
+  const { data: rawData, isLoading, isStale, error, refetch } = useMarketData()
 
   const v4Data = useMemo<V4Data | null>(() => {
     if (!rawData) return null
@@ -183,11 +199,32 @@ function App() {
     return (rawData as any)?.validity_report || null
   }, [rawData])
 
-  if (isLoading || !v4Data) {
+  if (isLoading && !v4Data) {
     return <MarketDataSkeleton />
   }
+
+  // 无数据 + 加载结束：显示明确错误，而不是无限骨架屏
+  if (!v4Data) {
+    return <DataErrorPanel error={error} onRetry={refetch} />
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
+      {/* 数据异常提示：有新错误但保留旧数据时显示 */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg border bg-red-500/15 border-red-500/30 text-red-200 flex items-center justify-between gap-3">
+          <div className="text-sm">
+            ⚠️ {error} — 当前展示的是上次成功加载的数据
+          </div>
+          <button
+            onClick={refetch}
+            className="flex-shrink-0 text-xs px-3 py-1 rounded bg-red-500/20 hover:bg-red-500/30 border border-red-500/40"
+          >
+            🔄 重试
+          </button>
+        </div>
+      )}
+
       {/* 数据质量告警 */}
       {fetchFailures.length > 0 && (
         <div className={`mb-4 p-3 rounded-lg border ${
@@ -255,6 +292,31 @@ function App() {
       <footer className="mt-8 text-center text-xs text-gray-600">
         WorldOS 全球运行监控系统 · 数据每60秒自动刷新
       </footer>
+    </div>
+  )
+}
+
+// ====== 数据错误面板（加载/解析失败时取代骨架屏） ======
+
+function DataErrorPanel({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
+        <div className="text-3xl mb-3">⚠️</div>
+        <h1 className="text-lg font-semibold text-red-200 mb-2">数据加载失败</h1>
+        <p className="text-sm text-red-300/80 break-words mb-1">
+          {error || '无法获取市场数据'}
+        </p>
+        <p className="text-xs text-gray-500 mb-5">
+          页面无法渲染指标，请稍后重试。
+        </p>
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded-lg text-sm text-red-100"
+        >
+          🔄 重新加载
+        </button>
+      </div>
     </div>
   )
 }

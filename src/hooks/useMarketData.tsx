@@ -30,13 +30,22 @@ export function useMarketData(): UseMarketDataResult {
   const pollTimerRef = useRef<number | null>(null)
 
   const fetchData = useCallback(async (isInitial = false) => {
+    // 首屏 / 手动重试才进入 loading；后台轮询不打断已渲染页面
+    if (isInitial) {
+      setIsLoading(true)
+    }
     try {
-      const response = await fetch('/data/market-data.json')
+      const response = await fetch('/data/market-data.json', { cache: 'no-store' })
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
       const newData = await response.json()
-      
+
+      // 结构校验：拿不到 indicators 就无法渲染，按失败处理
+      if (!newData || typeof newData !== 'object' || !newData.indicators) {
+        throw new Error('数据结构异常（缺少 indicators 字段）')
+      }
+
       setData(newData)
       setLastUpdate(new Date())
       setError(null)
@@ -52,14 +61,17 @@ export function useMarketData(): UseMarketDataResult {
       }, STALE_THRESHOLD)
       
     } catch (err) {
-      // 网络错误时保留旧数据，不更新 isLoading
-      if (!isInitial) {
-        setError(err instanceof Error ? err.message : '获取数据失败')
-      }
-      // 首次加载失败才设置 loading 为 false（避免一直 loading）
-      if (isInitial) {
-        setIsLoading(false)
-      }
+      const message = err instanceof Error ? err.message : String(err)
+      // SyntaxError 通常意味着响应体是非法 JSON（例如裸 NaN 字面量）
+      setError(
+        err instanceof SyntaxError
+          ? `数据解析失败（JSON 非法）：${message}`
+          : `数据加载失败：${message}`
+      )
+      // 关键：任何失败都必须退出 loading，否则页面永远停在骨架屏
+      setIsLoading(false)
+      setIsStale(true)
+      // 不清空 data/state：有旧数据时继续展示旧数据
     }
   }, [])
 
@@ -85,7 +97,7 @@ export function useMarketData(): UseMarketDataResult {
   }, [fetchData])
 
   const refetch = useCallback(() => {
-    fetchData(false)
+    fetchData(true)
   }, [fetchData])
 
   return {
