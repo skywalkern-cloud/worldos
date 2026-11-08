@@ -23,8 +23,10 @@ import {
   roundHalfUp,
   formatSigned,
   formatDecimal,
+  resolveIasKeyword,
   FRESHNESS_STATE_META,
 } from '../src/lib/caliber.ts'
+import { getKeyword } from '../src/data/score-keywords.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const load = p => JSON.parse(readFileSync(resolve(here, p), 'utf8'))
@@ -365,6 +367,33 @@ console.log('\n[14] half-up-away-from-zero：不能用 toFixed / 裸 Math.round'
   check('真实 normalized 原值 -0.07335 量级', Math.abs(norm - -0.07335) < 1e-9, String(norm))
   check('卡上展示 -0.0734', formatSigned(norm, 4) === '-0.0734', formatSigned(norm, 4))
   check('IAS score 展示 -0.34', formatSigned(real.meta.ias.score, 2) === '-0.34', formatSigned(real.meta.ias.score, 2))
+}
+
+// ------------------------------------------------------- [15] IAS 判级收归后端（「偏空」 bug）
+console.log('\n[15] IAS 关键词读 ias.signal，不按 score 另算一套阈值')
+{
+  const ias = real.meta.ias
+  check('后端 signal = 持有', ias.signal === '持有', ias.signal)
+  check('后端 signal_icon = ➖', ias.signal_icon === '➖', ias.signal_icon)
+
+  const kw = resolveIasKeyword(ias)
+  check('keyword === ias.signal', kw?.keyword === ias.signal, String(kw?.keyword))
+  check('emoji === ias.signal_icon', kw?.emoji === ias.signal_icon, String(kw?.emoji))
+
+  // 旧路径回归：前端按 score 算会给「偏空」，必须不再出现
+  const legacy = getKeyword('ias', ias.score)
+  check('getKeyword(\'ias\') 已不再出「偏空」', legacy.keyword !== '偏空', legacy.keyword)
+  check('getKeyword(\'ias\') 走中性占位', legacy.keyword === '—', legacy.keyword)
+  check('上游若走错会不一致（证明这条断言有意义）', legacy.keyword !== kw?.keyword)
+
+  // 维度关键词不受影响（维度没有后端等价物）
+  check('维度 economic 仍有词', getKeyword('economic', -0.25).keyword === '放缓', getKeyword('economic', -0.25).keyword)
+  check('维度 sentiment 仍有词', getKeyword('sentiment', -0.465).keyword === '谨慎', getKeyword('sentiment', -0.465).keyword)
+
+  // 带后缀的 signal 必须原样透传（不枚举匹配）
+  const suffixed = resolveIasKeyword({ signal: '减仓（部分维度缺失·参考）', signal_icon: '⚠️' })
+  check('带后缀 signal 原样透传', suffixed?.keyword === '减仓（部分维度缺失·参考）', suffixed?.keyword)
+  check('缺 signal 时返回 null（调用方回退中性）', resolveIasKeyword({}) === null)
 }
 
 // ------------------------------------------------------- 汇总

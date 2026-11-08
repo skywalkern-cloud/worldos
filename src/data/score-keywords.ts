@@ -68,14 +68,6 @@ const TECHGREEN_KEYWORDS: Record<string, KeywordEntry> = {
   'strong-negative': { keyword: '滞后', emoji: '⚠️', color: 'text-red-400', dotColor: '#ef4444' },
 }
 
-const IAS_KEYWORDS: Record<string, KeywordEntry> = {
-  'strong-positive': { keyword: '积极', emoji: '🚀', color: 'text-green-400', dotColor: '#22c55e' },
-  'weak-positive':   { keyword: '偏多', emoji: '✅', color: 'text-green-300', dotColor: '#86efac' },
-  'neutral':         { keyword: '持有', emoji: '➖', color: 'text-gray-400', dotColor: '#9ca3af' },
-  'weak-negative':   { keyword: '偏空', emoji: '⚠️', color: 'text-yellow-400', dotColor: '#eab308' },
-  'strong-negative': { keyword: '避险', emoji: '🔴', color: 'text-red-400', dotColor: '#ef4444' },
-}
-
 // 维度ID到关键词表的映射
 const KEYWORD_MAP: Record<string, Record<string, KeywordEntry>> = {
   economic: ECONOMIC_KEYWORDS,
@@ -84,16 +76,23 @@ const KEYWORD_MAP: Record<string, Record<string, KeywordEntry>> = {
   sentiment: SENTIMENT_KEYWORDS,
   resource: RESOURCE_KEYWORDS,
   techGreen: TECHGREEN_KEYWORDS,
-  ias: IAS_KEYWORDS,
 }
 
 /**
  * 根据维度ID和score获取关键词条目
  */
+// 未知维度的中性占位。
+// ⚠️ 这里曾经回退到 IAS_KEYWORDS，但 IAS 判级已收归后端 ias.signal ——
+// 前端再留一张 IAS 阈值表就是第 9 份真源（同一张卡上渐变按 2.5/1.0/-0.5/-1.5、
+// 关键词按 ±0.1/±0.5，score=-0.34 时后端「持有」、前端「偏空」）。
+const NEUTRAL_ENTRY: KeywordEntry = {
+  keyword: '—', emoji: '⚪', color: 'text-gray-400', dotColor: '#9ca3af',
+}
+
 export function getKeyword(dimId: string, score: number): KeywordEntry {
-  const range = getScoreRange(score)
-  const map = KEYWORD_MAP[dimId] || KEYWORD_MAP.ias
-  return map[range]
+  const map = KEYWORD_MAP[dimId]
+  if (!map) return NEUTRAL_ENTRY
+  return map[getScoreRange(score)]
 }
 
 /**

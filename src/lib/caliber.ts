@@ -299,6 +299,30 @@ export function resolveScoreTone(
   return 'neutral'
 }
 
+export interface IasKeyword {
+  keyword: string
+  emoji: string
+}
+
+/**
+ * IAS 判级关键词——后端 ias.signal / ias.signal_icon 是单一真源。
+ *
+ * ⚠️ 禁在前端按 score 反推：曾经前端自己那张表是 ±0.1/±0.5，
+ * 后端 IAS_THRESHOLDS 是 2.5/1.0/-0.5/-1.5。score=-0.34 时
+ * 后端「持有」、前端「偏空」——同一张卡上渐变色按后端、关键词按前端。
+ *
+ * 前端只做映射，不做判级。signal 可能带后缀（如「减仓（部分维度缺失·参考）」），
+ * 所以直接透传整串，不做枚举匹配。
+ */
+export function resolveIasKeyword(
+  ias: { signal?: string | null; signal_icon?: string | null } | null | undefined
+): IasKeyword | null {
+  const keyword = (ias?.signal ?? '').trim()
+  if (!keyword) return null
+  const emoji = (ias?.signal_icon ?? '').trim() || '➖'
+  return { keyword, emoji }
+}
+
 /**
  * 定点舍入：half-up-away-from-zero（与后端 T15-1 `indicator_meta.q()` 同口径）。
  *

@@ -11,6 +11,7 @@ import {
   resolveDimensionCounts,
   resolveScoreTone,
   describeFailureStatus,
+  resolveIasKeyword,
   formatSigned,
   type DataDateKind,
   type ContributionEntry,
@@ -490,8 +491,11 @@ function DataErrorPanel({ error, onRetry }: { error: string | null; onRetry: () 
 // ====== IAS 卡片 ======
 
 function IASCard({ ias }: { ias: IASMeta }) {
-  // 渐变仍按旧量纲 score + 5 档次（契约 A：ias.normalized 仅展示，禁用于染渐变）
   const score = Number.isFinite(ias?.score) ? ias.score : 0
+  // 渐变仍按 score 5 档（契约 A：ias.normalized 仅展示，禁用于染渐变）。
+  // ⚠️ 这 4 个阈值与后端 indicator_meta.IAS_THRESHOLDS 同值，属于最后一份副本：
+  //    score 是数值，稳定可比较；ias.signal 是带后缀的中文串（「减仓（部分维度缺失·参考）」），
+  //    拿它做颜色匹配很脆。改后端阈值时必须同步这里。
   const getGradient = () => {
     if (score >= 2.5) return 'from-green-600 to-green-500'
     if (score >= 1.0) return 'from-green-500 to-emerald-400'
@@ -500,7 +504,9 @@ function IASCard({ ias }: { ias: IASMeta }) {
     return 'from-red-600 to-red-500'
   }
 
-  const kw = getKeyword('ias', score)
+  // 关键词与图标：后端 ias.signal / signal_icon 为真源，前端不按 score 判级
+  // （原先 getKeyword('ias', score) 用的是另一套阈值，score=-0.34 时会出「偏空」）
+  const kw = resolveIasKeyword(ias) ?? { keyword: '—', emoji: '' }
   const grayed = ias.grayed_dimensions ?? []
 
   return (
