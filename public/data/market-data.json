@@ -1449,7 +1449,7 @@
         "active_count": 6,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 1.0
+        "avg_alpha": 0.833
       },
       "inflation": {
         "name": "通胀与政策",
@@ -1532,6 +1532,74 @@
         "avg_alpha": 1.0
       }
     },
+    "rules_snapshot": {
+      "staleness_rules": {
+        "daily": {
+          "yellow_days": 5,
+          "red_days": 10
+        },
+        "monthly": {
+          "yellow_days": 60,
+          "red_days": 90
+        },
+        "quarterly": {
+          "yellow_days": 120,
+          "red_days": 210
+        },
+        "yearly": {
+          "yellow_days": 180,
+          "red_days": 365
+        },
+        "other": {
+          "yellow_days": 60,
+          "red_days": 90
+        }
+      },
+      "dimension_weights_design": {
+        "economic": 1.0,
+        "inflation": 1.0,
+        "liquidity": 0.8,
+        "sentiment": 0.8,
+        "resource": 0.6,
+        "techGreen": 0.4
+      },
+      "market_mismatch": {
+        "sentiment": 0.5
+      },
+      "reference_only": [
+        "aiGrowth",
+        "epu",
+        "robotInstall"
+      ],
+      "min_valid_rule": "n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母",
+      "ias_scale": 4.6,
+      "ias_thresholds": [
+        [
+          2.5,
+          "强烈买入",
+          "80-100%"
+        ],
+        [
+          1.0,
+          "增持",
+          "60-80%"
+        ],
+        [
+          -0.5,
+          "持有",
+          "40-60%"
+        ],
+        [
+          -1.5,
+          "减仓",
+          "20-40%"
+        ]
+      ],
+      "ias_min_coverage": 0.6,
+      "ias_partial_coverage": 0.8,
+      "unknown_alpha": 0.5
+    },
+    "rules_hash": "aeeb74397588",
     "model": {
       "version": "v4.2",
       "reference_only": [

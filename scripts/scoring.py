@@ -25,6 +25,7 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     IAS_MIN_COVERAGE,
     IAS_PARTIAL_COVERAGE,
     IAS_SCALE,
+    UNKNOWN_ALPHA,
     required_valid_count,
     dimension_weights,
     parse_period,
@@ -262,6 +263,7 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
     for dim in DIMENSION_CONFIG:
         total_weighted = 0.0
         total_alpha = 0.0
+        alpha_sum_active = 0.0   # 含 α=0 的指标，用于「这个维度数据整体多新」
         valid_count = 0
         ref_count = 0
         active_total = 0
@@ -275,6 +277,8 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
             active_total += 1
             score_val = ind.get('score')
             alpha = ind.get('timeliness', 1.0) or 0.0
+            if score_val is not None:
+                alpha_sum_active += alpha
             if score_val is not None and alpha > 0:
                 total_weighted += score_val * alpha
                 total_alpha += alpha
@@ -299,7 +303,9 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
             'active_count': active_total,
             'reference_only_count': ref_count,
             'insufficient_data': insufficient,
-            'avg_alpha': round(total_alpha / valid_count, 3) if valid_count else 0.0,
+            # T14：分母用 active_count（含 α=0），否则恒等于 1.0 失去信息量。
+            # 例：economic = (1.0×5 + 0.0×1)/6 ≈ 0.833 → 才回答得了「整体多新」
+            'avg_alpha': round(alpha_sum_active / active_total, 3) if active_total else 0.0,
             # D 案：权重可审计（设计 → 有效 + 原因）
             'weight_design': w['design'],
             'weight_effective': w['effective'],
@@ -448,6 +454,38 @@ def build_degraded_items(indicators: dict) -> list:
                 'freshness_level': info.get('freshness_level'),
             })
     return items
+
+
+def rules_snapshot() -> dict:
+    """T14：把「当天用什么规则算的」内嵌进产物。
+
+    动机：阈值/权重一改，历史读数就不可比。data/history 从 2026-11-09 才开始记，
+    今天不内嵌规则快照，三个月后手上只有一堆「分数在变但不知道按什么规则算」的文件，
+    P3 回测直接做不成。成本一个 dict + 一个 hash，价值是把「可复现」从人的记性
+    变成数据自带。
+    """
+    snap = {
+        'staleness_rules': {k: dict(v) for k, v in TIMELINESS_RULES.items()},
+        'dimension_weights_design': {d['id']: d['weight'] for d in DIMENSION_CONFIG},
+        'market_mismatch': {d['id']: d.get('market_mismatch', 1.0)
+                            for d in DIMENSION_CONFIG if d.get('market_mismatch', 1.0) != 1.0},
+        'reference_only': sorted(REFERENCE_ONLY),
+        'min_valid_rule': 'n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母',
+        'ias_scale': IAS_SCALE,
+        'ias_thresholds': [[t, s_, p_] for t, s_, p_, _ in IAS_THRESHOLDS],
+        'ias_min_coverage': IAS_MIN_COVERAGE,
+        'ias_partial_coverage': IAS_PARTIAL_COVERAGE,
+        'unknown_alpha': UNKNOWN_ALPHA,
+    }
+    return snap
+
+
+def rules_hash() -> str:
+    """规则快照的 sha256 前 12 位：两个日期的 hash 相同 = 规则未变，可直接横比。"""
+    import hashlib
+    import json as _json
+    payload = _json.dumps(rules_snapshot(), sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()[:12]
 
 
 def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
@@ -602,6 +640,8 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
     meta = {
         'ias': ias,
         'dimensions': dimensions,
+        'rules_snapshot': rules_snapshot(),
+        'rules_hash': rules_hash(),
         'model': {
             'version': 'v4.2',
             'reference_only': sorted(REFERENCE_ONLY),
