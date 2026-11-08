@@ -62,7 +62,7 @@ export function resolveCadence(info: CadenceInput): Cadence {
     case 'cumulative':
       return 'quarterly'
     default:
-      // 兜底跟后端 ALLOWED_FREQUENCIES 的 other → 60/90 一致（取黄线 60，即月频档）
+      // 兜底：后端 ALLOWED_FREQUENCIES 把 other 归入月频节奏，此处保持同档（不引入任何具体天数）
       return 'monthly'
   }
 }
@@ -167,30 +167,42 @@ export function computeStaleness(info: StalenessInput): StalenessInfo {
   const cadence = resolveCadence(info)
   const state = resolveFreshnessState(info)
   const rule = info.staleness_rule ?? null
+  const level: OverdueLevel | null =
+    info.overdue_level === 'yellow' || info.overdue_level === 'red' || info.overdue_level === 'none'
+      ? info.overdue_level
+      : null
 
   const raw = info.days_stale
   const known = typeof raw === 'number' && Number.isFinite(raw)
   // 负数（未来日期）钳到 0；null 保持 null，绝不折算成 0
   const days = known ? Math.max(0, Math.trunc(raw as number)) : null
 
-  // 超期判定单一真源在后端：overdue_level → overdue → 五态。前端不再内置阈值表。
-  const level: OverdueLevel | null =
-    info.overdue_level === 'yellow' || info.overdue_level === 'red' || info.overdue_level === 'none'
-      ? info.overdue_level
-      : null
+  // 超期判定（龙五 2026-11-09 12:00 口径）：
+  //   描灰 = overdue === true
+  //   days_overdue === null（无日期）→ 不描灰、不算 overdue，走 freshness_level
+  //   staleness_rule 仅用于 tooltip，不参与判定
+  const daysOverdue = typeof info.days_overdue === 'number' ? info.days_overdue : null
   const overdue =
-    level !== null
-      ? level !== 'none'
+    days === null
+      ? false
       : typeof info.overdue === 'boolean'
       ? info.overdue
+      : level !== null
+      ? level !== 'none'
       : state === 'stale' || state === 'expired'
-  const daysOverdue = typeof info.days_overdue === 'number' ? info.days_overdue : null
 
   const ruleText = rule ? `（黄线 ${rule.yellow_days} / 红线 ${rule.red_days} 天）` : ''
   const levelText = level === 'red' ? ' —— 已超红线' : level === 'yellow' ? ' —— 已超黄线' : ''
 
   if (days !== null) {
-    const label = days === 0 ? '今天' : days === 1 ? '昨天' : `${days} 天前`
+    // 文案档位按 overdue_level（龙五）：yellow →「偏旧 N 天」，red →「过期 N 天」
+    const base = days === 0 ? '今天' : days === 1 ? '昨天' : `${days} 天前`
+    const label =
+      overdue && level === 'red'
+        ? `过期 ${days} 天`
+        : overdue && level === 'yellow'
+        ? `偏旧 ${days} 天`
+        : base
     let title = `${CADENCE_LABEL[cadence]}数据，数据所属期距今 ${days} 天${ruleText}${levelText}`
     if (state) title += `；后端判定：${FRESHNESS_STATE_META[state].label}`
     if (daysOverdue !== null && daysOverdue > 0) title += `；超出 ${daysOverdue} 天`
@@ -298,31 +310,18 @@ export function describeIndicatorState(info: IndicatorStateInput): IndicatorStat
   const isRef = info.reference_only === true
   const state = stale.state
 
-  // 描灰口径（T13 冻结契约 docs/freshness-contract.md）：
-  //   「描灰只看有日期的超阈值，days_stale=null 不描灰（未知 ≠ 0 天）」
-  // 优先用后端状态：stale=超黄线、expired=超红线，阈值已在 TIMELINESS_RULES 里判完，
-  // 前端不再另设阈值（否则 daily 4 天后端判 fresh、前端会误描灰）。
-  // 描灰口径（T13 冻结契约 docs/freshness-contract.md）：
-  //   「描灰只看有日期的超阈值，days_stale=null 不描灰（未知 ≠ 0 天）」
-  // 阈值单一真源在后端：优先 overdue_level → overdue → 五态，前端无内置阈值表。
-  const datedOverdue =
-    stale.days === null
-      ? false
-      : stale.overdueLevel !== null
-      ? stale.overdueLevel !== 'none'
-      : typeof info.overdue === 'boolean'
-      ? info.overdue
-      : state === 'stale' || state === 'expired'
+  // 描灰口径（龙五 2026-11-09 12:00）：描灰 = overdue === true。
+  // 唯一例外是 reference_only：它本来就不计分，只挂「参考项」单标（龙五 Q2）。
+  // 数据旧的信号由 computeStaleness 产出（偏旧 N 天 / 过期 N 天）。
+  const dimmed = stale.overdue && !isRef
 
-  // 被排除计分的行不再描灰：排除标是更强的声明（“这值根本没参与打分”），
-  // 再叠一层描灰（“这值可能误导你”）属于视觉过载。数据旧的信号由副行「N 天前」傅达。
+  // not_counted 轴独立于描灰：expired_alpha0 的行会同时「描灰 + 挂过期剔除标」，
+  // 两者语义不同（数据旧 / 没进评分），不是重复。
   const excluded =
     typeof info.excluded_from_scoring === 'boolean'
       ? info.excluded_from_scoring
       : isRef || info.timeliness === 0 // 老快照（无新字段）回退
   const notCounted = excluded && !isRef
-
-  const dimmed = datedOverdue && !excluded
 
   const exclusionBadge: IndicatorState['exclusionBadge'] = isRef
     ? { text: '参考项', title: describeExclusion('reference_only') }

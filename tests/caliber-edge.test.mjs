@@ -112,20 +112,24 @@ console.log('\n[2] 夹具五态 → kind / label 映射正确')
 }
 
 // ------------------------------------------------------- [3] 描灰口径（冻结契约）
-console.log('\n[3] 描灰只看「有日期的超阈值」，days_stale=null 不描灰（unknown ≠ 0 天）')
+console.log('\n[3] 描灰口径：overdue === true 才描；无日期（days_overdue=null）一律不描')
 {
   for (const [k, v] of Object.entries(fixture.indicators)) {
     const st = describeIndicatorState(v)
-    if (v.days_stale === null) {
+    if (v.days_overdue === null || v.days_stale === null) {
       check(`${k}: 无日期 → 不描灰`, st.dimmed === false, `state=${st.state}`)
+    } else {
+      check(`${k}: 描灰 = overdue 布尔值`, st.dimmed === (v.overdue === true), `overdue=${v.overdue} dimmed=${st.dimmed}`)
     }
   }
   const unknownItems = Object.entries(fixture.indicators).filter(([, v]) => resolveFreshnessState(v) === 'unknown')
   check('unknown 项存在且全部不描灰', unknownItems.length > 0 && unknownItems.every(([, v]) => !describeIndicatorState(v).dimmed))
+  const realtimeItems = Object.entries(fixture.indicators).filter(([, v]) => resolveFreshnessState(v) === 'realtime')
+  check('realtime 项存在且全部不描灰', realtimeItems.length > 0 && realtimeItems.every(([, v]) => !describeIndicatorState(v).dimmed))
 }
 
 // ------------------------------------------------------- [4] 排除标三态
-console.log('\n[4] 排除标：reference_only / no_score / expired_alpha0 文案各异，且不与描灰叠加')
+console.log('\n[4] 排除标：reference_only / no_score / expired_alpha0 文案各异')
 {
   const groups = {
     reference_only: ['参考项', 'reference_only'],
@@ -138,7 +142,7 @@ console.log('\n[4] 排除标：reference_only / no_score / expired_alpha0 文案
     for (const [k, v] of items) {
       const st = describeIndicatorState(v)
       check(`${k}: 标=${text}`, st.exclusionBadge?.text === text, st.exclusionBadge?.text)
-      check(`${k}: 不描灰（排除标更强）`, st.dimmed === false)
+      if (key === 'reference_only') check(`${k}: 参考项不描灰`, st.dimmed === false)
     }
   }
 }
@@ -191,9 +195,9 @@ console.log('\n[8] 全局不变量')
     const all = Object.entries(data.indicators)
     const doubleBadge = all.filter(([, v]) => {
       const st = describeIndicatorState(v)
-      return st.exclusionBadge !== null && st.dimmed
+      return st.exclusionBadge !== null && st.dimmed && v.reference_only === true
     })
-    check(`${label}: 无双标`, doubleBadge.length === 0, doubleBadge.map(([k]) => k).join(','))
+    check(`${label}: 参考项不同时描灰`, doubleBadge.length === 0, doubleBadge.map(([k]) => k).join(','))
 
     const badName = all.filter(([, v]) => !resolveDisplayName(v, ''))
     check(`${label}: 名称全部可解析`, badName.length === 0)
@@ -213,7 +217,7 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
   check('指标数 30', all.length === 30, `count=${all.length}`)
 
   const dimmed = all.filter(([, v]) => describeIndicatorState(v).dimmed).map(([k]) => k).sort()
-  check('描灰只有 oilPrice（usGdp 被排除计分→不描灰）', dimmed.join(',') === 'oilPrice', dimmed.join(','))
+  check('描灰 = oilPrice(yellow) + usGdp(red)', dimmed.join(',') === 'oilPrice,usGdp', dimmed.join(','))
 
   const badges = all.filter(([, v]) => describeIndicatorState(v).exclusionBadge)
   check('排除标 3 个', badges.length === 3, badges.map(([k]) => k).join(','))
@@ -235,6 +239,12 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
 
   check('usGdp 223 天 → expired（红线 210）', resolveFreshnessState(real.indicators.usGdp) === 'expired')
   check('usGdp overdue_level=red、days_overdue=13', real.indicators.usGdp.overdue_level === 'red' && real.indicators.usGdp.days_overdue === 13)
+  // 龙五 12:00 指定要盯的两个
+  check('usGdp 走 expired_alpha0（已剔出评分）', real.indicators.usGdp.exclusion_reason === 'expired_alpha0' && real.indicators.usGdp.excluded_from_scoring === true)
+  check('naturalGas 🔵 realtime', real.indicators.naturalGas.freshness === '🔵' && resolveFreshnessState(real.indicators.naturalGas) === 'realtime')
+  check('lmeIndex 🔵 realtime', real.indicators.lmeIndex.freshness === '🔵' && resolveFreshnessState(real.indicators.lmeIndex) === 'realtime')
+  check('usGdp 文案 =「过期 223 天」', computeStaleness(real.indicators.usGdp).label === '过期 223 天', computeStaleness(real.indicators.usGdp).label)
+  check('oilPrice 文案 =「偏旧 9 天」', computeStaleness(real.indicators.oilPrice).label === '偏旧 9 天', computeStaleness(real.indicators.oilPrice).label)
 }
 
 // ------------------------------------------------------- [10] T13-5 超期字段单一真源
