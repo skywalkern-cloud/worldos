@@ -67,66 +67,24 @@ def write_json_strict(path, obj):
     os.replace(tmp_path, path)
     return clean
 
-# ─── 维度配置（与 commentary_generator.py 一致）───
-DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
+# ─── 维度与指标名：全部来自 indicator_meta（单一真源，P0/T1）───
+# 此前本文件也自带一份 DIMENSION_META / INDICATOR_SHORT / INDICATOR_COUNTRY，
+# 与 scoring.py / commentary_generator.py 共 5 份真源互相覆盖，
+# 导致喂给 LLM 的提示词里出现「信用利差」「AI产业增速」「VIX」等错标口径。
+from indicator_meta import (  # noqa: E402
+    DIMENSIONS as _DIMENSIONS,
+    INDICATOR_SHORT,
+    INDICATOR_COUNTRY,
+    display_name,
+    short_name,
+)
+
+DIMENSION_ORDER = [d['id'] for d in _DIMENSIONS]
 DIMENSION_META = {
-    'economic':  {'name': '经济增长',   'icon': '📈', 'weight': 1.0},
-    'inflation': {'name': '通胀与政策', 'icon': '💰', 'weight': 1.0},
-    'liquidity': {'name': '流动性',     'icon': '💧', 'weight': 0.8},
-    'sentiment': {'name': '市场情绪',   'icon': '🧠', 'weight': 0.8},
-    'resource':  {'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.6},
-    'techGreen': {'name': '科技与绿色', 'icon': '🌱', 'weight': 0.4},
+    d['id']: {'name': d['name'], 'icon': d['icon'], 'weight': d['weight']}
+    for d in _DIMENSIONS
 }
-DIMENSION_INDICATORS = {
-    'economic':  ['chinaGdp', 'chinaPmi', 'usGdp', 'servicePmi', 'electricity', 'usNonFarm'],
-    'inflation': ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
-    'liquidity': ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
-    'sentiment': ['vix', 'fearGreed'],
-    'resource':  ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
-    'techGreen': ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
-}
-INDICATOR_SHORT = {
-    'chinaGdp':       'GDP增速',
-    'chinaPmi':       '制造业PMI',
-    'usGdp':          'GDP增速',
-    'servicePmi':     '服务业PMI',
-    'electricity':    '用电量',
-    'usNonFarm':      '非农就业',
-    'cpi':            'CPI',
-    'ppi':            'PPI',
-    'usCpi':          'CPI',
-    'corePce':        '核心PCE',
-    'fedRate':        '联邦基金利率',
-    'lpr':            'LPR利率',
-    'dr007':          'DR007',
-    'm2':             'M2增速',
-    'creditSpread':   '信用利差',
-    'dollarIndex':    '美元指数',
-    'usBond2Y':       '美债2Y',
-    'usBond5Y':       '美债5Y',
-    'usBond10Y':      '美债10Y',
-    'vix':            'VIX',
-    'fearGreed':      '恐惧贪婪指数',
-    'oilPrice':       'WTI原油',
-    'naturalGas':     '天然气',
-    'carbonPrice':    '碳价',
-    'lmeIndex':       'LME铜期货',
-    'shanghaiCopper': '沪铜期货',
-    'aiGrowth':       'AI产业增速',
-    'robotInstall':   '工业机器人增速',
-    'evPenetration':  '新能源渗透率',
-    'renewEnergyInvest': '新能源指数',
-}
-INDICATOR_COUNTRY = {
-    'chinaGdp': '🇨🇳', 'chinaPmi': '🇨🇳', 'usGdp': '🇺🇸', 'servicePmi': '🇨🇳',
-    'electricity': '🇨🇳', 'usNonFarm': '🇺🇸', 'cpi': '🇨🇳', 'ppi': '🇨🇳',
-    'usCpi': '🇺🇸', 'corePce': '🇺🇸', 'fedRate': '🇺🇸', 'lpr': '🇨🇳',
-    'dr007': '🇨🇳', 'm2': '🇨🇳', 'creditSpread': '🌐', 'dollarIndex': '🌐',
-    'usBond2Y': '🇺🇸', 'usBond5Y': '🇺🇸', 'usBond10Y': '🇺🇸',
-    'vix': '🇺🇸', 'fearGreed': '🌐', 'oilPrice': '🌐', 'naturalGas': '🌐',
-    'carbonPrice': '🇨🇳', 'lmeIndex': '🌐', 'shanghaiCopper': '🇨🇳', 'aiGrowth': '🇨🇳', 'robotInstall': '🇨🇳',
-    'evPenetration': '🇨🇳', 'renewEnergyInvest': '🇨🇳',
-}
+DIMENSION_INDICATORS = {d['id']: list(d['indicators']) for d in _DIMENSIONS}
 
 
 # ═══════════════════════════════════════════
@@ -314,7 +272,7 @@ def build_prompt(indicators: dict, meta: dict, prev_commentary: Optional[dict] =
       "commentary": "<流动性维度解读，约100-200字，国内宽松vs美债压制>"
     }},
     "sentiment": {{
-      "commentary": "<市场情绪维度解读，约100-200字，VIX和市场情绪>"
+      "commentary": "<市场情绪维度解读，约100-200字，沪深300期权波动率与美股恐惧贪婪>"
     }},
     "resource": {{
       "commentary": "<资源与供应链维度解读，约100-200字，能源、碳价、铜价等>"

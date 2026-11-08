@@ -11,6 +11,25 @@ WorldOS v4.1 连续评分模块
 from datetime import datetime, date
 from typing import Optional
 
+# ── 单一真源（P0/T1）：名称/来源/国家/口径/维度/频率 全部来自 indicator_meta ──
+from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 等为向后兼容再导出)
+    DIMENSION_CONFIG,
+    INDICATOR_NAMES,
+    INDICATOR_COUNTRY,
+    INDICATOR_CALIBER,
+    INDICATOR_SHORT,
+    REFERENCE_ONLY,
+    TIMELINESS_RULES,
+    IAS_THRESHOLDS,
+    IAS_POSITION_ERROR,
+    IAS_MIN_COVERAGE,
+    required_valid_count,
+    parse_period,
+    days_stale,
+    is_reference_only,
+    caliber_of,
+)
+
 # ═══════════════════════════════════════════
 # 评分参数
 # ═══════════════════════════════════════════
@@ -64,149 +83,9 @@ BIDIRECTIONAL_PARAMS = {
 }
 
 # ═══════════════════════════════════════════
-# 时间衰减参数
+# 时间衰减 / 维度 / 国家 / 名称 —— 全部来自 indicator_meta（单一真源）
+# 本文件不再定义这些映射，避免出现第 2/3 份真源互相覆盖。
 # ═══════════════════════════════════════════
-
-TIMELINESS_RULES = {
-    'daily':     {'yellow_days': 5, 'red_days': 10},
-    'monthly':   {'yellow_days': 60, 'red_days': 90},
-    'quarterly': {'yellow_days': 180, 'red_days': 270},
-    'yearly':    {'yellow_days': 180, 'red_days': 365},
-    'other':     {'yellow_days': 60, 'red_days': 90},
-}
-
-# ═══════════════════════════════════════════
-# 维度映射
-# ═══════════════════════════════════════════
-
-DIMENSION_CONFIG = [
-    {
-        'id': 'economic',
-        'name': '经济增长',
-        'icon': '📈',
-        'weight': 1.0,
-        'indicators': ['chinaGdp', 'chinaPmi', 'usGdp', 'servicePmi', 'electricity', 'usNonFarm'],
-    },
-    {
-        'id': 'inflation',
-        'name': '通胀与政策',
-        'icon': '💰',
-        'weight': 1.0,
-        'indicators': ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
-    },
-    {
-        'id': 'liquidity',
-        'name': '流动性',
-        'icon': '💧',
-        'weight': 0.8,
-        'indicators': ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
-    },
-    {
-        'id': 'sentiment',
-        'name': '市场情绪',
-        'icon': '🧠',
-        'weight': 0.8,
-        'indicators': ['vix', 'fearGreed'],
-    },
-    {
-        'id': 'resource',
-        'name': '资源与供应链',
-        'icon': '🛢️',
-        'weight': 0.6,
-        'indicators': ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
-    },
-    {
-        'id': 'techGreen',
-        'name': '科技与绿色',
-        'icon': '🌱',
-        'weight': 0.4,
-        'indicators': ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
-    },
-]
-
-# ═══════════════════════════════════════════
-# 国家映射
-# ═══════════════════════════════════════════
-
-INDICATOR_COUNTRY = {
-    'chinaGdp': '🇨🇳',
-    'chinaPmi': '🇨🇳',
-    'usGdp': '🇺🇸',
-    'usPmi': '🇺🇸',
-    'euPmi': '🇪🇺',
-    'servicePmi': '🇨🇳',
-    'electricity': '🇨🇳',
-    'cpi': '🇨🇳',
-    'ppi': '🇨🇳',
-    'usCpi': '🇺🇸',
-    'corePce': '🇺🇸',
-    'fedRate': '🇺🇸',
-    'usBond2Y': '🇺🇸',
-    'usBond5Y': '🇺🇸',
-    'usBond10Y': '🇺🇸',
-    'usNonFarm': '🇺🇸',
-    'fearGreed': '🌐',
-    'lpr': '🇨🇳',
-    'dr007': '🇨🇳',
-    'm2': '🇨🇳',
-    'creditSpread': '🌐',
-    'dollarIndex': '🌐',
-    'vix': '🇺🇸',
-    'northFlow': '🇨🇳',
-    'turnover': '🇨🇳',
-    'epu': '🌐',
-    'oilPrice': '🌐',
-    'naturalGas': '🌐',
-    'exportGrowth': '🇨🇳',
-    'bdi': '🌐',
-    'aiGrowth': '🇨🇳',
-    'robotInstall': '🇨🇳',
-    'evPenetration': '🇨🇳',
-    'carbonPrice': '🇨🇳',
-    'renewEnergyInvest': '🇨🇳',
-    'lmeIndex': '🌐',
-    'shanghaiCopper': '🇨🇳',
-}
-
-INDICATOR_NAMES = {
-    'chinaGdp': 'GDP增速',
-    'chinaPmi': '制造业PMI',
-    'usGdp': 'GDP增速',
-    'usPmi': 'ISM制造业PMI',
-    'euPmi': '综合PMI',
-    'servicePmi': '服务业PMI',
-    'electricity': '用电量',
-    'cpi': 'CPI',
-    'ppi': 'PPI',
-    'usCpi': 'CPI',
-    'corePce': '核心PCE',
-    'fedRate': '联邦基金利率',
-    'usBond2Y': '美债2年收益率',
-    'usBond5Y': '美债5年收益率',
-    'usBond10Y': '美债10年收益率',
-    'usNonFarm': '非农就业',
-    'fearGreed': '恐惧贪婪指数',
-    'lpr': 'LPR利率',
-    'dr007': 'DR007',
-    'm2': 'M2增速',
-    'creditSpread': '信用利差',
-    'dollarIndex': '美元指数',
-    'vix': 'VIX恐慌指数',
-    'northFlow': '北向资金',
-    'turnover': 'A股成交额',
-    'epu': '经济政策不确定性',
-    'oilPrice': 'WTI原油',
-    'naturalGas': '天然气',
-    'exportGrowth': '出口增速',
-    'bdi': 'BDI运价指数',
-    'aiGrowth': 'AI产业增速',
-    'robotInstall': '工业机器人',
-    'evPenetration': '新能源渗透率',
-    'carbonPrice': '碳价',
-    'renewEnergyInvest': '新能源指数',
-    'lmeIndex': 'LME金属指数',
-    'shanghaiCopper': '沪铜',
-}
 
 
 # ═══════════════════════════════════════════
@@ -316,47 +195,23 @@ def get_category(key: str) -> str:
 # ═══════════════════════════════════════════
 
 def calc_timeliness(data_date_str, frequency: str) -> float:
-    """计算时间衰减因子α (0.0 ~ 1.0)"""
+    """计算时间衰减因子α (0.0 ~ 1.0)
+
+    T2 修复（2026-11-09）：
+      - 统一走 indicator_meta.parse_period，按「数据所属期末日」算天数。
+        旧实现在 '2026-Q1-Q3' 上取 Q1 首日（2026-01-01），311 天 > 270 红线 → α=0，
+        GDP 被隐形剔除但 valid_count 仍记数。现在取 2026-09-30。
+      - 期日无法解析 → α=1.0（不惩罚），但会在 dataDateISO=null 处暴露。
+      - 未来日期（当年年度数据）→ 按 0 天处理。
+    """
     if not data_date_str or data_date_str == '' or data_date_str == '-':
         return 1.0
 
-    # Parse date
-    try:
-        if isinstance(data_date_str, str):
-            # Try various formats: '2026-Q1', '2025-08', '2025年08月', '2026.4', '2026-05-22'
-            ds = data_date_str.strip()
-            # Handle '2026-Q1' format
-            if 'Q' in ds.upper():
-                parts = ds.split('-')
-                year = int(parts[0])
-                q = int(ds[ds.upper().index('Q') + 1])
-                month = (q - 1) * 3 + 1  # Q1→1, Q2→4, Q3→7, Q4→10
-                data_date = date(year, month, 1)
-            elif '.' in ds:
-                year, month = ds.split('.')
-                data_date = date(int(year), int(month), 1)
-            elif '年' in ds:
-                import re
-                m = re.match(r'(\d{4})年(\d{1,2})月', ds)
-                if m:
-                    data_date = date(int(m.group(1)), int(m.group(2)), 1)
-                else:
-                    return 1.0
-            elif len(ds) == 7 and '-' in ds:
-                year, month = ds.split('-')
-                data_date = date(int(year), int(month), 1)
-            elif len(ds) >= 10:
-                data_date = datetime.strptime(ds[:10], '%Y-%m-%d').date()
-            else:
-                return 1.0
-        else:
-            return 1.0
-    except (ValueError, TypeError):
-        return 1.0
-
-    days = (date.today() - data_date).days
+    days = days_stale(data_date_str)
+    if days is None:
+        return 1.0          # 解析不了：不猜，不惩罚
     if days < 0:
-        return 1.0  # Future data (shouldn't happen but be safe)
+        days = 0            # 本年累计类数据，视为最新
 
     rule = TIMELINESS_RULES.get(frequency, TIMELINESS_RULES['other'])
     if days > rule['red_days']:
@@ -388,91 +243,142 @@ def get_freshness_level(alpha: float) -> str:
 # ═══════════════════════════════════════════
 
 def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
-    """
-    计算6个维度评分
-    indicators: { key: {score, timeliness, ...} }
-    raw_data: { key: {value, ...} }
+    """计算6个维度评分（T4：最小有效数 + 置灰 + 参考项排除）
 
-    Returns: { dim_id: {score, signal, avg_score}, ... }
+    indicators: { key: {score, timeliness, reference_only, ...} }
+
+    规则（2026-11-09 龙五拍板）：
+      1. reference_only=True 的指标不参与维度平均（只看不算）。
+      2. 有效 = score 非 None 且 α>0（α=0 表示数据过期，不算有效，修旧版 valid_count 虚高）。
+      3. 有效数 < required_valid_count(dim) → score=None, signal='gray', insufficient_data=True。
+         分数给 None 而不是 0：0 会被下游当成「中性」计入 IAS，正是我们要消灭的假信号。
+
+    Returns: { dim_id: {score, signal, valid_count, required_count, insufficient_data,
+                        reference_only_count, avg_alpha} }
     """
     dim_scores = {}
     for dim in DIMENSION_CONFIG:
         total_weighted = 0.0
         total_alpha = 0.0
-        total_score = 0.0  # 用于简单平均的原始评分和
         valid_count = 0
+        ref_count = 0
+        active_total = 0
 
         for key in dim['indicators']:
             ind = indicators.get(key)
-            if ind and ind.get('score') is not None:
-                alpha = ind.get('timeliness', 1.0)
-                score_val = ind['score']
+            if not ind or is_reference_only(key):
+                if is_reference_only(key):
+                    ref_count += 1
+                continue
+            active_total += 1
+            score_val = ind.get('score')
+            alpha = ind.get('timeliness', 1.0) or 0.0
+            if score_val is not None and alpha > 0:
                 total_weighted += score_val * alpha
                 total_alpha += alpha
-                total_score += score_val
                 valid_count += 1
 
-        if total_alpha > 0:
-            avg_score = round(total_weighted / total_alpha, 3)
-        elif valid_count > 0:
-            # 所有指标都过期(α=0)时，用简单平均作为fallback
-            avg_score = round(total_score / valid_count, 3)
+        required = required_valid_count(dim)
+        insufficient = valid_count < required
+
+        if insufficient:
+            avg_score = None
+            signal = 'gray'
         else:
-            avg_score = 0.0
+            avg_score = round(total_weighted / total_alpha, 3)
+            signal = get_signal(avg_score)
 
         dim_scores[dim['id']] = {
             'score': avg_score,
-            'signal': get_signal(avg_score),
+            'signal': signal,
             'valid_count': valid_count,
+            'required_count': required,
+            'active_count': active_total,
+            'reference_only_count': ref_count,
+            'insufficient_data': insufficient,
+            'avg_alpha': round(total_alpha / valid_count, 3) if valid_count else 0.0,
         }
 
     return dim_scores
 
 
 def calc_ias(dim_scores: dict) -> dict:
+    """计算 IAS 综合评分（T3：按有效权重归一化）
+
+    T3 修复（2026-11-09）：
+      旧式 IAS = Σ score_i×w_i，max_possible 固定 4.6。
+      一旦某维度「数据不足」置灰、贡献 0，IAS 就系统性向 0 漂移，
+      信号自动变「持有」而页面不提示 —— 这就是「置灰反而制造新假信号」。
+
+      新式：
+        normalized = Σ(score_i×w_i) / Σ(有效维度 w_i)      ∈ [-1, 1]
+        score      = normalized × Σ(全部 w_i)  = normalized × 4.6
+      score 保持旧量纲，前端阈值（±2.5/1.0/-0.5/-1.5）无需重标；
+      normalized 供展示与跨日对比。
+
+      覆盖率 = Σ有效w / Σ全部w；低于 IAS_MIN_COVERAGE 不给仓位建议。
     """
-    计算IAS综合评分
-    IAS = Σ(i=1..6) F_i × W_i
-    """
-    total = 0.0
-    max_possible = 0.0
+    total_weighted = 0.0
+    valid_weight = 0.0
+    total_weight = 0.0
+    counted = []
+    grayed = []
+
     for dim in DIMENSION_CONFIG:
-        ds = dim_scores.get(dim['id'], {})
-        score = ds.get('score', 0.0)
-        total += score * dim['weight']
-        max_possible += 1.0 * dim['weight']
+        ds = dim_scores.get(dim['id'], {}) or {}
+        total_weight += dim['weight']
+        score = ds.get('score')
+        if ds.get('insufficient_data') or score is None:
+            grayed.append(dim['id'])
+            continue
+        total_weighted += score * dim['weight']
+        valid_weight += dim['weight']
+        counted.append(dim['id'])
 
-    ias_score = round(total, 2)
+    coverage = round(valid_weight / total_weight, 3) if total_weight else 0.0
 
-    # 信号映射
-    if ias_score >= 2.5:
-        signal = '强烈买入'
-        position = '80-100%'
-    elif ias_score >= 1.0:
-        signal = '增持'
-        position = '60-80%'
-    elif ias_score >= -0.5:
-        signal = '持有'
-        position = '40-60%'
-    elif ias_score >= -1.5:
-        signal = '减仓'
-        position = '20-40%'
+    if valid_weight <= 0:
+        return {
+            'score': None,
+            'normalized': None,
+            'max_possible': round(total_weight, 1),
+            'valid_weight': 0.0,
+            'data_coverage': 0.0,
+            'counted_dimensions': [],
+            'grayed_dimensions': grayed,
+            'signal': '数据不足',
+            'position': '不适用',
+            'signal_icon': '⚪',
+            'is_actionable': False,
+        }
+
+    normalized = round(total_weighted / valid_weight, 4)
+    ias_score = round(normalized * total_weight, 2)
+
+    if coverage < IAS_MIN_COVERAGE:
+        signal, position, icon = '数据不足', '不适用', '⚪'
+        actionable = False
     else:
-        signal = '清仓/防御'
-        position = '0-20%'
+        actionable = True
+        signal, position, icon = IAS_POSITION_ERROR
+        for threshold, sig, pos, ico in IAS_THRESHOLDS:
+            if ias_score >= threshold:
+                signal, position, icon = sig, pos, ico
+                break
 
     return {
         'score': ias_score,
-        'max_possible': round(max_possible, 1),
+        'normalized': normalized,
+        'max_possible': round(total_weight, 1),
+        'valid_weight': round(valid_weight, 2),
+        'data_coverage': coverage,
+        'counted_dimensions': counted,
+        'grayed_dimensions': grayed,
         'signal': signal,
         'position': position,
-        'signal_icon': (
-            '🚀' if ias_score >= 2.5 else
-            '✅' if ias_score >= 1.0 else
-            '➖' if ias_score >= -0.5 else
-            '⚠️' if ias_score >= -1.5 else
-            '🛑'
-        ),
+        'signal_icon': icon,
+        'is_actionable': actionable,
+        'note': '未回测·非投资建议',
     }
 
 
@@ -505,6 +411,7 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
 
         score = calc_score(key, value)
         timeliness = calc_timeliness(data_date, freq)
+        stale_days = days_stale(data_date)
 
         # Trend from previous data
         prev_value = None
@@ -514,6 +421,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
                 prev_value = prev_info.get('value')
         trend = calc_trend(value, prev_value)
 
+        period = parse_period(data_date)
+        name = INDICATOR_NAMES.get(key, key)
+        ref_only = is_reference_only(key)
+
         indicators[key] = {
             'value': value,
             'score': score,
@@ -521,15 +432,27 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'signal': get_signal(score) if score is not None else 'gray',
             'category': get_category(key),
             'country': INDICATOR_COUNTRY.get(key, '🌐'),
-            'name': INDICATOR_NAMES.get(key, key),
+            # name 保留（旧字段合约），displayName 为同一值的显式别名，前端新代码用后者
+            'name': name,
+            'displayName': name,
+            'shortName': INDICATOR_SHORT.get(key, name),
+            'caliberNote': caliber_of(key),
+            'reference_only': ref_only,
             'frequency': freq,
             'dataDate': data_date,
+            'dataDateISO': period['end'].isoformat() if period else None,
+            'dataDateKind': period['kind'] if period else None,
+            'days_stale': stale_days,
             'source': info.get('source', ''),
             'unit': info.get('unit', ''),
             'timeliness': timeliness,
             'freshness': get_freshness_label(timeliness),
             'freshness_level': get_freshness_level(timeliness),
         }
+        # fetch 阶段带入的降级痕迹（fetch 失败、用上一轮值兜底）
+        if info.get('used_fallback'):
+            indicators[key]['used_fallback'] = True
+            indicators[key]['fetchError'] = info.get('fetchError')
         data_values[key] = value
 
     # 维度评分
@@ -546,14 +469,25 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'name': dim['name'],
             'icon': dim['icon'],
             'weight': dim['weight'],
-            'score': ds.get('score', 0.0),
+            'score': ds.get('score'),
             'signal': ds.get('signal', 'gray'),
             'valid_count': ds.get('valid_count', 0),
+            'required_count': ds.get('required_count'),
+            'active_count': ds.get('active_count'),
+            'reference_only_count': ds.get('reference_only_count', 0),
+            'insufficient_data': ds.get('insufficient_data', False),
+            'avg_alpha': ds.get('avg_alpha', 0.0),
         }
 
     meta = {
         'ias': ias,
         'dimensions': dimensions,
+        'model': {
+            'version': 'v4.2',
+            'reference_only': sorted(REFERENCE_ONLY),
+            'ias_formula': 'normalized = Σ(score×w)/Σ(valid_w); score = normalized × Σ(w)',
+            'min_coverage': IAS_MIN_COVERAGE,
+        },
     }
 
     return indicators, meta

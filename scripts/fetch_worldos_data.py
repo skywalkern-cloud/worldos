@@ -29,6 +29,7 @@ from pathlib import Path
 # 加载评分模块
 sys.path.insert(0, str(Path(__file__).parent))
 from scoring import build_indicators_and_meta
+from indicator_meta import INDICATORS as INDICATOR_META, days_stale as _days_stale
 
 # ========== 配置常量 ==========
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
@@ -40,6 +41,7 @@ for key in list(os.environ.keys()):
 
 WORKSPACE = Path('/Users/vincentnie/.openclaw/workspace-worldos')
 DATA_FILE = WORKSPACE / 'public' / 'data' / 'market-data.json'
+HISTORY_DIR = WORKSPACE / 'data' / 'history'          # T7：每日快照归档（不进 public/，不随站点部署）
 FETCH_TIMEOUT = 20  # 每个函数超时秒数
 
 
@@ -842,44 +844,98 @@ def get_shanghai_copper():
 
 
 # ═══════════════════════════════════════════
-# 指标定义（28个）
+# 指标定义（名称/单位/频率/来源 均取自 indicator_meta 单一真源，T1）
 # ═══════════════════════════════════════════
-
-INDICATOR_DEFS = {
-    'chinaGdp': {'name': '中国GDP增速', 'unit': '%', 'frequency': 'quarterly', 'source': '国家统计局', 'func': get_china_gdp},
-    'chinaPmi': {'name': '中国制造业PMI', 'unit': '', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_china_pmi},
-    'usGdp': {'name': '美国GDP增速', 'unit': '%', 'frequency': 'quarterly', 'source': '东方财富-美国商务部', 'func': get_us_gdp},
-    'servicePmi': {'name': '非制造业PMI', 'unit': '', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_service_pmi},
-    'usCpi': {'name': '美国CPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '美国劳工统计局', 'func': get_us_cpi},
-    'corePce': {'name': '美国核心PCE', 'unit': '%', 'frequency': 'monthly', 'source': 'FRED API-美国商务部', 'func': get_core_pce},
-    'vix': {'name': '市场恐慌指数', 'unit': '', 'frequency': 'daily', 'source': 'akshare-沪深300ETF期权波动率指数', 'func': get_vix},
-    'oilPrice': {'name': 'WTI原油', 'unit': '$/桶', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_oil_price},
-    'naturalGas': {'name': '天然气', 'unit': '$/MMBtu', 'frequency': 'daily', 'source': 'NYMEX期货', 'func': get_nat_gas},
-    'fedRate': {'name': '美联储基准利率', 'unit': '%', 'frequency': 'monthly', 'source': 'FOMC会议记录', 'func': get_fed_rate},
-    'usBond2Y': {'name': '美债2年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_2y},
-    'usBond5Y': {'name': '美债5年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_5y},
-    'usBond10Y': {'name': '美债10年收益率', 'unit': '%', 'frequency': 'daily', 'source': 'akshare-中美债券', 'func': get_us_bond_10y},
-    'usNonFarm': {'name': '非农就业', 'unit': '万人', 'frequency': 'monthly', 'source': '东方财富-美国劳工部', 'func': get_us_nonfarm},
-    'fearGreed': {'name': '恐惧贪婪指数', 'unit': '', 'frequency': 'daily', 'source': 'alternative.me', 'func': get_fear_greed},
-    'dollarIndex': {'name': '美元指数代理', 'unit': '', 'frequency': 'daily', 'source': 'akshare-汇率加权计算', 'func': get_dollar_index},
-    'cpi': {'name': '中国CPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_cpi},
-    'ppi': {'name': '中国PPI同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_ppi},
-    'lpr': {'name': 'LPR利率', 'unit': '%', 'frequency': 'monthly', 'source': '中国人民银行', 'func': get_lpr},
-    'dr007': {'name': 'DR007利率', 'unit': '%', 'frequency': 'daily', 'source': '全国银行间同业拆借中心', 'func': get_dr007},
-    'm2': {'name': 'M2同比', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-中国人民银行', 'func': get_m2},
-    'creditSpread': {'name': '中美10年利差', 'unit': 'bp', 'frequency': 'daily', 'source': 'akshare-中美国债利差', 'func': get_credit_spread},
-    'epu': {'name': '经济政策不确定性', 'unit': '', 'frequency': 'monthly', 'source': 'FRED API-EPU指数', 'func': get_epu},
-
-    'carbonPrice': {'name': '碳价格', 'unit': '¥/吨', 'frequency': 'daily', 'source': '北京碳市场', 'func': get_carbon_price},
-    'electricity': {'name': '全社会用电量增速', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局', 'func': get_electricity},
-    'renewEnergyInvest': {'name': '新能源指数', 'unit': '点', 'frequency': 'daily', 'source': '中证新能源指数', 'func': get_energy_index},
-    'aiGrowth': {'name': '工业用电增速(AI/制造业代理)', 'unit': '%', 'frequency': 'monthly', 'source': '国家能源局-第二产业', 'func': get_electricity_industry},
-    'robotInstall': {'name': '工业增加值增速(机器人安装代理)', 'unit': '%', 'frequency': 'monthly', 'source': '东方财富-规模以上工业增加值', 'func': get_industrial_production},
-    'evPenetration': {'name': '新能源车渗透率', 'unit': '%', 'frequency': 'monthly', 'source': '乘联会-CPCA', 'func': get_nev_penetration_rate},
-    'extremeWeather': {'name': '经济天气代理(非制造业PMI)', 'unit': '', 'frequency': 'monthly', 'source': '东方财富-国家统计局', 'func': get_service_pmi},
-    'lmeIndex': {'name': 'LME金属指数', 'unit': '$/吨', 'frequency': 'daily', 'source': 'LME-综合铜03', 'func': get_lme_index},
-    'shanghaiCopper': {'name': '沪铜期货', 'unit': '¥/吨', 'frequency': 'daily', 'source': '上期所-新浪财经', 'func': get_shanghai_copper},
+# 本文件只声明「用哪个抓取函数 → 哪个 key」，不再写第二份指标名。
+FETCH_FUNCS = {
+    'chinaGdp': get_china_gdp,
+    'chinaPmi': get_china_pmi,
+    'usGdp': get_us_gdp,
+    'servicePmi': get_service_pmi,
+    'usCpi': get_us_cpi,
+    'corePce': get_core_pce,
+    'vix': get_vix,
+    'oilPrice': get_oil_price,
+    'naturalGas': get_nat_gas,
+    'fedRate': get_fed_rate,
+    'usBond2Y': get_us_bond_2y,
+    'usBond5Y': get_us_bond_5y,
+    'usBond10Y': get_us_bond_10y,
+    'usNonFarm': get_us_nonfarm,
+    'fearGreed': get_fear_greed,
+    'dollarIndex': get_dollar_index,
+    'cpi': get_cpi,
+    'ppi': get_ppi,
+    'lpr': get_lpr,
+    'dr007': get_dr007,
+    'm2': get_m2,
+    'creditSpread': get_credit_spread,
+    'epu': get_epu,
+    'carbonPrice': get_carbon_price,
+    'electricity': get_electricity,
+    'renewEnergyInvest': get_energy_index,
+    'aiGrowth': get_electricity_industry,
+    'robotInstall': get_industrial_production,
+    'evPenetration': get_nev_penetration_rate,
+    'lmeIndex': get_lme_index,
+    'shanghaiCopper': get_shanghai_copper,
 }
+
+# 由单一真源生成原有结构，保持下游 `info['name'] / ['unit'] / ['source']` 可用
+INDICATOR_DEFS = {
+    key: {
+        'name': INDICATOR_META[key]['name'],
+        'unit': INDICATOR_META[key]['unit'],
+        'frequency': INDICATOR_META[key]['frequency'],
+        'source': INDICATOR_META[key]['source'],
+        'func': FETCH_FUNCS[key],
+        'reference_only': bool(INDICATOR_META[key].get('reference_only', False)),
+    }
+    for key in FETCH_FUNCS
+}
+
+_missing_meta = [k for k in FETCH_FUNCS if k not in INDICATOR_META]
+_orphan_funcs = [k for k in INDICATOR_META if k not in FETCH_FUNCS]
+if _missing_meta:
+    raise RuntimeError(f'指标缺元数据定义: {_missing_meta}')
+if _orphan_funcs:
+    raise RuntimeError(f'元数据里的指标没有抓取函数: {_orphan_funcs}')
+
+# 已废弃：extremeWeather（= servicePmi × 2 − 50 的派生值，无评分、不在任何维度，纯噪音）
+# 2026-11-09 P0 删除，避免「抓了 32 个但只有 31 个有用」的计数虚高。
+DEPRECATED_KEYS = ['extremeWeather']
+
+
+def _classify_error(exc) -> str:
+    """把异常归类成稳定的枚举码（前端按码分色/给建议，不靠自由文本）。
+
+    值域：http_4xx / http_5xx / empty_response / parse_error / timeout /
+          nan_value / not_found
+    """
+    if exc is None:
+        return 'not_found'
+    if isinstance(exc, (TimeoutError,)):
+        return 'timeout'
+
+    resp = getattr(exc, 'response', None)
+    code = getattr(resp, 'status_code', None)
+    if isinstance(code, int):
+        if 400 <= code < 500:
+            return 'http_4xx'
+        if 500 <= code < 600:
+            return 'http_5xx'
+
+    name = type(exc).__name__.lower()
+    msg = str(exc).lower()
+    if 'timeout' in name or 'timed out' in msg or 'timeout' in msg:
+        return 'timeout'
+    if any(w in msg for w in ('json', 'decode', 'parse', 'expecting value', 'keyerror')):
+        return 'parse_error'
+    if any(w in msg for w in ('connection', 'max retries', 'remote end', 'ssl', 'proxy')):
+        return 'http_5xx'
+    if 'not found' in msg or '404' in msg:
+        return 'not_found'
+    return 'parse_error'
 
 
 def load_prev():
@@ -901,7 +957,11 @@ def load_prev():
 
 
 def save_results(results, fetch_ts):
-    """保存结果到文件（含v5.0评分 + 评论生成）"""
+    """保存结果到文件（含v5.0评分 + 评论生成）
+
+    validity_report 升级（T6 前置）：failed[] 带稳定枚举码 reason + reasonText +
+    days_stale（未知→null，绝不用 0 伪装新鲜）+ used_fallback。
+    """
     valid = sum(1 for v in results.values() if v['value'] is not None)
     total = len(results)
 
@@ -911,28 +971,55 @@ def save_results(results, fetch_ts):
     # 计算评分
     indicators, meta = build_indicators_and_meta(results, prev_data)
 
-    # 找出获取失败的指标
+    # 找出获取失败 / 降级兜底的指标
     failed_indicators = []
+    degraded = 0
     for key, info in INDICATOR_DEFS.items():
         v = results.get(key, {})
-        if v.get('value') is None:
-            failed_indicators.append({'key': key, 'name': info['name'], 'source': info['source']})
-    
+        err = v.get('fetchError')
+        if v.get('used_fallback'):
+            degraded += 1
+        if err is None and v.get('value') is not None:
+            continue
+        if err is None:
+            err = {'reason': 'not_found', 'reasonText': '未取到数据'}
+        failed_indicators.append({
+            'key': key,
+            'displayName': info['name'],
+            'source': info['source'],
+            'reason': err.get('reason', 'parse_error'),
+            'reasonText': err.get('reasonText', ''),
+            'dataDate': v.get('dataDate'),
+            'days_stale': _days_stale(v.get('dataDate')),
+            'used_fallback': bool(v.get('used_fallback')),
+            'lastAttempt': fetch_ts,
+        })
+
     output = {
         'timestamp': fetch_ts,
         'data': results,
         'indicators': indicators,
         'meta': meta,
         'validity_report': {
-            'total': total, 
-            'valid': valid, 
+            'total': total,
+            'valid': valid,
             'invalid': total - valid,
+            'degraded': degraded,
             'failed': failed_indicators,
         },
     }
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
     # strict 写入：NaN/Inf → null，allow_nan=False + 回读自检，绝不产出非法 JSON
     write_json_strict(DATA_FILE, output)
+
+    # T7：每日快照归档（回测的前提；放 data/ 而非 public/，不随站点部署）
+    try:
+        HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+        snap = HISTORY_DIR / f"{date.today().isoformat()}.json"
+        write_json_strict(snap, output)
+        print(f"  📚 历史快照已归档: {snap}")
+    except Exception as e:
+        print(f"  ⚠️ 历史快照归档失败: {e}")
 
     return valid, total
 
@@ -965,23 +1052,32 @@ def main():
         print(f"  📊 {info['name']}...", end='', flush=True)
 
         val, dd, freq = None, None, info['frequency']
+        fetch_error = None
 
         try:
             result = info['func']()
-            if result is not None:
-                if isinstance(result, tuple):
-                    val, dd, freq = result
-                else:
-                    val = result
+            if result is None:
+                fetch_error = {'reason': 'empty_response', 'reasonText': '数据源返回空'}
+            elif isinstance(result, tuple):
+                val, dd, freq = result
+                if val is None:
+                    fetch_error = {'reason': 'not_found', 'reasonText': '数据源无有效记录'}
+            else:
+                val = result
         except Exception as e:
-            pass
+            fetch_error = {
+                'reason': _classify_error(e),
+                'reasonText': f'{type(e).__name__}: {e}'[:200],
+            }
 
         # 归一化：任何来源的 NaN/±Inf 一律视为获取失败（触发上一轮 fallback）
         if val is not None and _is_bad_number(val):
+            fetch_error = {'reason': 'nan_value', 'reasonText': '数据源返回 NaN/Inf'}
             print(" (NaN→丢弃)", end='')
             val = None
 
-        # Fallback to previous data if fetch failed
+        # Fallback to previous data if fetch failed（明文标记，不再静默冒充新鲜数据）
+        used_fallback = False
         if val is None:
             prev_item = prev.get(key)
             if prev_item is not None:
@@ -991,22 +1087,20 @@ def main():
                 else:
                     val = prev_item
                     dd = None
-
-        # extremeWeather: 50 + (servicePmi - 50) × 2
-        if key == 'extremeWeather':
-            svc_val = results.get('servicePmi', {}).get('value')
-            svc_dd = results.get('servicePmi', {}).get('dataDate')
-            if svc_val is not None:
-                val = round(50 + (svc_val - 50) * 2, 1)
-                dd = svc_dd
-                if _is_bad_number(val):
-                    val = None
+                if val is not None:
+                    used_fallback = True
+                    if fetch_error is None:
+                        fetch_error = {'reason': 'empty_response', 'reasonText': '数据源返回空'}
+                    fetch_error['reasonText'] = (
+                        fetch_error.get('reasonText', '') + '（已用上一轮值兜底）'
+                    )
 
         dd_display = dd if dd else '-'
         if val is not None:
-            print(f" {val} {info['unit']} [{dd_display}]")
+            flag = ' ↺兜底' if used_fallback else ''
+            print(f" {val} {info['unit']} [{dd_display}]{flag}")
         else:
-            print(f" ⚠️ N/A")
+            print(f" ⚠️ N/A [{fetch_error.get('reason') if fetch_error else '-'}]")
 
         results[key] = {
             'value': val,
@@ -1015,6 +1109,8 @@ def main():
             'source': info['source'],
             'dataDate': dd,
             'lastFetched': fetch_ts,
+            'used_fallback': used_fallback,
+            'fetchError': fetch_error if (fetch_error and (used_fallback or val is None)) else None,
         }
 
     # 每次循环后尝试保存（防止超时导致数据丢失）

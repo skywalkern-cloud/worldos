@@ -56,72 +56,23 @@ def write_json_strict(path, obj):
     os.replace(tmp_path, path)
     return clean
 
-# ─── 维度排序（按权重降序，与 scoring.py DIMENSION_CONFIG 一致）───
-DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
+# ─── 维度与指标名：全部来自 indicator_meta（单一真源，P0/T1）───
+# 此前本文件自带 DIMENSION_META / DIMENSION_INDICATORS / INDICATOR_SHORT /
+# INDICATOR_COUNTRY 四份映射，与 scoring.py 互相覆盖并污染了评论正文里的口径。
+from indicator_meta import (  # noqa: E402
+    DIMENSIONS as _DIMENSIONS,
+    INDICATOR_SHORT,
+    INDICATOR_COUNTRY,
+    display_name,
+    short_name,
+)
 
+DIMENSION_ORDER = [d['id'] for d in _DIMENSIONS]
 DIMENSION_META = {
-    'economic':  {'name': '经济增长',   'icon': '📈', 'weight': 1.0},
-    'inflation': {'name': '通胀与政策', 'icon': '💰', 'weight': 1.0},
-    'liquidity': {'name': '流动性',     'icon': '💧', 'weight': 0.8},
-    'sentiment': {'name': '市场情绪',   'icon': '🧠', 'weight': 0.8},
-    'resource':  {'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.6},
-    'techGreen': {'name': '科技与绿色', 'icon': '🌱', 'weight': 0.4},
+    d['id']: {'name': d['name'], 'icon': d['icon'], 'weight': d['weight']}
+    for d in _DIMENSIONS
 }
-
-# 每个维度包含的指标 key（与 scoring.py DIMENSION_CONFIG 保持一致）
-DIMENSION_INDICATORS = {
-    'economic':  ['chinaGdp', 'chinaPmi', 'usGdp', 'servicePmi', 'electricity', 'usNonFarm'],
-    'inflation': ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
-    'liquidity': ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
-    'sentiment': ['vix', 'fearGreed'],
-    'resource':  ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
-    'techGreen': ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
-}
-
-# 指标短名（用于评论中）
-INDICATOR_SHORT = {
-    'chinaGdp':       'GDP增速',
-    'chinaPmi':       '制造业PMI',
-    'usGdp':          'GDP增速',
-    'servicePmi':     '服务业PMI',
-    'electricity':    '用电量',
-    'usNonFarm':      '非农就业',
-    'cpi':            'CPI',
-    'ppi':            'PPI',
-    'usCpi':          'CPI',
-    'corePce':        '核心PCE',
-    'fedRate':        '联邦基金利率',
-    'lpr':            'LPR利率',
-    'dr007':          'DR007',
-    'm2':             'M2增速',
-    'creditSpread':   '信用利差',
-    'dollarIndex':    '美元指数',
-    'usBond2Y':       '美债2Y',
-    'usBond5Y':       '美债5Y',
-    'usBond10Y':      '美债10Y',
-    'vix':            'VIX',
-    'fearGreed':     '恐惧贪婪指数',
-    'oilPrice':       'WTI原油',
-    'naturalGas':     '天然气',
-    'carbonPrice':    '碳价',
-    'lmeIndex':       'LME铜期货',
-    'shanghaiCopper': '沪铜期货',
-    'aiGrowth':       'AI产业增速',
-    'robotInstall':   '工业机器人增速',
-    'evPenetration':  '新能源渗透率',
-    'renewEnergyInvest': '新能源指数',
-}
-
-INDICATOR_COUNTRY = {
-    'chinaGdp': '🇨🇳', 'chinaPmi': '🇨🇳', 'usGdp': '🇺🇸', 'servicePmi': '🇨🇳',
-    'electricity': '🇨🇳', 'usNonFarm': '🇺🇸', 'cpi': '🇨🇳', 'ppi': '🇨🇳',
-    'usCpi': '🇺🇸', 'corePce': '🇺🇸', 'fedRate': '🇺🇸', 'lpr': '🇨🇳',
-    'dr007': '🇨🇳', 'm2': '🇨🇳', 'creditSpread': '🌐', 'dollarIndex': '🌐',
-    'usBond2Y': '🇺🇸', 'usBond5Y': '🇺🇸', 'usBond10Y': '🇺🇸',
-    'vix': '🇺🇸', 'fearGreed': '🌐', 'oilPrice': '🌐', 'naturalGas': '🌐',
-    'carbonPrice': '🇨🇳', 'lmeIndex': '🌐', 'shanghaiCopper': '🇨🇳', 'aiGrowth': '🇨🇳', 'robotInstall': '🇨🇳',
-    'evPenetration': '🇨🇳', 'renewEnergyInvest': '🇨🇳',
-}
+DIMENSION_INDICATORS = {d['id']: list(d['indicators']) for d in _DIMENSIONS}
 
 
 # ═══════════════════════════════════════════
@@ -365,7 +316,7 @@ def _dim_commentary_liquidity(indicators: dict, dim_meta: dict) -> str:
     cross_parts = []
     cr_v = credit.get('value')
     if cr_v is not None:
-        cross_parts.append(f"信用利差{value_str(credit)}{' 高于200bp中性线，中美利差倒挂压力大' if cr_v > 250 else ' 在200bp附近'}")
+        cross_parts.append(f"中美10年利差{value_str(credit)}{' 高于200bp中性线，中美利差倒挂压力大' if cr_v > 250 else ' 在200bp附近'}")
     d_v = dollar.get('value')
     if d_v is not None:
         cross_parts.append(f"美元指数{value_str(dollar)}{' 高位震荡' if d_v > 100 else ' 偏弱'}")
@@ -400,23 +351,23 @@ def _dim_commentary_sentiment(indicators: dict, dim_meta: dict) -> str:
     vix_v = vix.get('value')
     if vix_v is not None:
         if vix_v < 15:
-            lines.append(f"VIX指数{value_str(vix)}低于15，市场情绪非常平静。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}低于15，市场情绪非常平静。")
         elif vix_v < 20:
-            lines.append(f"VIX指数{value_str(vix)}处于15-20的常规区间，市场情绪正常。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}处于15-20的常规区间，市场情绪正常。")
         elif vix_v < 25:
-            lines.append(f"VIX指数{value_str(vix)}略高于20的中性线，市场存在一定紧张情绪，资产定价中不可忽视隐含的风险溢价。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}略高于20的中性线，市场存在一定紧张情绪，资产定价中不可忽视隐含的风险溢价。")
         elif vix_v < 30:
-            lines.append(f"VIX指数{value_str(vix)}超过25，市场恐慌情绪明显升温，需警惕地缘事件或流动性冲击的传导风险。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}超过25，市场恐慌情绪明显升温，需警惕地缘事件或流动性冲击的传导风险。")
         else:
-            lines.append(f"VIX指数{value_str(vix)}突破30，市场处于极端恐慌状态，系统性风险显著上升。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}突破30，市场处于极端恐慌状态，系统性风险显著上升。")
     else:
-        lines.append("VIX指数暂无有效数据，情绪指标缺失。")
+        lines.append(f"{short_name('vix')}暂无有效数据，情绪指标缺失。")
 
     epu_v = epu.get('value')
     if epu_v is not None:
         lines.append(f"EPU指数{value_str(epu)}，政策不确定性{'高企' if epu_v > 150 else '中等' if epu_v > 100 else '较低'}。")
     else:
-        lines.append("EPU指数暂缺有效数据，情绪维度数据面偏薄，需警惕VIX未充分反映的实际风险。")
+        lines.append("EPU指数暂缺有效数据，情绪维度数据面偏薄，需警惕沪深300期权波动率未充分反映的实际风险。")
 
     return ''.join(lines)
 
@@ -532,10 +483,10 @@ def _dim_commentary_techGreen(indicators: dict, dim_meta: dict) -> str:
     tech_parts = []
     ai_v = ai.get('value')
     if ai_v is not None:
-        tech_parts.append(f"AI产业增速{value_str(ai)}{'低于' if ai_v < 10 else '达到'}10% target")
+        tech_parts.append(f"{short_name('aiGrowth')}{value_str(ai)}{'低于' if ai_v < 10 else '达到'}10% target")
     robot_v = robot.get('value')
     if robot_v is not None:
-        tech_parts.append(f"工业机器人增速{value_str(robot)}{'低于' if robot_v < 10 else '达到'}10% target")
+        tech_parts.append(f"{short_name('robotInstall')}{value_str(robot)}{'低于' if robot_v < 10 else '达到'}10% target")
     if tech_parts:
         lines.append("、".join(tech_parts) + "，科技升级实际落地速度弱于政策目标。")
 
@@ -673,7 +624,7 @@ def _extract_key_risks(indicators: dict, meta: dict) -> list:
 
     vix_risk = get_indicator(indicators, 'vix')
     if vix_risk.get('value') is not None and vix_risk['value'] > 25:
-        risks.append(f"VIX指数{vix_risk['value']:.1f}超过25，市场风险溢价攀升")
+        risks.append(f"{short_name('vix')}{vix_risk['value']:.1f}超过25，市场风险溢价攀升")
 
     # Fed rate risk
     fed = get_indicator(indicators, 'fedRate')

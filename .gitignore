@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# ── WorldOS 数据产物（2026-11-09 P0）──
+# 每日快照归档：回测数据源，体积会持续增长，不进仓库
+data/history/
+# 清洗前的本地备份
+*.bak-nan
