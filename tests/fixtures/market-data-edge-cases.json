@@ -1654,7 +1654,7 @@
       "ias_partial_coverage": 0.8,
       "unknown_alpha": 0.5
     },
-    "rules_hash": "aeeb74397588",
+    "rules_hash": "88cb8f040f89",
     "model": {
       "version": "v4.2",
       "reference_only": [
