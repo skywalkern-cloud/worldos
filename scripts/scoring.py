@@ -24,6 +24,7 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     IAS_POSITION_ERROR,
     IAS_MIN_COVERAGE,
     required_valid_count,
+    dimension_weights,
     parse_period,
     days_stale,
     is_reference_only,
@@ -288,6 +289,7 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
             avg_score = round(total_weighted / total_alpha, 3)
             signal = get_signal(avg_score)
 
+        w = dimension_weights(dim)
         dim_scores[dim['id']] = {
             'score': avg_score,
             'signal': signal,
@@ -297,6 +299,10 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
             'reference_only_count': ref_count,
             'insufficient_data': insufficient,
             'avg_alpha': round(total_alpha / valid_count, 3) if valid_count else 0.0,
+            # D 案：权重可审计（设计 → 有效 + 原因）
+            'weight_design': w['design'],
+            'weight_effective': w['effective'],
+            'weight_reason': w['reason'],
         }
 
     return dim_scores
@@ -320,19 +326,24 @@ def calc_ias(dim_scores: dict) -> dict:
     """
     total_weighted = 0.0
     valid_weight = 0.0
-    total_weight = 0.0
+    total_weight = 0.0        # Σ 有效权重
+    design_weight = 0.0       # Σ 设计权重（保持 4.6，用于把 normalized 还原成旧量纲）
     counted = []
     grayed = []
 
     for dim in DIMENSION_CONFIG:
         ds = dim_scores.get(dim['id'], {}) or {}
-        total_weight += dim['weight']
+        w_eff = ds.get('weight_effective')
+        if w_eff is None:
+            w_eff = dimension_weights(dim)['effective']
+        design_weight += dim['weight']
+        total_weight += w_eff
         score = ds.get('score')
         if ds.get('insufficient_data') or score is None:
             grayed.append(dim['id'])
             continue
-        total_weighted += score * dim['weight']
-        valid_weight += dim['weight']
+        total_weighted += score * w_eff
+        valid_weight += w_eff
         counted.append(dim['id'])
 
     coverage = round(valid_weight / total_weight, 3) if total_weight else 0.0
@@ -341,7 +352,9 @@ def calc_ias(dim_scores: dict) -> dict:
         return {
             'score': None,
             'normalized': None,
-            'max_possible': round(total_weight, 1),
+            'max_possible': round(design_weight, 1),
+            'weight_design_sum': round(design_weight, 2),
+            'weight_effective_sum': round(total_weight, 2),
             'valid_weight': 0.0,
             'data_coverage': 0.0,
             'counted_dimensions': [],
@@ -353,7 +366,9 @@ def calc_ias(dim_scores: dict) -> dict:
         }
 
     normalized = round(total_weighted / valid_weight, 4)
-    ias_score = round(normalized * total_weight, 2)
+    # score 恒按「设计权重总和(4.6)」还原，保证与历史阈值/前端分档可比的量纲；
+    # 有效权重之和是 4.0（D 案收缩后），所以 normalized 才是横比用的那个数。
+    ias_score = round(normalized * design_weight, 2)
 
     if coverage < IAS_MIN_COVERAGE:
         signal, position, icon = '数据不足', '不适用', '⚪'
@@ -369,7 +384,9 @@ def calc_ias(dim_scores: dict) -> dict:
     return {
         'score': ias_score,
         'normalized': normalized,
-        'max_possible': round(total_weight, 1),
+        'max_possible': round(design_weight, 1),
+        'weight_design_sum': round(design_weight, 2),
+        'weight_effective_sum': round(total_weight, 2),
         'valid_weight': round(valid_weight, 2),
         'data_coverage': coverage,
         'counted_dimensions': counted,
@@ -413,6 +430,16 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         timeliness = calc_timeliness(data_date, freq)
         stale_days = days_stale(data_date)
 
+        # T10：used_fallback 的指标，值是上一轮的（必然比今天旧），
+        # α 封顶 0.5 → 新鲜度最高只能 🟡，不允许兜底值自证绿色。
+        if info.get('used_fallback'):
+            timeliness = min(timeliness, 0.5)
+
+        # 实时报价类（源不提供日期）：不伪造 dataDate，改为显式标注 dateNote，
+        # 新鲜度按抓取时点算（抓取当下即最新），days_stale 保持 null。
+        realtime = bool(info.get('realtime')) and not info.get('used_fallback')
+
+
         # Trend from previous data
         prev_value = None
         if prev_data and key in prev_data:
@@ -425,11 +452,20 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         name = INDICATOR_NAMES.get(key, key)
         ref_only = is_reference_only(key)
 
+        # T12：参考项固定灰信号，不能显示红/黄——它根本没进结论，
+        # 却给读者一个红灯，正是我们要消灭的展示层误导。
+        if ref_only:
+            signal = 'reference'
+        elif score is not None:
+            signal = get_signal(score)
+        else:
+            signal = 'gray'
+
         indicators[key] = {
             'value': value,
             'score': score,
             'trend': trend,
-            'signal': get_signal(score) if score is not None else 'gray',
+            'signal': signal,
             'category': get_category(key),
             'country': INDICATOR_COUNTRY.get(key, '🌐'),
             # name 保留（旧字段合约），displayName 为同一值的显式别名，前端新代码用后者
@@ -443,6 +479,9 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'dataDateISO': period['end'].isoformat() if period else None,
             'dataDateKind': period['kind'] if period else None,
             'days_stale': stale_days,
+            'realtime': realtime,
+            'dateNote': ('实时报价，数据源未提供日期' if realtime and data_date is None
+                         else (info.get('dateNote') or None)),
             'source': info.get('source', ''),
             'unit': info.get('unit', ''),
             'timeliness': timeliness,
@@ -468,7 +507,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         dimensions[dim['id']] = {
             'name': dim['name'],
             'icon': dim['icon'],
-            'weight': dim['weight'],
+            'weight': dim['weight'],                     # 兼容旧字段 = 设计权重
+            'weight_design': ds.get('weight_design', dim['weight']),
+            'weight_effective': ds.get('weight_effective', dim['weight']),
+            'weight_reason': ds.get('weight_reason', '满额'),
             'score': ds.get('score'),
             'signal': ds.get('signal', 'gray'),
             'valid_count': ds.get('valid_count', 0),

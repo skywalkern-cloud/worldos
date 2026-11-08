@@ -306,7 +306,7 @@ def get_core_pce_fallback():
                     months = {'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06',
                               'Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
                     return round(val, 1), f"{m2.group(2)}-{months.get(m2.group(1), '01')}", "monthly"
-                return round(val, 1), date.today().strftime('%Y-%m'), "monthly"
+                return round(val, 1), None, "monthly"   # T11: 拿不到期日就不写，绝不伪造当月
     except Exception:
         pass
 
@@ -371,7 +371,8 @@ def get_oil_price():
     price = cl.iloc[0]['最新价']
     if pd.isna(price):
         return None, None, None
-    return round(float(price), 2), date.today().strftime('%Y-%m-%d'), 'daily'
+    # T11: futures_global_spot_em 不含交易日期，不伪造当天 → dataDate=None(realtime)
+    return round(float(price), 2), None, 'daily'
 
 
 @with_timeout(20)
@@ -687,7 +688,8 @@ def get_nat_gas():
     price = ng.iloc[0]['最新价']
     if pd.isna(price):
         return None, None, None
-    return round(float(price), 3), date.today().strftime('%Y-%m-%d'), 'daily'
+    # T11: 同上，不伪造日期
+    return round(float(price), 3), None, 'daily'
 
 
 @with_timeout(40)
@@ -813,7 +815,8 @@ def get_lme_index():
         if not lme_cu.empty:
             price = lme_cu.iloc[0]['最新价']
             if not pd.isna(price):
-                return round(float(price), 2), date.today().strftime('%Y-%m-%d'), 'daily'
+                # T11: 不伪造日期
+                return round(float(price), 2), None, 'daily'
     except Exception:
         pass
     return None, None, None
@@ -836,8 +839,12 @@ def get_shanghai_copper():
             parts = match.group(1).split(',')
             if len(parts) > 8:
                 latest_price = parts[6].strip()
+                # T11: 新浪 nf_ 行情第 18 位(索引17)是真实交易日期，用它，不用 date.today()
+                trade_date = parts[17].strip() if len(parts) > 17 else ''
+                if not re.match(r'^\d{4}-\d{2}-\d{2}$', trade_date):
+                    trade_date = None
                 if latest_price and latest_price != '0.000' and not _is_bad_number(latest_price):
-                    return round(float(latest_price), 0), date.today().strftime('%Y-%m-%d'), 'daily'
+                    return round(float(latest_price), 0), trade_date, 'daily'
     except Exception:
         pass
     return None, None, None
@@ -1059,7 +1066,10 @@ def main():
             if result is None:
                 fetch_error = {'reason': 'empty_response', 'reasonText': '数据源返回空'}
             elif isinstance(result, tuple):
-                val, dd, freq = result
+                val, dd, got_freq = result
+                # T10: freq 以指标定义为准；抓取函数返回 None 时绝不能把日频降级成 other
+                if got_freq:
+                    freq = got_freq
                 if val is None:
                     fetch_error = {'reason': 'not_found', 'reasonText': '数据源无有效记录'}
             else:
@@ -1105,10 +1115,11 @@ def main():
         results[key] = {
             'value': val,
             'unit': info['unit'],
-            'frequency': freq or 'other',
+            'frequency': freq or info['frequency'],
             'source': info['source'],
             'dataDate': dd,
             'lastFetched': fetch_ts,
+            'realtime': INDICATOR_META.get(key, {}).get('dateSource') == 'realtime',
             'used_fallback': used_fallback,
             'fetchError': fetch_error if (fetch_error and (used_fallback or val is None)) else None,
         }

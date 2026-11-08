@@ -85,11 +85,13 @@ INDICATORS = {
         'caliberNote': '沪深300ETF期权波动率指数(QVIX)，非CBOE VIX；阈值已按QVIX量纲校准',
     },
     'oilPrice': {
+        'dateSource': 'realtime',   # 现货/场外报价，数据源不提供交易日期（禁止伪造当天）
         'name': 'WTI原油', 'short': 'WTI原油',
         'source': 'NYMEX期货', 'country': '🌐', 'unit': '$/桶', 'frequency': 'daily',
         'caliberNote': 'WTI 近月期货结算价',
     },
     'naturalGas': {
+        'dateSource': 'realtime',   # 现货/场外报价，数据源不提供交易日期（禁止伪造当天）
         'name': '天然气', 'short': '天然气',
         'source': 'NYMEX期货', 'country': '🌐', 'unit': '$/MMBtu', 'frequency': 'daily',
         'caliberNote': 'Henry Hub 天然气期货',
@@ -200,6 +202,7 @@ INDICATORS = {
         'caliberNote': '新能源乘用车零售渗透率',
     },
     'lmeIndex': {
+        'dateSource': 'realtime',   # 现货/场外报价，数据源不提供交易日期（禁止伪造当天）
         'name': 'LME金属指数', 'short': 'LME铜',
         'source': 'LME-综合铜03', 'country': '🌐', 'unit': '$/吨', 'frequency': 'daily',
         'caliberNote': '代理指标：LME 3个月铜价，非 LME 综合金属指数',
@@ -234,6 +237,11 @@ DIMENSIONS = [
     {
         'id': 'sentiment', 'name': '市场情绪', 'icon': '🧠', 'weight': 0.8,
         'indicators': ['vix', 'fearGreed'],
+        # D(2026-11-09 龙五拍板)：该维度 2 项里只有 1 项是 A 股市场指标
+        # （沪深300 QVIX），美股 CNN F&G 占 50%。0.8 是按「A股情绪齐备」设计的，
+        # 与现构成不符 → 声明式折半到 0.4，P1 补 A 股情绪代理后移除本标记恢复。
+        'market_mismatch': 0.5,
+        'mismatch_reason': '2 项中仅 1 项为 A 股指标（美股 F&G 占 50%）',
     },
     {
         'id': 'resource', 'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.6,
@@ -279,6 +287,9 @@ DIMENSION_CONFIG = [
     {
         'id': d['id'], 'name': d['name'], 'icon': d['icon'],
         'weight': d['weight'], 'indicators': list(d['indicators']),
+        # 权重修正声明必须一起带过去，否则 scoring 拿不到 market_mismatch（曾漏过一次）
+        'market_mismatch': d.get('market_mismatch', 1.0),
+        'mismatch_reason': d.get('mismatch_reason', ''),
     }
     for d in DIMENSIONS
 ]
@@ -318,6 +329,42 @@ def is_reference_only(key: str) -> bool:
 
 def dimension_of(key: str) -> str:
     return INDICATOR_DIMENSION.get(key, 'other')
+
+
+def dimension_weights(dim: dict) -> dict:
+    """维度权重：设计权重 → 有效权重（可审计，不拍脑袋）
+
+    规则（2026-11-09 龙五拍板 D 案）：
+      1. 有效性收缩（自动）：w_eff = w_design × (active_count / 设计指标数)
+         代理/参考项不算 active，所以剔掉它们会自动收缩权重，
+         不需要为「只剩 2 个指标」单独拍一个魔法数字。
+      2. 市场错配折半（声明式）：维度可声明 market_mismatch 系数（默认 1.0），
+         仅 sentiment 有值 0.5，原因写进 mismatch_reason。
+
+    Returns: {design, effective, shrink, mismatch, reason, active_count, design_count}
+    """
+    design = dim['weight']
+    design_count = len(dim['indicators'])
+    active_count = sum(1 for k in dim['indicators'] if not is_reference_only(k))
+    shrink = (active_count / design_count) if design_count else 1.0
+    mismatch = float(dim.get('market_mismatch', 1.0) or 1.0)
+    effective = round(design * shrink * mismatch, 4)
+
+    reasons = []
+    if shrink < 1:
+        reasons.append(f'有效性收缩 {active_count}/{design_count}')
+    if mismatch != 1.0:
+        reasons.append(f'市场错配 ×{mismatch}（{dim.get("mismatch_reason", "")}）')
+
+    return {
+        'design': design,
+        'effective': effective,
+        'shrink': round(shrink, 4),
+        'mismatch': mismatch,
+        'active_count': active_count,
+        'design_count': design_count,
+        'reason': '；'.join(reasons) if reasons else '满额',
+    }
 
 
 def required_valid_count(dim: dict) -> int:
@@ -465,6 +512,11 @@ def validate_metadata() -> list:
             seen[key] = dim['id']
         if required_valid_count(dim) < 1:
             problems.append(f'维度 {dim["id"]} 最小有效数为 0')
+        if not (0 < float(dim.get('market_mismatch', 1.0)) <= 1.0):
+            problems.append(f'维度 {dim["id"]} market_mismatch 必须在 (0,1]')
+        w = dimension_weights(dim)
+        if not (0 < w['effective'] <= w['design']):
+            problems.append(f'维度 {dim["id"]} 有效权重异常: {w}')
 
     orphans = [k for k in INDICATORS if k not in seen]
     unscored_orphans = [k for k in orphans if not is_reference_only(k)]
@@ -481,6 +533,15 @@ if __name__ == '__main__':
             print('  -', i)
         raise SystemExit(1)
     print(f'✅ 元数据校验通过：{len(INDICATORS)} 个指标 / {len(DIMENSIONS)} 个维度')
+    print('\n维度权重（设计 → 有效）:')
+    total_d = total_e = 0.0
+    for d in DIMENSIONS:
+        w = dimension_weights(d)
+        total_d += w['design']
+        total_e += w['effective']
+        print(f"  {d['name']:<8} {w['design']:.2f} → {w['effective']:.2f}  "
+              f"({w['active_count']}/{w['design_count']})  {w['reason']}")
+    print(f"  合计     {total_d:.2f} → {total_e:.2f}")
     samples = ['2026-Q1-Q3', '2026-Q3', '2026-11-06', '2026-10', '2026.9', '2026年09', '2026-9月', '2026']
     for s in samples:
         p = parse_period(s)
