@@ -858,12 +858,9 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
   const name = resolveDisplayName(info, indicatorKey || '—')
   // 双轴判定（dimmed / not_counted）统一走 caliber.describeIndicatorState，
   // 夹具校验 scripts/make_fixture_edge_cases.py + tests/caliber-edge.test.mjs 用的是同一实现
-  const { stale, dimmed, exclusionBadge } = describeIndicatorState(info)
-  // 红绿是「结论」的语言，参考项没有结论资格（龙五 12:00 必修 1）
-  const scoreTone = resolveScoreTone(info.score, {
-    referenceOnly: info.reference_only === true,
-    signal: info.signal,
-  })
+  const { stale, dimmed, excluded, exclusionBadge } = describeIndicatorState(info)
+  // 着色只认 excluded（不计分 = 无结论资格），不按 exclusion_reason 分头判断
+  const scoreTone = resolveScoreTone(info.score, { excluded })
   const isFallback = info.used_fallback === true
 
   // Determine background color based on signal
@@ -938,7 +935,7 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
             scoreTone === 'positive' ? 'text-green-500/60' :
             scoreTone === 'negative' ? 'text-red-500/60' :
             'text-gray-500/60'
-          }`} title={scoreTone === 'neutral' && info.signal === 'reference' ? '参考项：不计分，无红绿结论' : undefined}>
+          }`} title={excluded ? '该项不计分，无红绿结论' : undefined}>
             {scoreDisplay}
           </span>
         </div>

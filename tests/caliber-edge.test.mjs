@@ -300,28 +300,38 @@ console.log('\n[11] 维度计数：active_count ≠ 计分项')
 }
 
 // ------------------------------------------------------- [12] 参考项着色（龙五必修 1）
-console.log('\n[12] 参考项一律中性色：红绿是结论的语言，参考项没有结论资格')
+console.log('\n[12] 不计分 = 中性色：判定只认 excluded，不按 exclusion_reason 分头')
 {
-  const ai = real.indicators.aiGrowth
-  check('aiGrowth 是 reference_only', ai.reference_only === true)
-  check('aiGrowth score 为负（-0.59）', ai.score < 0, String(ai.score))
-  check('aiGrowth 着色 = neutral（不是 negative）', resolveScoreTone(ai.score, { referenceOnly: true, signal: ai.signal }) === 'neutral')
+  const cases = Object.entries(real.indicators).filter(([, v]) =>
+    describeIndicatorState(v).excluded
+  )
+  check('真实快照有 excluded 样本', cases.length > 0, `count=${cases.length}`)
+  for (const [k, v] of cases) {
+    const st = describeIndicatorState(v)
+    check(`${k}(${v.exclusion_reason}) 着色 = neutral`, resolveScoreTone(v.score, { excluded: st.excluded }) === 'neutral', `score=${v.score} reason=${v.exclusion_reason}`)
+  }
 
-  const robot = real.indicators.robotInstall
-  check('robotInstall 着色 = neutral', resolveScoreTone(robot.score, { referenceOnly: robot.reference_only, signal: robot.signal }) === 'neutral')
+  // 四种理由必须走同一条颜色规则（防止只修 reference_only 那一支）
+  for (const reason of ['reference_only', 'expired_alpha0', 'no_score']) {
+    const fake = { score: -0.9, excluded_from_scoring: true, exclusion_reason: reason, reference_only: reason === 'reference_only' }
+    const st = describeIndicatorState(fake)
+    check(`${reason}: excluded=true → neutral`, st.excluded === true && resolveScoreTone(fake.score, { excluded: st.excluded }) === 'neutral')
+  }
 
-  // signal 单独也能生效（防止后端只给 signal 不给 reference_only）
-  check('仅 signal=reference 也走中性', resolveScoreTone(-0.9, { signal: 'reference' }) === 'neutral')
-  check('普通负分仍走 negative', resolveScoreTone(-0.9, { referenceOnly: false, signal: 'red' }) === 'negative')
-  check('普通正分仍走 positive', resolveScoreTone(0.9, { signal: 'green' }) === 'positive')
-  check('null 分数走 neutral', resolveScoreTone(null, { signal: 'red' }) === 'neutral')
+  // 具体盯住龙五点名的那一行
+  const usGdp = real.indicators.usGdp
+  const usSt = describeIndicatorState(usGdp)
+  check('usGdp score=-0.17（负分）', usGdp.score < 0, String(usGdp.score))
+  check('usGdp excluded=true', usSt.excluded === true)
+  check('usGdp 着色 neutral（不再是红）', resolveScoreTone(usGdp.score, { excluded: usSt.excluded }) === 'neutral')
+  check('usGdp 徽标仍为「过期剔除」', usSt.exclusionBadge?.text === '过期剔除')
 
-  // 全量回归：真实快照里所有参考项的 score 都不应出红绿
-  const refs = Object.entries(real.indicators).filter(([, v]) => v.reference_only === true || v.signal === 'reference')
-  check('真实快照有参考项样本', refs.length > 0, `count=${refs.length}`)
-  check('参考项全部中性着色', refs.every(([, v]) => resolveScoreTone(v.score, { referenceOnly: v.reference_only, signal: v.signal }) === 'neutral'))
-  const nonRef = Object.entries(real.indicators).filter(([, v]) => v.reference_only !== true && v.signal !== 'reference')
-  check('非参考项不受影响（仍有红绿）', nonRef.some(([, v]) => resolveScoreTone(v.score, { signal: v.signal }) !== 'neutral'))
+  // 非排除项不受影响
+  check('普通负分仍 negative', resolveScoreTone(-0.9, { excluded: false }) === 'negative')
+  check('普通正分仍 positive', resolveScoreTone(0.9, { excluded: false }) === 'positive')
+  check('null 分数 neutral', resolveScoreTone(null, { excluded: false }) === 'neutral')
+  const normalNeg = Object.entries(real.indicators).filter(([, v]) => !describeIndicatorState(v).excluded && v.score < 0)
+  check('非排除的负分项仍保留红色', normalNeg.length > 0 && normalNeg.every(([, v]) => resolveScoreTone(v.score, { excluded: false }) === 'negative'), `count=${normalNeg.length}`)
 }
 
 // ------------------------------------------------------- [13] 兜底 ≠ 缺失（龙五必修 2）

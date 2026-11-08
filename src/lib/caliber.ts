@@ -280,19 +280,21 @@ export function describeExclusion(reason?: string | null): string {
 /**
  * 评分着色。
  *
- * ⚠️ 红绿是「结论」的语言，参考项没有结论资格：
- *   后端已经给了 signal='reference' / reference_only=true，前端就不能再用红字说「这项很糟」。
- *   数值照给（那是事实），颜色必须中性，判断权交回读者。
+ * ⚠️ 红绿是「这项对结论有贡献且方向为正/负」的语言。
+ *   一个已被剔出加权的指标（reference_only / expired_alpha0 / no_score），
+ *   给它上红等于说「它在拉低评分」——但它没在参与。
  *
- * 同一个事实只该有一处判断 —— 标记与着色走两套分支就是这个 bug 的成因。
+ * 所以规则只有一条：excluded_from_scoring === true → neutral。
+ * 不要按 exclusion_reason 分头判断（那是「同一件事两处判断」，正是本轮在治的病）。
+ * reason 只决定徽标文案，不决定颜色。
  */
 export type ScoreTone = 'positive' | 'negative' | 'neutral'
 
 export function resolveScoreTone(
   score: number | null | undefined,
-  opts?: { referenceOnly?: boolean | null; signal?: string | null }
+  opts?: { excluded?: boolean | null }
 ): ScoreTone {
-  if (opts?.referenceOnly === true || opts?.signal === 'reference') return 'neutral'
+  if (opts?.excluded === true) return 'neutral'
   if (typeof score !== 'number' || !Number.isFinite(score)) return 'neutral'
   if (score > 0) return 'positive'
   if (score < 0) return 'negative'
