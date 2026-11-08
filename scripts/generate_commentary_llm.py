@@ -124,7 +124,10 @@ def _extract_highlights(dim_id: str, indicators: dict) -> list:
         ind = get_indicator(indicators, key)
         if ind.get('value') is not None:
             unit = ind.get('unit', '')
-            name = INDICATOR_SHORT.get(key, key)
+            # 用 displayName（与指标卡同一真源），不用 short 名 —— 否则前端反查会
+            # 得到「美股恐惧贪婪(CNN)」而生成器给「美股恐惧贪婪」，两边不一致且
+            # 靠 @deprecated 兜底补丁掩盖。见 2026-11-09 口径三件套。
+            name = display_name(key)
             country = INDICATOR_COUNTRY.get(key, '')
             highlights.append({
                 'indicator': key,
