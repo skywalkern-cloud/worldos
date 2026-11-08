@@ -21,20 +21,13 @@ export type FailReason =
   | 'nan_value'
   | 'not_found'
 
-/**
- * 黄线阈值（超黄线 = 偏旧 = 描灰）。
- *
- * ⚠️ 这不是真源。真源是后端 `scripts/indicator_meta.TIMELINESS_RULES`，
- * 后端已把阈值结果编成 `freshness_level`（stale/expired），describeIndicatorState() 优先用它。
- * 本表只在**老快照缺 freshness_level** 时生效，数值必须与后端黄线保持一致：
- *   daily 5 / monthly 60 / quarterly 120 / yearly 180
- * （T13-3 把季频 200 改回 120；之前前端抄的 3/40/120 中的 3/40 已废弃）
- */
-export const OVERDUE_THRESHOLD_DAYS: Record<Cadence, number> = {
-  daily: 5,
-  monthly: 60,
-  quarterly: 120,
-  yearly: 180,
+/** 后端 T13-5 超期等级（单一真源，前端不再自己算阈值） */
+export type OverdueLevel = 'none' | 'yellow' | 'red'
+
+/** 后端披露的双档阈值（仅用于 tooltip，不参与判定） */
+export interface StalenessRule {
+  yellow_days: number
+  red_days: number
 }
 
 const CADENCE_LABEL: Record<Cadence, string> = {
@@ -76,8 +69,15 @@ export function resolveCadence(info: CadenceInput): Cadence {
 
 export interface StalenessInput extends CadenceInput {
   days_stale?: number | null
-  /** 后端 freshness_level 现多一个值：realtime（实时报价·源未提供日期，days_stale=null） */
+  /** 后端 T13：超期等级/布尔/超期天数/双档阈值（前端只读） */
+  overdue?: boolean | null
+  overdue_level?: string | null
+  days_overdue?: number | null
+  staleness_rule?: StalenessRule | null
+  /** 后端 freshness_level 五态：fresh/realtime/unknown/stale/expired */
   freshness_level?: string | null
+  freshness?: string | null
+  realtime?: boolean | null
 }
 
 export type StalenessKind = 'known' | 'realtime' | 'unknown'
@@ -136,9 +136,15 @@ export function resolveFreshnessState(info: FreshnessInput | null | undefined): 
 export interface StalenessInfo {
   /** 归一化天数；null = 无日期（realtime 或 unknown） */
   days: number | null
+  /** 是否已超黄线（后端 overdue 为真源；旧快照回退到五态） */
   overdue: boolean
+  /** none / yellow / red（后端 overdue_level） */
+  overdueLevel: OverdueLevel | null
+  /** 超出阈值的天数（后端 days_overdue，仅 tooltip 用） */
+  daysOverdue: number | null
   cadence: Cadence
-  thresholdDays: number
+  /** 后端披露的双档阈值，仅 tooltip；缺失为 null（前端不再内置阈值表） */
+  rule: StalenessRule | null
   /** known = 有日期；realtime = 实时报价无日期；unknown = 时效未知 */
   kind: StalenessKind
   /** T13 五态；解析不出时为 null */
@@ -159,28 +165,46 @@ export interface StalenessInfo {
  */
 export function computeStaleness(info: StalenessInput): StalenessInfo {
   const cadence = resolveCadence(info)
-  const thresholdDays = OVERDUE_THRESHOLD_DAYS[cadence]
   const state = resolveFreshnessState(info)
+  const rule = info.staleness_rule ?? null
 
   const raw = info.days_stale
   const known = typeof raw === 'number' && Number.isFinite(raw)
   // 负数（未来日期）钳到 0；null 保持 null，绝不折算成 0
   const days = known ? Math.max(0, Math.trunc(raw as number)) : null
-  const overdue = days !== null && days > thresholdDays
+
+  // 超期判定单一真源在后端：overdue_level → overdue → 五态。前端不再内置阈值表。
+  const level: OverdueLevel | null =
+    info.overdue_level === 'yellow' || info.overdue_level === 'red' || info.overdue_level === 'none'
+      ? info.overdue_level
+      : null
+  const overdue =
+    level !== null
+      ? level !== 'none'
+      : typeof info.overdue === 'boolean'
+      ? info.overdue
+      : state === 'stale' || state === 'expired'
+  const daysOverdue = typeof info.days_overdue === 'number' ? info.days_overdue : null
+
+  const ruleText = rule ? `（黄线 ${rule.yellow_days} / 红线 ${rule.red_days} 天）` : ''
+  const levelText = level === 'red' ? ' —— 已超红线' : level === 'yellow' ? ' —— 已超黄线' : ''
 
   if (days !== null) {
     const label = days === 0 ? '今天' : days === 1 ? '昨天' : `${days} 天前`
-    let title = `${CADENCE_LABEL[cadence]}数据，数据所属期距今 ${days} 天`
+    let title = `${CADENCE_LABEL[cadence]}数据，数据所属期距今 ${days} 天${ruleText}${levelText}`
     if (state) title += `；后端判定：${FRESHNESS_STATE_META[state].label}`
-    return { days, overdue, cadence, thresholdDays, kind: 'known', state, label, title }
+    if (daysOverdue !== null && daysOverdue > 0) title += `；超出 ${daysOverdue} 天`
+    return { days, overdue, overdueLevel: level, daysOverdue, cadence, rule, kind: 'known', state, label, title }
   }
 
   if (state === 'realtime') {
     return {
       days: null,
-      overdue: false,
+      overdue,
+      overdueLevel: level,
+      daysOverdue,
       cadence,
-      thresholdDays,
+      rule,
       kind: 'realtime',
       state,
       label: '实时',
@@ -190,9 +214,11 @@ export function computeStaleness(info: StalenessInput): StalenessInfo {
 
   return {
     days: null,
-    overdue: false,
+    overdue,
+    overdueLevel: level,
+    daysOverdue,
     cadence,
-    thresholdDays,
+    rule,
     kind: 'unknown',
     state,
     label: '时效未知',
@@ -246,10 +272,6 @@ export interface IndicatorStateInput extends StalenessInput {
   excluded_from_scoring?: boolean | null
   exclusion_reason?: string | null
   timeliness?: number | null
-  /** 后端未来字段：已超阈值天数（未超为 0） */
-  days_overdue?: number | null
-  /** 后端未来字段：是否已超阈值 */
-  overdue?: boolean | null
 }
 
 export interface IndicatorState {
@@ -280,14 +302,17 @@ export function describeIndicatorState(info: IndicatorStateInput): IndicatorStat
   //   「描灰只看有日期的超阈值，days_stale=null 不描灰（未知 ≠ 0 天）」
   // 优先用后端状态：stale=超黄线、expired=超红线，阈值已在 TIMELINESS_RULES 里判完，
   // 前端不再另设阈值（否则 daily 4 天后端判 fresh、前端会误描灰）。
+  // 描灰口径（T13 冻结契约 docs/freshness-contract.md）：
+  //   「描灰只看有日期的超阈值，days_stale=null 不描灰（未知 ≠ 0 天）」
+  // 阈值单一真源在后端：优先 overdue_level → overdue → 五态，前端无内置阈值表。
   const datedOverdue =
-    state !== null
-      ? state === 'stale' || state === 'expired'
+    stale.days === null
+      ? false
+      : stale.overdueLevel !== null
+      ? stale.overdueLevel !== 'none'
       : typeof info.overdue === 'boolean'
       ? info.overdue
-      : typeof info.days_overdue === 'number'
-      ? info.days_overdue > 0
-      : stale.overdue
+      : state === 'stale' || state === 'expired'
 
   // 被排除计分的行不再描灰：排除标是更强的声明（“这值根本没参与打分”），
   // 再叠一层描灰（“这值可能误导你”）属于视觉过载。数据旧的信号由副行「N 天前」傅达。
@@ -314,6 +339,42 @@ export function describeIndicatorState(info: IndicatorStateInput): IndicatorStat
     : null
 
   return { stale, state, dimmed, excluded, notCounted, exclusionBadge }
+}
+
+// ====== 维度计数口径 ======
+
+export interface DimensionCountsInput {
+  active_count?: number | null
+  valid_count?: number | null
+  reference_only_count?: number | null
+  required_count?: number | null
+}
+
+export interface DimensionCounts {
+  /** 真正计分的指标数（α>0） */
+  scoring: number
+  /** 参考项（只展示不计分） */
+  referenceOnly: number
+  /** 已剔除（α=0 / 无评分），不计入 scoring 但与 referenceOnly 不同 */
+  excluded: number
+  required: number | null
+}
+
+/**
+ * 维度计数口径（active_count ≠ 计分项）。
+ *
+ * active_count = 非参考项总数；valid_count = 其中真正计分的。
+ * 例：usGdp 被 expired_alpha0 剔出后，economic 是 active 6 / valid 5，
+ * 写「6 项计分」就撒谎了。
+ */
+export function resolveDimensionCounts(d: DimensionCountsInput | null | undefined): DimensionCounts {
+  const active = typeof d?.active_count === 'number' ? d.active_count : null
+  const valid = typeof d?.valid_count === 'number' ? d.valid_count : null
+  const scoring = valid ?? active ?? 0
+  const referenceOnly = typeof d?.reference_only_count === 'number' ? d.reference_only_count : 0
+  const excluded = Math.max(0, (active ?? scoring) - scoring)
+  const required = typeof d?.required_count === 'number' ? d.required_count : null
+  return { scoring, referenceOnly, excluded, required }
 }
 
 /** IAS 数据覆盖分档（降级判断只看 data_coverage，不看 scale_coverage） */

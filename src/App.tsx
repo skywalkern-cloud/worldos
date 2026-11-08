@@ -8,6 +8,7 @@ import {
   describeFailReason,
   describeFreshness,
   resolveCoverageTier,
+  resolveDimensionCounts,
   type DataDateKind,
   type ContributionEntry,
 } from './lib/caliber'
@@ -37,6 +38,11 @@ interface IndicatorInfo {
   dataDateISO?: string | null
   dataDateKind?: DataDateKind | null
   days_stale?: number | null
+  /** T13-5：超期判定单一真源（前端不再自己算阈值） */
+  overdue?: boolean
+  overdue_level?: 'none' | 'yellow' | 'red'
+  days_overdue?: number | null
+  staleness_rule?: { yellow_days: number; red_days: number } | null
   /** T13：实时报价标记（→ freshness_level='realtime'、图标 🔵） */
   realtime?: boolean
   // === 抓取失败兜底 ===
@@ -667,11 +673,13 @@ function DimensionCardV4({
   const weightShrunk =
     typeof wDesign === 'number' && typeof wEffective === 'number' && Math.abs(wEffective - wDesign) > 1e-9
 
-  // 计数口径（龙六 P0）：active_count = 计分项；reference_only_count 单列，
-  // 不能把 valid_count 直接当「有效项」展示，否则 techGreen 会自相矛盾
-  const activeCount = dimMeta?.active_count ?? dimMeta?.valid_count ?? 0
-  const refOnlyCount = dimMeta?.reference_only_count ?? 0
-  const requiredCount = dimMeta?.required_count
+  // 计数口径（龙六 P0/T13）：active_count = 非参考项总数；valid_count = 其中真正计分的。
+  // 不能把 active_count 当「计分项」—— usGdp 被 α=0 剔出后 economic 是 active 6 / valid 5。
+  const counts = resolveDimensionCounts(dimMeta)
+  const scoringCount = counts.scoring
+  const refOnlyCount = counts.referenceOnly
+  const excludedCount = counts.excluded
+  const requiredCount = counts.required
 
   // Group indicators by country
   const grouped = useMemo(() => {
@@ -731,10 +739,15 @@ function DimensionCardV4({
         </div>
       </div>
 
-      {/* 计数口径：计分项 / 参考项 / 最低要求 */}
+      {/* 计数口径：计分项 / 参考项 / 已剔除 / 最低要求 */}
       <div className="flex items-center gap-2 mb-2 text-[10px] text-gray-500">
-        <span>{activeCount} 项计分</span>
+        <span>{scoringCount} 项计分</span>
         {refOnlyCount > 0 && <span className="text-gray-600">· {refOnlyCount} 项参考（不计分）</span>}
+        {excludedCount > 0 && (
+          <span className="text-gray-600" title="α=0 或数据过期，已剔出加权">
+            · {excludedCount} 项已剔除
+          </span>
+        )}
         {typeof requiredCount === 'number' && <span className="text-gray-600">· 需 ≥{requiredCount}</span>}
       </div>
 

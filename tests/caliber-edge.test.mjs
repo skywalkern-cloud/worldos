@@ -17,6 +17,7 @@ import {
   computeStaleness,
   resolveDisplayName,
   describeFreshness,
+  resolveDimensionCounts,
   FRESHNESS_STATE_META,
 } from '../src/lib/caliber.ts'
 
@@ -63,16 +64,29 @@ console.log('\n[0] T13 五态表与文档一致（图标/α 唯一）')
 // ------------------------------------------------------- [1] 老快照兼容（最关键）
 console.log('\n[1] 老快照兼容：图标仍是旧语义 ⚪，但 freshness_level=realtime')
 {
-  const legacy = Object.entries(real.indicators).filter(([, v]) => v.freshness === '⚪')
-  check('真实快照里确实还有 ⚪ 图标', legacy.length > 0, `count=${legacy.length}`)
-  for (const [k, v] of legacy) {
-    const st = resolveFreshnessState(v)
-    check(`${k}: 按 level 解析为 realtime（不是 unknown）`, st === 'realtime', `level=${v.freshness_level} → ${st}`)
-    const cs = computeStaleness(v)
-    check(`${k}: label=实时（不是「时效未知」）`, cs.label === '实时', cs.label)
-    check(`${k}: days=null 且不描灰`, cs.days === null && cs.overdue === false)
-    check(`${k}: 不描灰`, describeIndicatorState(v).dimmed === false)
+  // 不依赖快照巧合 —— 手造一个旧快照样本（T13 前 realtime 画 ⚪）
+  const legacyRealtime = {
+    freshness: '⚪',
+    freshness_level: 'realtime',
+    realtime: true,
+    days_stale: null,
+    frequency: 'daily',
   }
+  const st = resolveFreshnessState(legacyRealtime)
+  check('⚪ + level=realtime → 解析为 realtime（不是 unknown）', st === 'realtime', String(st))
+  const cs = computeStaleness(legacyRealtime)
+  check('同上：label=实时（不是「时效未知」）', cs.label === '实时', cs.label)
+  check('同上：days=null 且不描灰', cs.days === null && describeIndicatorState(legacyRealtime).dimmed === false)
+
+  // 对照：T13 后的真 unknown（⚪ 且无 realtime）不能被误当实时
+  const realUnknown = { freshness: '⚪', freshness_level: 'unknown', realtime: false, days_stale: null, frequency: 'daily' }
+  check('⚪ + level=unknown → unknown', resolveFreshnessState(realUnknown) === 'unknown')
+  check('unknown label=时效未知', computeStaleness(realUnknown).label === '时效未知')
+
+  // level 缺失时才看图标
+  check('仅图标 🔵 → realtime', resolveFreshnessState({ freshness: '🔵' }) === 'realtime')
+  check('仅图标 ⚪ → unknown', resolveFreshnessState({ freshness: '⚪' }) === 'unknown')
+  check('realtime 布尔优先于图标', resolveFreshnessState({ freshness: '⚪', realtime: true }) === 'realtime')
 }
 
 // ------------------------------------------------------- [2] 五态语义（夹具）
@@ -199,23 +213,71 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
   check('指标数 30', all.length === 30, `count=${all.length}`)
 
   const dimmed = all.filter(([, v]) => describeIndicatorState(v).dimmed).map(([k]) => k).sort()
-  check('描灰 = usGdp, oilPrice', dimmed.join(',') === 'oilPrice,usGdp', dimmed.join(','))
+  check('描灰只有 oilPrice（usGdp 被排除计分→不描灰）', dimmed.join(',') === 'oilPrice', dimmed.join(','))
 
   const badges = all.filter(([, v]) => describeIndicatorState(v).exclusionBadge)
-  check('排除标 2 个且均为参考项', badges.length === 2 && badges.every(([, v]) => v.exclusion_reason === 'reference_only'), badges.map(([k]) => k).join(','))
+  check('排除标 3 个', badges.length === 3, badges.map(([k]) => k).join(','))
+  check(
+    '排除标 = usGdp(过期剔除) + aiGrowth/robotInstall(参考项)',
+    badges.map(([k]) => k).sort().join(',') === 'aiGrowth,robotInstall,usGdp',
+    badges.map(([k]) => k).join(',')
+  )
 
   const states = {}
   for (const [, v] of all) {
     const s = resolveFreshnessState(v)
     states[s] = (states[s] ?? 0) + 1
   }
-  check('真实快照状态分布 fresh26/stale2/realtime2', states.fresh === 26 && states.stale === 2 && states.realtime === 2, JSON.stringify(states))
+  check('状态分布 fresh26/expired1/stale1/realtime2', states.fresh === 26 && states.expired === 1 && states.stale === 1 && states.realtime === 2, JSON.stringify(states))
 
   const rt = all.filter(([, v]) => resolveFreshnessState(v) === 'realtime')
   check('realtime 2 个且 days=null', rt.length === 2 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
 
-  // 季频黄线 120：usGdp 223 天 → stale（不是 fresh）
-  check('usGdp 223 天判 stale', resolveFreshnessState(real.indicators.usGdp) === 'stale', String(resolveFreshnessState(real.indicators.usGdp)))
+  check('usGdp 223 天 → expired（红线 210）', resolveFreshnessState(real.indicators.usGdp) === 'expired')
+  check('usGdp overdue_level=red、days_overdue=13', real.indicators.usGdp.overdue_level === 'red' && real.indicators.usGdp.days_overdue === 13)
+}
+
+// ------------------------------------------------------- [10] T13-5 超期字段单一真源
+console.log('\n[10] overdue / overdue_level / days_overdue / staleness_rule（前端不再内置阈值表）')
+{
+  const all = Object.entries(real.indicators)
+  check('每个指标都有 overdue', all.every(([, v]) => typeof v.overdue === 'boolean'))
+  check('每个指标都有 overdue_level', all.every(([, v]) => ['none', 'yellow', 'red'].includes(v.overdue_level)))
+  check('每个指标都有 staleness_rule', all.every(([, v]) => v.staleness_rule && typeof v.staleness_rule.yellow_days === 'number' && typeof v.staleness_rule.red_days === 'number'))
+  check('无日期的指标 days_overdue=null', all.filter(([, v]) => v.days_stale === null).every(([, v]) => v.days_overdue === null))
+  check('有日期且未超 → days_overdue=0', all.filter(([, v]) => v.overdue_level === 'none' && v.days_stale !== null).every(([, v]) => v.days_overdue === 0))
+
+  // 后端字段优先于本地推断
+  const fake = { days_stale: 4, frequency: 'daily', overdue: false, overdue_level: 'none', days_overdue: 0, staleness_rule: { yellow_days: 5, red_days: 10 } }
+  check('daily 4 天：后端说 none → 不描灰（前端不自行按旧 3 天表误判）', describeIndicatorState(fake).dimmed === false)
+  const fake2 = { days_stale: 4, frequency: 'daily', overdue: true, overdue_level: 'yellow', days_overdue: 1, staleness_rule: { yellow_days: 3, red_days: 10 } }
+  check('daily 4 天：后端说 yellow → 描灰', describeIndicatorState(fake2).dimmed === true)
+
+  // staleness_rule 进 tooltip
+  const t = computeStaleness(real.indicators.usGdp).title
+  check('tooltip 含黄/红阈值', /黄线 120/.test(t) && /红线 210/.test(t), t)
+  check('tooltip 含超出天数', /超出 13 天/.test(t), t)
+
+  // 无日期一律不描灰（即使后端误给 overdue）
+  const contradiction = { days_stale: null, frequency: 'daily', overdue: true, overdue_level: 'red', realtime: false, freshness_level: 'unknown' }
+  check('无日期时即使 overdue=true 也不描灰（契约优先级）', describeIndicatorState(contradiction).dimmed === false)
+}
+
+// ------------------------------------------------------- [11] 维度计数口径
+console.log('\n[11] 维度计数：active_count ≠ 计分项')
+{
+  const counts = resolveDimensionCounts(real.meta.dimensions.economic)
+  check('economic: scoring=5（usGdp 已剔除）', counts.scoring === 5, JSON.stringify(counts))
+  check('economic: excluded=1', counts.excluded === 1, JSON.stringify(counts))
+  check('economic: 不把 active_count 6 当计分项', counts.scoring !== real.meta.dimensions.economic.active_count)
+
+  const tg = resolveDimensionCounts(real.meta.dimensions.techGreen)
+  check('techGreen: scoring=2 / referenceOnly=2', tg.scoring === 2 && tg.referenceOnly === 2, JSON.stringify(tg))
+
+  // 边界
+  check('缺字段不烙', JSON.stringify(resolveDimensionCounts({})) === JSON.stringify({ scoring: 0, referenceOnly: 0, excluded: 0, required: null }))
+  check('只有 active 无 valid 时回退', resolveDimensionCounts({ active_count: 4 }).scoring === 4)
+  check('excluded 不为负', resolveDimensionCounts({ active_count: 2, valid_count: 5 }).excluded === 0)
 }
 
 // ------------------------------------------------------- 汇总
