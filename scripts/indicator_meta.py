@@ -262,7 +262,13 @@ IAS_THRESHOLDS = [
     (-1.5, '减仓',     '20-40%',  '⚠️'),
 ]
 IAS_POSITION_ERROR = ('清仓/防御', '0-20%', '🛑')
-IAS_MIN_COVERAGE = 0.6   # 有效权重占比低于此值 → 不给仓位建议
+IAS_MIN_COVERAGE = 0.6      # data_coverage 低于此值 → 不给仓位建议
+IAS_PARTIAL_COVERAGE = 0.8  # 0.6~0.8 → 出分但信号标注「部分维度缺失·参考」
+
+# 综合分标尺：等于设计权重总和（今日 4.6）。
+# 必须派生，不能硬编码——P1 一旦调整 design 权重（sentiment 恢复 0.8 / 新增汇率维度），
+# 硬编码的 4.6 会变成僵尸常数，阈值语义被悄悄改掉而没人知道。
+IAS_SCALE = round(sum(d['weight'] for d in DIMENSIONS), 2)
 
 
 # ═══════════════════════════════════════════
@@ -517,6 +523,12 @@ def validate_metadata() -> list:
         w = dimension_weights(dim)
         if not (0 < w['effective'] <= w['design']):
             problems.append(f'维度 {dim["id"]} 有效权重异常: {w}')
+
+    # IAS_SCALE 必须等于设计权重总和
+    if abs(IAS_SCALE - sum(d['weight'] for d in DIMENSIONS)) > 1e-9:
+        problems.append(f'IAS_SCALE({IAS_SCALE}) != Σ设计权重({sum(d["weight"] for d in DIMENSIONS)})')
+    if abs(IAS_SCALE - sum(d['weight'] for d in DIMENSION_CONFIG)) > 1e-9:
+        problems.append('DIMENSION_CONFIG 与 DIMENSIONS 的权重不一致')
 
     orphans = [k for k in INDICATORS if k not in seen]
     unscored_orphans = [k for k in orphans if not is_reference_only(k)]

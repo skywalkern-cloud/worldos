@@ -373,7 +373,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "chinaPmi": {
       "value": 49.3,
@@ -398,7 +400,9 @@
       "unit": "",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "usGdp": {
       "value": 2.0,
@@ -423,7 +427,9 @@
       "unit": "%",
       "timeliness": 0.5,
       "freshness": "🟡",
-      "freshness_level": "stale"
+      "freshness_level": "stale",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "servicePmi": {
       "value": 49.7,
@@ -448,7 +454,9 @@
       "unit": "",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "usCpi": {
       "value": 3.7,
@@ -473,7 +481,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "corePce": {
       "value": 2.3,
@@ -498,7 +508,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "vix": {
       "value": 20.52,
@@ -523,7 +535,9 @@
       "unit": "",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "oilPrice": {
       "value": 102.95,
@@ -549,6 +563,8 @@
       "timeliness": 0.5,
       "freshness": "🟡",
       "freshness_level": "stale",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null,
       "used_fallback": true,
       "fetchError": {
         "reason": "not_found",
@@ -577,8 +593,10 @@
       "source": "NYMEX期货",
       "unit": "$/MMBtu",
       "timeliness": 1.0,
-      "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness": "⚪",
+      "freshness_level": "realtime",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "fedRate": {
       "value": 3.88,
@@ -603,7 +621,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "usBond2Y": {
       "value": 4.51,
@@ -628,7 +648,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "usBond5Y": {
       "value": 4.64,
@@ -653,7 +675,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "usBond10Y": {
       "value": 4.86,
@@ -678,7 +702,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "usNonFarm": {
       "value": 16.5,
@@ -703,7 +729,9 @@
       "unit": "万人",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "fearGreed": {
       "value": 22.1,
@@ -728,7 +756,9 @@
       "unit": "",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "dollarIndex": {
       "value": 96.9,
@@ -753,7 +783,9 @@
       "unit": "",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "cpi": {
       "value": 0.9,
@@ -778,7 +810,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "ppi": {
       "value": 5.0,
@@ -803,7 +837,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "lpr": {
       "value": 3.0,
@@ -828,7 +864,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "dr007": {
       "value": 1.283,
@@ -853,7 +891,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "m2": {
       "value": 7.2,
@@ -878,7 +918,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "creditSpread": {
       "value": 327,
@@ -903,7 +945,9 @@
       "unit": "bp",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "carbonPrice": {
       "value": 96.19,
@@ -928,7 +972,9 @@
       "unit": "¥/吨",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "electricity": {
       "value": 3.9,
@@ -953,7 +999,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "renewEnergyInvest": {
       "value": 1256.0,
@@ -978,7 +1026,9 @@
       "unit": "点",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "aiGrowth": {
       "value": 4.1,
@@ -1003,7 +1053,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only"
     },
     "robotInstall": {
       "value": 5.5,
@@ -1028,7 +1080,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only"
     },
     "evPenetration": {
       "value": 65.4,
@@ -1053,7 +1107,9 @@
       "unit": "%",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "lmeIndex": {
       "value": 13755.5,
@@ -1077,8 +1133,10 @@
       "source": "LME-综合铜03",
       "unit": "$/吨",
       "timeliness": 1.0,
-      "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness": "⚪",
+      "freshness_level": "realtime",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     },
     "shanghaiCopper": {
       "value": 105060.0,
@@ -1103,7 +1161,9 @@
       "unit": "¥/吨",
       "timeliness": 1.0,
       "freshness": "🟢",
-      "freshness_level": "fresh"
+      "freshness_level": "fresh",
+      "excluded_from_scoring": false,
+      "exclusion_reason": null
     }
   },
   "meta": {
@@ -1113,6 +1173,8 @@
       "max_possible": 4.6,
       "weight_design_sum": 4.6,
       "weight_effective_sum": 4.0,
+      "scale_coverage": 0.87,
+      "ias_scale": 4.6,
       "valid_weight": 4.0,
       "data_coverage": 1.0,
       "counted_dimensions": [

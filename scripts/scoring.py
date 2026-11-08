@@ -23,6 +23,8 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     IAS_THRESHOLDS,
     IAS_POSITION_ERROR,
     IAS_MIN_COVERAGE,
+    IAS_PARTIAL_COVERAGE,
+    IAS_SCALE,
     required_valid_count,
     dimension_weights,
     parse_period,
@@ -355,6 +357,8 @@ def calc_ias(dim_scores: dict) -> dict:
             'max_possible': round(design_weight, 1),
             'weight_design_sum': round(design_weight, 2),
             'weight_effective_sum': round(total_weight, 2),
+            'scale_coverage': 0.0,
+            'ias_scale': IAS_SCALE,
             'valid_weight': 0.0,
             'data_coverage': 0.0,
             'counted_dimensions': [],
@@ -368,7 +372,10 @@ def calc_ias(dim_scores: dict) -> dict:
     normalized = round(total_weighted / valid_weight, 4)
     # score 恒按「设计权重总和(4.6)」还原，保证与历史阈值/前端分档可比的量纲；
     # 有效权重之和是 4.0（D 案收缩后），所以 normalized 才是横比用的那个数。
-    ias_score = round(normalized * design_weight, 2)
+    if abs(design_weight - IAS_SCALE) > 1e-9:
+        # 防御：设计权重总和变了却没人重标阈值
+        print(f'⚠️ 设计权重总和 {design_weight} != IAS_SCALE {IAS_SCALE}，阈值可能已失真')
+    ias_score = round(normalized * IAS_SCALE, 2)
 
     if coverage < IAS_MIN_COVERAGE:
         signal, position, icon = '数据不足', '不适用', '⚪'
@@ -380,6 +387,9 @@ def calc_ias(dim_scores: dict) -> dict:
             if ias_score >= threshold:
                 signal, position, icon = sig, pos, ico
                 break
+        if coverage < IAS_PARTIAL_COVERAGE:
+            # 中间档：仍然出分（部分维度缺失不等于没结论），但必须标出来
+            signal = f'{signal}（部分维度缺失·参考）'
 
     return {
         'score': ias_score,
@@ -387,6 +397,10 @@ def calc_ias(dim_scores: dict) -> dict:
         'max_possible': round(design_weight, 1),
         'weight_design_sum': round(design_weight, 2),
         'weight_effective_sum': round(total_weight, 2),
+        # 披露用，不触发降级：有效权重是设计决定（含主动收缩），
+        # 拿它降级等于重复惩罚（既收缩权重又降可信度）。
+        'scale_coverage': round(total_weight / design_weight, 3) if design_weight else 0.0,
+        'ias_scale': IAS_SCALE,
         'valid_weight': round(valid_weight, 2),
         'data_coverage': coverage,
         'counted_dimensions': counted,
@@ -452,6 +466,16 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         name = INDICATOR_NAMES.get(key, key)
         ref_only = is_reference_only(key)
 
+        # 是否进评分：参考项 / 无评分 / 过期(α=0) 三种都不进
+        if ref_only:
+            excluded, exclusion_reason = True, 'reference_only'
+        elif score is None:
+            excluded, exclusion_reason = True, 'no_score'
+        elif timeliness <= 0:
+            excluded, exclusion_reason = True, 'expired_alpha0'
+        else:
+            excluded, exclusion_reason = False, None
+
         # T12：参考项固定灰信号，不能显示红/黄——它根本没进结论，
         # 却给读者一个红灯，正是我们要消灭的展示层误导。
         if ref_only:
@@ -485,8 +509,15 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'source': info.get('source', ''),
             'unit': info.get('unit', ''),
             'timeliness': timeliness,
-            'freshness': get_freshness_label(timeliness),
-            'freshness_level': get_freshness_level(timeliness),
+            # T10b：realtime 且无日期 → ⚪ 语义是「实时但未核验」，与 🟢「有日期且未超阈值」分开。
+            # 一边说「源未提供日期」一边亮绿灯，就是我们今天在骂的假绿灯。
+            'freshness': ('⚪' if (realtime and data_date is None)
+                          else get_freshness_label(timeliness)),
+            'freshness_level': ('realtime' if (realtime and data_date is None)
+                                else get_freshness_level(timeliness)),
+            # 是否被排除在评分之外（给前端区分「数据旧了」和「这项没进评分」）
+            'excluded_from_scoring': excluded,
+            'exclusion_reason': exclusion_reason,
         }
         # fetch 阶段带入的降级痕迹（fetch 失败、用上一轮值兜底）
         if info.get('used_fallback'):
