@@ -277,6 +277,59 @@ export function describeExclusion(reason?: string | null): string {
   }
 }
 
+/**
+ * 评分着色。
+ *
+ * ⚠️ 红绿是「结论」的语言，参考项没有结论资格：
+ *   后端已经给了 signal='reference' / reference_only=true，前端就不能再用红字说「这项很糟」。
+ *   数值照给（那是事实），颜色必须中性，判断权交回读者。
+ *
+ * 同一个事实只该有一处判断 —— 标记与着色走两套分支就是这个 bug 的成因。
+ */
+export type ScoreTone = 'positive' | 'negative' | 'neutral'
+
+export function resolveScoreTone(
+  score: number | null | undefined,
+  opts?: { referenceOnly?: boolean | null; signal?: string | null }
+): ScoreTone {
+  if (opts?.referenceOnly === true || opts?.signal === 'reference') return 'neutral'
+  if (typeof score !== 'number' || !Number.isFinite(score)) return 'neutral'
+  if (score > 0) return 'positive'
+  if (score < 0) return 'negative'
+  return 'neutral'
+}
+
+/**
+ * 定点舍入：half-up-away-from-zero（与后端 T15-1 `indicator_meta.q()` 同口径）。
+ *
+ * ⚠️ 不能用 `toFixed` / `Math.round(x*10**n)/10**n`：
+ *   `(-0.07335).toFixed(4)` → "-0.0733"（二进制浮点下 0.07335 实际是 0.07334999…）
+ *   后端 half-up 给的是 -0.0734。两套口径同屏并列会看起来自相矛盾。
+ *
+ * 这里借指数字符串移小数点位，避开二进制误差：Number("0.07335e4") === 733.5。
+ */
+export function roundHalfUp(value: number, places = 2): number {
+  if (!Number.isFinite(value)) return value
+  const shift = 10 ** places
+  const shifted = Number(`${Math.abs(value)}e${places}`)
+  if (!Number.isFinite(shifted)) return value
+  const rounded = Math.round(shifted) // Math.round 对 .5 向 +∞，配合 abs 即 away-from-zero
+  return (Math.sign(value) * rounded) / shift
+}
+
+/** 定点舍入后转字符串（用于分数/归一化等需与后端一致的数字） */
+export function formatDecimal(value: number | null | undefined, places = 2, fallback = '—'): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return roundHalfUp(value, places).toFixed(places)
+}
+
+/** 带显式正号的有符号数字（评分习惯） */
+export function formatSigned(value: number | null | undefined, places = 2, fallback = '—'): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  const s = formatDecimal(value, places, fallback)
+  return value > 0 ? `+${s}` : s
+}
+
 // ====== 指标行最终状态（App 与夹具校验共用的唯一实现） ======
 
 export interface IndicatorStateInput extends StalenessInput {
@@ -431,6 +484,34 @@ export function describeFailReason(reason?: string | null): FailReasonMeta {
     return FAIL_REASON_META[reason as FailReason]
   }
   return { label: reason || '未知原因', tone: 'muted' }
+}
+
+export interface FailureStatusInput {
+  used_fallback?: boolean | null
+  reason?: string | null
+  days_stale?: number | null
+}
+
+export interface FailureStatus {
+  /** fallback = 有值但不可信；hard = 没拿到值 */
+  variant: 'fallback' | 'hard'
+  /** 展示文案（两种状态绝对不能同一句话） */
+  text: string
+}
+
+/**
+ * 失败状态的唯一判定入口。
+ *
+ * 「已兜底」和「没拿到值」是两种状态，曾经共用一句「数据源无记录」，
+ * 正是本轮在治的病：把「有值但不可信」和「没有值」拱成一句。
+ */
+export function describeFailureStatus(f: FailureStatusInput): FailureStatus {
+  if (f.used_fallback === true) {
+    const d = f.days_stale
+    const when = typeof d === 'number' ? `（${d <= 0 ? '今天' : `${d} 天前`}）` : '（无日期）'
+    return { variant: 'fallback', text: `已兜底${when}` }
+  }
+  return { variant: 'hard', text: describeFailReason(f.reason).label }
 }
 
 // ====== P1 预留：指标贡献度 ======

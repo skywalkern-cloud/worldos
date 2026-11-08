@@ -18,6 +18,11 @@ import {
   resolveDisplayName,
   describeFreshness,
   resolveDimensionCounts,
+  resolveScoreTone,
+  describeFailureStatus,
+  roundHalfUp,
+  formatSigned,
+  formatDecimal,
   FRESHNESS_STATE_META,
 } from '../src/lib/caliber.ts'
 
@@ -288,6 +293,78 @@ console.log('\n[11] 维度计数：active_count ≠ 计分项')
   check('缺字段不烙', JSON.stringify(resolveDimensionCounts({})) === JSON.stringify({ scoring: 0, referenceOnly: 0, excluded: 0, required: null }))
   check('只有 active 无 valid 时回退', resolveDimensionCounts({ active_count: 4 }).scoring === 4)
   check('excluded 不为负', resolveDimensionCounts({ active_count: 2, valid_count: 5 }).excluded === 0)
+}
+
+// ------------------------------------------------------- [12] 参考项着色（龙五必修 1）
+console.log('\n[12] 参考项一律中性色：红绿是结论的语言，参考项没有结论资格')
+{
+  const ai = real.indicators.aiGrowth
+  check('aiGrowth 是 reference_only', ai.reference_only === true)
+  check('aiGrowth score 为负（-0.59）', ai.score < 0, String(ai.score))
+  check('aiGrowth 着色 = neutral（不是 negative）', resolveScoreTone(ai.score, { referenceOnly: true, signal: ai.signal }) === 'neutral')
+
+  const robot = real.indicators.robotInstall
+  check('robotInstall 着色 = neutral', resolveScoreTone(robot.score, { referenceOnly: robot.reference_only, signal: robot.signal }) === 'neutral')
+
+  // signal 单独也能生效（防止后端只给 signal 不给 reference_only）
+  check('仅 signal=reference 也走中性', resolveScoreTone(-0.9, { signal: 'reference' }) === 'neutral')
+  check('普通负分仍走 negative', resolveScoreTone(-0.9, { referenceOnly: false, signal: 'red' }) === 'negative')
+  check('普通正分仍走 positive', resolveScoreTone(0.9, { signal: 'green' }) === 'positive')
+  check('null 分数走 neutral', resolveScoreTone(null, { signal: 'red' }) === 'neutral')
+
+  // 全量回归：真实快照里所有参考项的 score 都不应出红绿
+  const refs = Object.entries(real.indicators).filter(([, v]) => v.reference_only === true || v.signal === 'reference')
+  check('真实快照有参考项样本', refs.length > 0, `count=${refs.length}`)
+  check('参考项全部中性着色', refs.every(([, v]) => resolveScoreTone(v.score, { referenceOnly: v.reference_only, signal: v.signal }) === 'neutral'))
+  const nonRef = Object.entries(real.indicators).filter(([, v]) => v.reference_only !== true && v.signal !== 'reference')
+  check('非参考项不受影响（仍有红绿）', nonRef.some(([, v]) => resolveScoreTone(v.score, { signal: v.signal }) !== 'neutral'))
+}
+
+// ------------------------------------------------------- [13] 兜底 ≠ 缺失（龙五必修 2）
+console.log('\n[13] 失败状态两分：已兜底（有值不可信） vs 数据源无记录（没值）')
+{
+  const failed = real.validity_report.failed
+  check('真实快照 failed 有 2 条', failed.length === 2, `count=${failed.length}`)
+
+  const oil = failed.find(f => f.key === 'oilPrice')
+  const epu = failed.find(f => f.key === 'epu')
+  check('oilPrice 在 failed 里且 used_fallback=true', oil?.used_fallback === true)
+  check('epu 在 failed 里且 used_fallback=false', epu?.used_fallback === false)
+
+  const oilStatus = describeFailureStatus(oil)
+  const epuStatus = describeFailureStatus(epu)
+  check('oilPrice → variant=fallback', oilStatus.variant === 'fallback')
+  check('oilPrice 文案含「已兜底」且带天数', /已兜底/.test(oilStatus.text) && /9 天前/.test(oilStatus.text), oilStatus.text)
+  check('epu → variant=hard', epuStatus.variant === 'hard')
+  check('epu 文案是「数据源无记录」，不含「兜底」', epuStatus.text === '数据源无记录' && !/兜底/.test(epuStatus.text), epuStatus.text)
+  check('两者文案不相同', oilStatus.text !== epuStatus.text, `${oilStatus.text} vs ${epuStatus.text}`)
+
+  // 无日期兜底不能写成「0 天前」
+  const noDate = describeFailureStatus({ used_fallback: true, days_stale: null })
+  check('兜底且无日期 → 不写 0 天前', /无日期/.test(noDate.text) && !/今天/.test(noDate.text), noDate.text)
+}
+
+// ------------------------------------------------------- [14] 定点舍入（与后端 T15-1 同口径）
+console.log('\n[14] half-up-away-from-zero：不能用 toFixed / 裸 Math.round')
+{
+  check('toFixed(4) 的错值（作为对照）', (-0.07335).toFixed(4) === '-0.0733')
+  check('-0.07335 → 4位 = -0.0734', roundHalfUp(-0.07335, 4).toFixed(4) === '-0.0734', roundHalfUp(-0.07335, 4).toFixed(4))
+  check('-0.07335 → 3位 = -0.073', roundHalfUp(-0.07335, 3).toFixed(3) === '-0.073')
+  check('-0.245 → 2位 = -0.25（away from zero）', roundHalfUp(-0.245, 2).toFixed(2) === '-0.25')
+  check('0.245 → 2位 = 0.25', roundHalfUp(0.245, 2).toFixed(2) === '0.25')
+  check('0.125 → 2位 = 0.13（不是 banker 的 0.12）', roundHalfUp(0.125, 2).toFixed(2) === '0.13', roundHalfUp(0.125, 2).toFixed(2))
+  check('NaN 不抛错', Number.isNaN(roundHalfUp(NaN)))
+
+  check('formatSigned 正数带 +', formatSigned(0.5, 2) === '+0.50')
+  check('formatSigned 负数不带多余符号', formatSigned(-0.5, 2) === '-0.50')
+  check('formatSigned null → 占位', formatSigned(null, 2, '-') === '-')
+  check('formatDecimal 缺省占位', formatDecimal(undefined) === '—')
+
+  // 与后端实际值对账
+  const norm = real.meta.ias.normalized
+  check('真实 normalized 原值 -0.07335 量级', Math.abs(norm - -0.07335) < 1e-9, String(norm))
+  check('卡上展示 -0.0734', formatSigned(norm, 4) === '-0.0734', formatSigned(norm, 4))
+  check('IAS score 展示 -0.34', formatSigned(real.meta.ias.score, 2) === '-0.34', formatSigned(real.meta.ias.score, 2))
 }
 
 // ------------------------------------------------------- 汇总

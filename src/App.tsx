@@ -9,6 +9,9 @@ import {
   describeFreshness,
   resolveCoverageTier,
   resolveDimensionCounts,
+  resolveScoreTone,
+  describeFailureStatus,
+  formatSigned,
   type DataDateKind,
   type ContributionEntry,
 } from './lib/caliber'
@@ -493,7 +496,7 @@ function IASCard({ ias }: { ias: IASMeta }) {
     <div className={`bg-gradient-to-r ${getGradient()} rounded-xl p-5 mb-4 text-center shadow-lg`}>
       <div className="text-sm text-white/70 mb-1">IAS 综合投资评分</div>
       <div className="text-4xl font-bold text-white mb-1">
-        {score > 0 ? '+' : ''}{score.toFixed(2)}
+        {formatSigned(score, 2)}
       </div>
       <div className="text-lg font-medium text-white/90 flex items-center justify-center gap-1.5">
         <span>{kw.emoji}</span>
@@ -532,7 +535,7 @@ function IASCard({ ias }: { ias: IASMeta }) {
         )}
         {typeof ias.normalized === 'number' && (
           <span className="text-[11px] text-white/65" title="归一化刻度 -1~1，供横向比较；不参与渐变染色">
-            归一化 {ias.normalized > 0 ? '+' : ''}{ias.normalized.toFixed(3)}
+            归一化 {formatSigned(ias.normalized, 4)}
           </span>
         )}
       </div>
@@ -626,7 +629,7 @@ function DimensionBar({ dimensions }: { dimensions: Record<string, DimensionMeta
                 : 'bg-gray-500/15 text-gray-400'
             }`}
           >
-            {dimIcon} {dimName} {score > 0 ? '+' : ''}{score.toFixed(2)} {kw.emoji} {kw.keyword}
+            {dimIcon} {dimName} {formatSigned(score, 2)} {kw.emoji} {kw.keyword}
           </div>
         )
       })}
@@ -732,7 +735,7 @@ function DimensionCardV4({
             <>
               {kw && <span className="text-xs text-gray-400">{kw.emoji} {kw.keyword}</span>}
               <span className={`text-lg font-bold ${getScoreColor()}`}>
-                {score !== null && score > 0 ? '+' : ''}{score !== null ? score.toFixed(2) : '—'}
+                {formatSigned(score, 2)}
               </span>
             </>
           )}
@@ -822,6 +825,11 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
   // 双轴判定（dimmed / not_counted）统一走 caliber.describeIndicatorState，
   // 夹具校验 scripts/make_fixture_edge_cases.py + tests/caliber-edge.test.mjs 用的是同一实现
   const { stale, dimmed, exclusionBadge } = describeIndicatorState(info)
+  // 红绿是「结论」的语言，参考项没有结论资格（龙五 12:00 必修 1）
+  const scoreTone = resolveScoreTone(info.score, {
+    referenceOnly: info.reference_only === true,
+    signal: info.signal,
+  })
   const isFallback = info.used_fallback === true
 
   // Determine background color based on signal
@@ -842,9 +850,7 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
   const isMissing = displayValue === '待接入'
 
   // Score display
-  const scoreDisplay = typeof info.score === 'number' && Number.isFinite(info.score)
-    ? `${info.score > 0 ? '+' : ''}${info.score.toFixed(2)}`
-    : '-'
+  const scoreDisplay = formatSigned(info.score, 2, '-')
 
   return (
     <div className={`${rowBg} py-1 ${dimmed ? 'opacity-55' : ''} ${info.reference_only === true ? 'opacity-70' : ''}`}>
@@ -895,10 +901,10 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
             {info.trend === 'up' ? '↑' : info.trend === 'down' ? '↓' : '→'}
           </span>
           <span className={`font-mono text-xs w-12 text-right ${
-            info.score !== null && info.score > 0 ? 'text-green-500/60' :
-            info.score !== null && info.score < 0 ? 'text-red-500/60' :
+            scoreTone === 'positive' ? 'text-green-500/60' :
+            scoreTone === 'negative' ? 'text-red-500/60' :
             'text-gray-500/60'
-          }`}>
+          }`} title={scoreTone === 'neutral' && info.signal === 'reference' ? '参考项：不计分，无红绿结论' : undefined}>
             {scoreDisplay}
           </span>
         </div>
@@ -974,15 +980,17 @@ function getSignalEmoji(signal: string): string {
 function FailureChip({ failure }: { failure: ValidityFailure }) {
   const reasonMeta = describeFailReason(failure.reason)
   const name = failure.displayName || failure.key
-  const tone = failure.used_fallback
+  // 唯一判定入口：兜底 ≠ 缺失（龙五 12:00 必修 2）
+  const status = describeFailureStatus(failure)
+  const isFallback = status.variant === 'fallback'
+
+  const tone = isFallback
     ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-200'
-    : reasonMeta.tone === 'error'
-    ? 'bg-red-500/10 border-red-500/30 text-red-200'
-    : 'bg-gray-500/10 border-gray-500/30 text-gray-300'
+    : 'bg-red-500/10 border-red-500/30 text-red-200'
 
   const titleLines = [
     `${name}（${failure.key}）`,
-    `${failure.used_fallback ? '抓取失败·已兜底' : '未获取到数据'} · ${reasonMeta.label}`,
+    isFallback ? `抓取失败但已用上一轮值兜底 · 失败原因：${reasonMeta.label}` : `未获取到数据 · ${reasonMeta.label}`,
     failure.reasonText || '',
     failure.source ? `来源：${failure.source}` : '',
     failure.days_stale === null || failure.days_stale === undefined
@@ -995,9 +1003,9 @@ function FailureChip({ failure }: { failure: ValidityFailure }) {
       className={`text-xs px-2 py-0.5 rounded border ${tone}`}
       title={titleLines.join('\n')}
     >
-      {failure.used_fallback ? '⚠️ ' : ''}
+      {isFallback ? '⚠️ ' : ''}
       {name}
-      <span className="opacity-60"> · {reasonMeta.label}</span>
+      <span className="opacity-70"> · {status.text}</span>
     </span>
   )
 }
@@ -1049,7 +1057,7 @@ function DimensionCommentaryItem(props: {
           <span className="text-lg">{dimLabel.icon}</span>
           <span className="text-sm font-medium text-gray-200">{dimLabel.name}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full ${getScoreBadgeColor(dimCommentary.signal)}`}>
-            {signalEmoji} {dimCommentary.score > 0 ? '+' : ''}{dimCommentary.score.toFixed(2)}
+            {signalEmoji} {formatSigned(dimCommentary.score, 2)}
           </span>
         </div>
         <span className="text-gray-500 text-sm transition-transform" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
@@ -1116,7 +1124,7 @@ function CommentarySection({
             <span className="text-lg">🔍</span>
             <span className="text-sm font-semibold text-blue-200">IAS 整体解读</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
-              {commentary.ias.score > 0 ? '+' : ''}{commentary.ias.score.toFixed(2)}
+              {formatSigned(commentary.ias.score, 2)}
             </span>
             <span className="text-xs text-gray-400">{commentary.ias.signal}</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/25 text-white/70 border border-white/20">
