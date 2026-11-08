@@ -185,6 +185,17 @@ interface CommentaryData {
   dimensions: Record<string, DimensionCommentary>
 }
 
+/**
+ * 归一化显示位数。
+ *
+ * ⚠️ 未定口径，两位 PM 口径冲突，等龙五裁定（2026-11-09 14:00 闸门）：
+ *   - 龙五：4 位（跟卡上 -0.34 的 2 位视觉对齐，避免截断/进位混搭）
+ *   - 龙六：6 位（后端 T15-1 定死 normalized 存 6 位，前端再舍入等于造近似真源）
+ * 当前按龙五（他是视觉验收门）。数据源不变（仍读后端 6 位值），仅展示位数。
+ * 切换只需改这一个数字，勿在调用处硬编码。
+ */
+const NORMALIZED_DISPLAY_PLACES = 4
+
 // ====== 6维度配置 ======
 
 const DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
@@ -535,7 +546,7 @@ function IASCard({ ias }: { ias: IASMeta }) {
         )}
         {typeof ias.normalized === 'number' && (
           <span className="text-[11px] text-white/65" title="归一化刻度 -1~1，供横向比较；不参与渐变染色">
-            归一化 {formatSigned(ias.normalized, 4)}
+            归一化 {formatSigned(ias.normalized, NORMALIZED_DISPLAY_PLACES)}
           </span>
         )}
       </div>
