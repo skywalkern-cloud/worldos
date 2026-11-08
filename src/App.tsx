@@ -14,6 +14,7 @@ import {
   resolveIasKeyword,
   resolveIasLevel,
   formatSigned,
+  formatDecimal,
   type DataDateKind,
   type ContributionEntry,
 } from './lib/caliber'
@@ -560,7 +561,14 @@ function IASCard({ ias }: { ias: IASMeta }) {
           </span>
         )}
         {typeof ias.normalized === 'number' && (
-          <span className="text-[11px] text-white/65" title="归一化刻度 -1~1，供横向比较；不参与渐变染色">
+          <span
+            className="text-[11px] text-white/65"
+            title={
+              '归一化刻度 -1~1，供横向比较；不参与渐变染色。' +
+              `\n真值（后端 6 位）：${formatDecimal(ias.normalized, 6)}` +
+              `\n本次仅展示 ${NORMALIZED_DISPLAY_PLACES} 位，是排版选择，未重算。`
+            }
+          >
             归一化 {formatSigned(ias.normalized, NORMALIZED_DISPLAY_PLACES)}
           </span>
         )}

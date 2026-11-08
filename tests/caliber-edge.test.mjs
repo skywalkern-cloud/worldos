@@ -369,6 +369,9 @@ console.log('\n[14] half-up-away-from-zero：不能用 toFixed / 裸 Math.round'
   check('真实 normalized 原值 -0.07335 量级', Math.abs(norm - -0.07335) < 1e-9, String(norm))
   check('卡上展示 -0.0734', formatSigned(norm, 4) === '-0.0734', formatSigned(norm, 4))
   check('IAS score 展示 -0.34', formatSigned(real.meta.ias.score, 2) === '-0.34', formatSigned(real.meta.ias.score, 2))
+  // 龙六约束：显示位数是排版选择，但真值必须可对照（tooltip 露 6 位）
+  check('6 位真值可原样输出', formatDecimal(norm, 6) === '-0.073350', formatDecimal(norm, 6))
+  check('展示值与真值同源（不是 score/4.6 反推）', Math.abs(Number(formatDecimal(norm, 6)) - norm) < 1e-12)
 }
 
 // ------------------------------------------------------- [15] IAS 判级收归后端（「偏空」 bug）
