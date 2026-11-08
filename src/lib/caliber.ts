@@ -94,8 +94,9 @@ export interface StalenessInfo {
  * 时效计算。只读后端 days_stale，不重算日期。
  *
  * ⚠️ realtime 不能当 unknown 也不能当 0：
- *   ⚪ = 实时报价、数据源不提供日期（naturalGas / lmeIndex），timeliness 仍为 1.0
- *   它与「不知道多旧」语义相反 —— 前者是「够新以至于无需日期」，后者是「不知道」。
+ *   🔵 = 实时报价、数据源不提供日期（naturalGas / lmeIndex），timeliness 仍为 1.0
+ *   ⚪ = 时效未知（T13：有值但无日期且非 realtime），timeliness = 0.5
+ *   两者语义相反 —— 前者是「够新以至于无需日期」，后者是「不知道，按偏旧计权」。
  */
 export function computeStaleness(info: StalenessInput): StalenessInfo {
   const cadence = resolveCadence(info)
@@ -137,10 +138,20 @@ export function computeStaleness(info: StalenessInput): StalenessInfo {
   }
 }
 
-/** freshness 徽标语义（后端 P0/D+ 收窄定义） */
+/** freshness 徽标语义（后端 P0/D+ 收窄定义，T13 五态互斥）
+ *
+ * T13：⚪ 不再一码两用。旧实现 realtime（实时报价·源无日期）与 unknown（不知道多旧）
+ * 都画 ⚪，语义相反却看着一样。现：🔵=实时，⚪=未知（α=0.5，按偏旧计权）。
+ */
 export function describeFreshness(freshness?: string | null, freshnessLevel?: string | null): string {
-  if (freshnessLevel === 'realtime' || freshness === '⚪') return '实时报价·数据源未提供日期'
+  // 以 freshness_level 为准（图标在老快照里可能还是旧语义）
+  if (freshnessLevel === 'realtime') return '实时报价·数据源未提供日期'
+  if (freshnessLevel === 'unknown') return '时效未知：无数据所属期，按偏旧（α=0.5）计权'
   switch (freshness) {
+    case '🔵':
+      return '实时报价·数据源未提供日期'
+    case '⚪':
+      return '时效未知：无数据所属期，按偏旧（α=0.5）计权'
     case '🟢':
       return '已核验新鲜（有日期且未超阈值）'
     case '🟡':

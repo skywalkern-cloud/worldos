@@ -103,7 +103,7 @@ console.log('\n[5] 覆盖率中间档 0.6~0.8 → partial（出分但仅参考�
   check('null → ok（不降级）', resolveCoverageTier(null) === 'ok')
 }
 
-console.log('\n[6] realtime ⚪ vs 兜底无日期 —— 两者都 days_stale=null 但语义相反')
+console.log('\n[6] realtime 🔵 vs 兜底无日期 —— 两者都 days_stale=null 但语义相反')
 {
   const rt = Object.entries(fixture.indicators).filter(([, v]) => v.freshness_level === 'realtime')
   check('夹具里存在 realtime 样本', rt.length > 0, `count=${rt.length}`)
@@ -125,6 +125,36 @@ console.log('\n[6] realtime ⚪ vs 兜底无日期 —— 两者都 days_stale=n
     check(`${k}: label=时效未知`, st.label === '时效未知')
     check(`${k}: 不当 0 天、不描灰`, st.days === null && st.overdue === false)
   }
+}
+
+console.log('\n[6b] T13：no_date（有值·无日期·非 realtime）→ ⚪ + α=0.5 + 进 degraded')
+{
+  const items = Object.entries(fixture.indicators).filter(([, v]) => v.freshness_level === 'unknown')
+  check('夹具里存在 unknown 样本', items.length > 0, `count=${items.length}`)
+  for (const [k, v] of items) {
+    check(`${k}: 图标=⚪`, v.freshness === '⚪', v.freshness)
+    check(`${k}: α=0.5`, v.timeliness === 0.5, `timeliness=${v.timeliness}`)
+    check(`${k}: 不被当成过期剔除`, v.exclusion_reason !== 'expired_alpha0', String(v.exclusion_reason))
+    check(`${k}: 徽标=时效未知`, /时效未知/.test(describeFreshness(v.freshness, v.freshness_level)))
+    check(`${k}: 不再说成「实时报价」`, !/实时/.test(describeFreshness(v.freshness, v.freshness_level)))
+  }
+
+  const degraded = fixture.validity_report.degraded ?? []
+  check('degraded 是带 reason 的列表', Array.isArray(degraded), typeof degraded)
+  const noDate = degraded.filter(d => d.reason === 'no_date').map(d => d.key)
+  check('degraded 含 reason=no_date 的条目', noDate.length > 0, noDate.join(','))
+  check('usGdp 在 no_date 降级项里', noDate.includes('usGdp'), noDate.join(','))
+  check(
+    'degraded_count 与列表长度一致',
+    fixture.validity_report.degraded_count === degraded.length,
+    `${fixture.validity_report.degraded_count} vs ${degraded.length}`
+  )
+
+  // 反例：任何无日期且非 realtime 的指标都不允许亮绿灯
+  const fakeGreen = Object.entries(fixture.indicators).filter(
+    ([, v]) => v.days_stale === null && v.realtime !== true && v.freshness === '🟢'
+  )
+  check('无日期非 realtime 不得亮 🟢', fakeGreen.length === 0, fakeGreen.map(([k]) => k).join(','))
 }
 
 console.log('\n[7] 全局不变量')

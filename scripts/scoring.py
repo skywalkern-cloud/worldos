@@ -31,6 +31,9 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     days_stale,
     is_reference_only,
     caliber_of,
+    resolve_freshness,
+    FRESHNESS_STATES,
+    UNKNOWN_ALPHA,
 )
 
 # ═══════════════════════════════════════════
@@ -197,43 +200,39 @@ def get_category(key: str) -> str:
 # 时间衰减
 # ═══════════════════════════════════════════
 
-def calc_timeliness(data_date_str, frequency: str) -> float:
+def calc_timeliness(data_date_str, frequency: str, realtime: bool = False,
+                    used_fallback: bool = False) -> float:
     """计算时间衰减因子α (0.0 ~ 1.0)
 
-    T2 修复（2026-11-09）：
-      - 统一走 indicator_meta.parse_period，按「数据所属期末日」算天数。
-        旧实现在 '2026-Q1-Q3' 上取 Q1 首日（2026-01-01），311 天 > 270 红线 → α=0，
-        GDP 被隐形剔除但 valid_count 仍记数。现在取 2026-09-30。
-      - 期日无法解析 → α=1.0（不惩罚），但会在 dataDateISO=null 处暴露。
-      - 未来日期（当年年度数据）→ 按 0 天处理。
+    T13 起：本函数只是 resolve_freshness() 的薄封装，α 的唯一真源在
+    indicator_meta.resolve_freshness —— 不要再在这里加第二套判定。
+
+    历史修正：
+    - T2（2026-11-09）：统一按「数据所属期末日」算天数，不再把 2026-Q1-Q3 当 Q1 首日。
+    - T13-1（2026-11-09）：无日期不再 `return 1.0`。α=1.0 的语义是「已验证新鲜」，
+      而没日期时我们什么都没验证过。改为 α=0.5 + state=unknown + ⚪，
+      并进 validity_report.degraded(reason='no_date')。
+      ⚠️ 待议：0.5 是个主动选的保守值（未知按偏旧计权），不是公理，需外部复核。
     """
-    if not data_date_str or data_date_str == '' or data_date_str == '-':
-        return 1.0
-
-    days = days_stale(data_date_str)
-    if days is None:
-        return 1.0          # 解析不了：不猜，不惩罚
-    if days < 0:
-        days = 0            # 本年累计类数据，视为最新
-
-    rule = TIMELINESS_RULES.get(frequency, TIMELINESS_RULES['other'])
-    if days > rule['red_days']:
-        return 0.0
-    elif days > rule['yellow_days']:
-        return 0.5
-    return 1.0
+    return resolve_freshness(data_date_str, frequency,
+                             realtime=realtime, used_fallback=used_fallback)['alpha']
 
 
 def get_freshness_label(alpha: float) -> str:
-    """新鲜度标签"""
+    """新鲜度图标（仅按 α 回退的兼容入口）。
+
+    ⚠️ legacy：α=0.5 既可能是 stale(🟡) 也可能是 unknown(⚪)，光看 α 分不开。
+    新代码请直接用 resolve_freshness()['icon'] / indicators[key]['freshness']。
+    """
     if alpha >= 1.0:
-        return '🟢'  # 正常
+        return FRESHNESS_STATES['fresh']['icon']
     elif alpha >= 0.5:
-        return '🟡'  # 偏旧
-    return '🔴'  # 过期
+        return FRESHNESS_STATES['stale']['icon']
+    return FRESHNESS_STATES['expired']['icon']
 
 
 def get_freshness_level(alpha: float) -> str:
+    """新鲜度状态（仅按 α 回退的兼容入口，无法区分 unknown / realtime）。"""
     if alpha >= 1.0:
         return 'fresh'
     elif alpha >= 0.5:
@@ -417,6 +416,40 @@ def calc_ias(dim_scores: dict) -> dict:
 # 主入口：构建完整的 indicators & meta 输出
 # ═══════════════════════════════════════════
 
+def build_degraded_items(indicators: dict) -> list:
+    """从 indicators 提取降级项（T13）：单一实现，fetch 与夹具共用。
+
+    降级 = 有值、但可信度被削了一档，包括：
+      - no_date：无数据所属期且非 realtime → α=0.5、⚪（未核验不得亮绿灯）
+      - used_fallback：本轮抓取失败、用上一轮值兜底 → α 封顶 0.5
+
+    注意：它是「降级」不是「失败」。失败（无值）走 validity_report.failed。
+    """
+    items = []
+    for key, info in indicators.items():
+        reasons = info.get('degraded_reasons') or []
+        if not reasons:
+            continue
+        for reason in reasons:
+            items.append({
+                'key': key,
+                'displayName': info.get('displayName'),
+                'source': info.get('source'),
+                'reason': reason,
+                'reasonText': {
+                    'no_date': '无数据所属期且非实时报价，时效未知（按偏旧 α=0.5 计权）',
+                    'used_fallback': '本轮抓取失败，使用上一轮值兜底（α 封顶 0.5）',
+                }.get(reason, reason),
+                'dataDate': info.get('dataDate'),
+                'dataDateISO': info.get('dataDateISO'),
+                'days_stale': info.get('days_stale'),
+                'timeliness': info.get('timeliness'),
+                'freshness': info.get('freshness'),
+                'freshness_level': info.get('freshness_level'),
+            })
+    return items
+
+
 def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
     """
     从原始数据构建 indicators 和 meta 对象
@@ -441,18 +474,18 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         data_date = info.get('dataDate')
 
         score = calc_score(key, value)
-        timeliness = calc_timeliness(data_date, freq)
-        stale_days = days_stale(data_date)
 
-        # T10：used_fallback 的指标，值是上一轮的（必然比今天旧），
-        # α 封顶 0.5 → 新鲜度最高只能 🟡，不允许兜底值自证绿色。
-        if info.get('used_fallback'):
-            timeliness = min(timeliness, 0.5)
+        # 实时报价类（源不提供日期）：不伪造 dataDate，改为显式标注 dateNote。
+        # T13：兜底值不享受 realtime 待遇（上一轮值必然比今天旧）。
+        used_fallback = bool(info.get('used_fallback'))
+        realtime = bool(info.get('realtime')) and not used_fallback
 
-        # 实时报价类（源不提供日期）：不伪造 dataDate，改为显式标注 dateNote，
-        # 新鲜度按抓取时点算（抓取当下即最新），days_stale 保持 null。
-        realtime = bool(info.get('realtime')) and not info.get('used_fallback')
-
+        # T13：α / 图标 / 状态 / 降级原因全部一次性从唯一真源拿，
+        # 不再「先算 α 再单独判图标」（两套判定 = 两个可能不一致的口径）。
+        fresh = resolve_freshness(data_date, freq, realtime=realtime,
+                                  used_fallback=used_fallback)
+        timeliness = fresh['alpha']
+        stale_days = fresh['days_stale']
 
         # Trend from previous data
         prev_value = None
@@ -504,17 +537,16 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'dataDateKind': period['kind'] if period else None,
             'days_stale': stale_days,
             'realtime': realtime,
-            'dateNote': ('实时报价，数据源未提供日期' if realtime and data_date is None
-                         else (info.get('dateNote') or None)),
+            'dateNote': fresh['date_note'] or info.get('dateNote') or None,
             'source': info.get('source', ''),
             'unit': info.get('unit', ''),
             'timeliness': timeliness,
-            # T10b：realtime 且无日期 → ⚪ 语义是「实时但未核验」，与 🟢「有日期且未超阈值」分开。
-            # 一边说「源未提供日期」一边亮绿灯，就是我们今天在骂的假绿灯。
-            'freshness': ('⚪' if (realtime and data_date is None)
-                          else get_freshness_label(timeliness)),
-            'freshness_level': ('realtime' if (realtime and data_date is None)
-                                else get_freshness_level(timeliness)),
+            # T13：五态互斥，一态一图标 —— 🟢已核验新鲜 / 🔵实时报价 /
+            # ⚪时效未知(α=0.5) / 🟡偏旧 / 🔴过期。无日期不再亮绿灯。
+            'freshness': fresh['icon'],
+            'freshness_level': fresh['state'],
+            # 进 validity_report.degraded 的枚举码（no_date / used_fallback）
+            'degraded_reasons': fresh['reasons'],
             # 是否被排除在评分之外（给前端区分「数据旧了」和「这项没进评分」）
             'excluded_from_scoring': excluded,
             'exclusion_reason': exclusion_reason,

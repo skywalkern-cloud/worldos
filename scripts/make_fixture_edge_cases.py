@@ -19,8 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 import indicator_meta as meta_mod  # noqa: E402
-from indicator_meta import INDICATORS  # noqa: E402
-from scoring import build_indicators_and_meta  # noqa: E402
+from indicator_meta import INDICATORS, FRESHNESS_STATES, UNKNOWN_ALPHA  # noqa: E402
+from scoring import build_indicators_and_meta, build_degraded_items  # noqa: E402
 
 WS = Path(__file__).resolve().parent.parent
 OUT = WS / 'tests' / 'fixtures' / 'market-data-edge-cases.json'
@@ -32,6 +32,9 @@ FRESH = TODAY.isoformat()
 # 每个 key 的样例值：故意让部分指标落在「无评分参数」「过期」「无日期」上
 SAMPLE_VALUES = {
     # 经济：让 chinaGdp 过期(α=0) 且 usGdp 无日期，其余正常 → 有效数可能不足
+    # T13-4：usGdp 就是「有值、无日期、非 realtime」的 no_date 样本
+    #   → 必须 ⚪ + α=0.5 + 进 validity_report.degraded(reason='no_date')
+    #   （旧代码这一支会亮 🟢 + α=1.0，泰斯特冻结回放就是在这里拓到了洞）
     'chinaGdp': (4.6, OLD, 'quarterly'),
     'chinaPmi': (49.3, FRESH, 'monthly'),
     'usGdp': (2.0, None, 'quarterly'),
@@ -133,7 +136,7 @@ def main():
     payload = {
         'timestamp': FRESH + 'T10:00:00',
         'fixture': {
-            'purpose': '边界状态夹具：钉住线上零触发的分支（no_score / expired_alpha0 / insufficient_data / 覆盖率降级）',
+            'purpose': '边界状态夹具：钉住线上零触发的分支（no_score / expired_alpha0 / insufficient_data / 覆盖率降级 / no_date 未知时效）',
             'generatedBy': 'scripts/make_fixture_edge_cases.py',
             'notRealData': True,
         },
@@ -144,7 +147,9 @@ def main():
             'total': len(raw),
             'valid': sum(1 for v in raw.values() if v['value'] is not None),
             'invalid': sum(1 for v in raw.values() if v['value'] is None),
-            'degraded': sum(1 for v in raw.values() if v.get('used_fallback')),
+            # T13：与 fetch 同构 —— 列表 + reason，计数另给 degraded_count
+            'degraded': build_degraded_items(indicators),
+            'degraded_count': len(build_degraded_items(indicators)),
             'failed': failed,
         },
     }
@@ -156,13 +161,18 @@ def main():
     reasons = {i.get('exclusion_reason') for i in indicators.values()}
     grayed = [d for d, v in meta_out['dimensions'].items() if v['insufficient_data']]
     realtime_flags = [k for k, v in indicators.items() if v['freshness_level'] == 'realtime']
+    unknown_flags = [k for k, v in indicators.items() if v['freshness_level'] == 'unknown']
     expanded = [k for k, v in indicators.items() if v['freshness_level'] == 'expired']
+    degraded_items = payload['validity_report']['degraded']
+    no_date_items = [i['key'] for i in degraded_items if i['reason'] == 'no_date']
 
     print(f'已生成: {OUT}')
     print(f'  exclusion_reason 覆盖: {sorted(r for r in reasons if r)}')
     print(f'  置灰维度: {grayed}')
-    print(f'  realtime(⚪): {realtime_flags}')
-    print(f'  expired(🔴): {expanded}')
+    print(f'  realtime({FRESHNESS_STATES["realtime"]["icon"]}): {realtime_flags}')
+    print(f'  unknown({FRESHNESS_STATES["unknown"]["icon"]}): {unknown_flags}')
+    print(f'  expired({FRESHNESS_STATES["expired"]["icon"]}): {expanded}')
+    print(f'  degraded: {[(i["key"], i["reason"]) for i in degraded_items]}')
     print(f'  IAS: score={meta_out["ias"]["score"]} normalized={meta_out["ias"]["normalized"]} '
           f'signal={meta_out["ias"]["signal"]} data_coverage={meta_out["ias"]["data_coverage"]} '
           f'is_actionable={meta_out["ias"]["is_actionable"]}')
@@ -180,6 +190,30 @@ def main():
         problems.append('未触发覆盖率中间档（data_coverage 仍 ≥0.8）')
     if not realtime_flags:
         problems.append('未触发 realtime 新鲜度')
+
+    # ── T13 新增断言：无日期不得亮绿灯 ──
+    if not unknown_flags:
+        problems.append('未触发 unknown（有值但无日期）新鲜度')
+    for k in unknown_flags:
+        v = indicators[k]
+        if v['freshness'] != FRESHNESS_STATES['unknown']['icon']:
+            problems.append(f'{k}: unknown 图标应为 {FRESHNESS_STATES["unknown"]["icon"]}，实得 {v["freshness"]}')
+        if abs(v['timeliness'] - UNKNOWN_ALPHA) > 1e-9:
+            problems.append(f'{k}: unknown 的 α 应为 {UNKNOWN_ALPHA}，实得 {v["timeliness"]}')
+        if v['exclusion_reason'] == 'expired_alpha0':
+            problems.append(f'{k}: unknown 不应被当成过期剔除')
+    if 'usGdp' not in no_date_items:
+        problems.append(f'usGdp 未进 validity_report.degraded(no_date)，实得 {no_date_items}')
+
+    bad_green = [k for k, v in indicators.items()
+                 if v['days_stale'] is None and v['freshness'] == FRESHNESS_STATES['fresh']['icon']
+                 and not v['realtime']]
+    if bad_green:
+        problems.append(f'无日期却判 🟢（假绿灯）: {bad_green}')
+
+    # 图标不得一码两用：realtime 与 unknown 必须不同图标
+    if FRESHNESS_STATES['realtime']['icon'] == FRESHNESS_STATES['unknown']['icon']:
+        problems.append('realtime 与 unknown 共用一个图标')
 
     if problems:
         print('\n❌ 夹具未覆盖:', problems)

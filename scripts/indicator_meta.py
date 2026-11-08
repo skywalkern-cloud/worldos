@@ -17,21 +17,54 @@ WorldOS 指标元数据·单一真源 (P0 / T1)
 
 import calendar
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 # ═══════════════════════════════════════════
 # 时间衰减规则
 # ═══════════════════════════════════════════
 # yellow_days / red_days 按「数据所属期的末日」到今天的自然日计算。
-# quarterly 2026-11-09 由 270 → 400（龙五拍板）：季度数据本身有发布延迟，
-# 270 天会把「滞后一季」误判为红；400 天仍能抓住「滞后一年」。
+#
+# quarterly（T13-3，2026-11-09 龙五修正）：200/400 → 120/240。
+#   历史：270（原）→ 400（龙五让放宽）→ 120/240（龙五收回放宽）。
+#   200/400 的病：季频 90 天发一次，200 天才报黄 = 错过 1 次发布仍显示正常，
+#   400 天才报红 = 错过 3 次。把「发布滞后正常」当成了「数据陈旧可接受」。
+#   按发布节奏：黄 = 错过 1 次（90+30 缓冲）=120，红 = 错过 2 次（180+60）=240。
 TIMELINESS_RULES = {
     'daily':     {'yellow_days': 5,   'red_days': 10},
     'monthly':   {'yellow_days': 60,  'red_days': 90},
-    'quarterly': {'yellow_days': 200, 'red_days': 400},
+    'quarterly': {'yellow_days': 120, 'red_days': 240},
     'yearly':    {'yellow_days': 180, 'red_days': 365},
     'other':     {'yellow_days': 60,  'red_days': 90},
 }
+
+# ═══════════════════════════════════════════
+# 新鲜度状态机（T13-2：五态互斥，一态一图标，⚪ 不再一码两用）
+# ═══════════════════════════════════════════
+# 旧实现把「realtime（实时报价·源无日期）」和「unknown（不知道多旧）」都画成 ⚪，
+# 两个语义相反的状态共用一个图标 = 又一个「看着一样其实不一样」的坑。
+# 现定死：
+#   🟢 fresh    有日期且未超黄线          α=1.0
+#   🔵 realtime realtime=true 且无日期    α=1.0（抓取当下即最新）
+#   ⚪ unknown  无日期（或解析失败）且非 realtime  α=0.5（⚠️ 待议：未知按偏旧计权，保守）
+#   🟡 stale    有日期且超黄线未超红线    α=0.5
+#   🔴 expired  有日期且超红线            α=0.0
+UNKNOWN_ALPHA = 0.5
+
+FRESHNESS_STATES = {
+    'fresh':    {'icon': '🟢', 'alpha': 1.0, 'label': '已核验新鲜',
+                 'prerequisite': '有可解析日期且未超黄线'},
+    'realtime': {'icon': '🔵', 'alpha': 1.0, 'label': '实时报价',
+                 'prerequisite': 'realtime=true 且无日期'},
+    'unknown':  {'icon': '⚪', 'alpha': UNKNOWN_ALPHA, 'label': '时效未知',
+                 'prerequisite': '无日期（或不可解析）且非 realtime'},
+    'stale':    {'icon': '🟡', 'alpha': 0.5, 'label': '偏旧',
+                 'prerequisite': '有日期且超黄线未超红线'},
+    'expired':  {'icon': '🔴', 'alpha': 0.0, 'label': '已过期',
+                 'prerequisite': '有日期且超红线'},
+}
+
+# 进 validity_report.degraded 的状态 → reason 枚举码（其余状态不算降级）
+FRESHNESS_DEGRADED_REASON = {'unknown': 'no_date'}
 
 # 前端 COUNTRY_ORDER 只认这三个值，新增国家需先扩前端映射（已与扣钉约定）
 ALLOWED_COUNTRIES = ('🇨🇳', '🇺🇸', '🌐')
@@ -490,6 +523,122 @@ def days_stale(value, today=None):
     return (today - p['end']).days
 
 
+def resolve_freshness(data_date_str, frequency, realtime=False,
+                      used_fallback=False, today=None) -> dict:
+    """时效状态的唯一判定入口（T13：五态互斥，α / 图标 / 降级原因全部从这里出）。
+
+    旧代码分成两处判：calc_timeliness() 按日期算 α，build_indicators_and_meta() 再
+    单独判断 realtime 图标 —— 两次判定 = 两个可能不一致的真源，且无日期时直接
+    `return 1.0`（语义上等于「已验证新鲜」），造出无日期却 🟢 + α=1.0 的假绿灯。
+
+    Args:
+        data_date_str: 原始 dataDate（可为 None / '-' / 不可解析串）
+        frequency:     daily|monthly|quarterly|yearly|other
+        realtime:      数据源声明「实时报价、不提供日期」
+        used_fallback: 本轮抓取失败、用的是上一轮值（必然更旧）
+
+    Returns: {
+        'state': fresh|realtime|unknown|stale|expired,
+        'icon': 🟢|🔵|⚪|🟡|🔴, 'alpha': float, 'days_stale': int|None,
+        'reasons': [...],    # 进 validity_report.degraded 的枚举码（no_date / used_fallback）
+        'date_note': str|None,
+    }
+    """
+    reasons = []
+    ds = days_stale(data_date_str, today=today)
+
+    if ds is None:
+        if realtime and not used_fallback:
+            state = 'realtime'
+            date_note = '实时报价，数据源未提供日期'
+        else:
+            # 无日期（或不可解析）+ 非 realtime → 不知道有多旧，按「偏旧」计权
+            state = 'unknown'
+            date_note = '无数据所属期，时效未知'
+            reasons.append(FRESHNESS_DEGRADED_REASON['unknown'])
+    else:
+        if ds < 0:
+            ds = 0          # 本年累计类数据，视为最新
+        rule = TIMELINESS_RULES.get(frequency, TIMELINESS_RULES['other'])
+        if ds > rule['red_days']:
+            state = 'expired'
+        elif ds > rule['yellow_days']:
+            state = 'stale'
+        else:
+            state = 'fresh'
+        date_note = None
+
+    if used_fallback:
+        reasons.append('used_fallback')
+        # 兜底值来自上一轮，必然更旧：α 封顶 0.5，最鲜也只能到「偏旧」
+        if state == 'fresh':
+            state = 'stale'
+
+    spec = FRESHNESS_STATES[state]
+    alpha = spec['alpha']
+    if used_fallback:
+        alpha = min(alpha, 0.5)
+
+    return {
+        'state': state,
+        'icon': spec['icon'],
+        'alpha': alpha,
+        'days_stale': ds,
+        'reasons': reasons,
+        'date_note': date_note,
+    }
+
+
+def validate_freshness_contract(today=None) -> list:
+    """T13-2 断言：五态互斥、一态一图标、α 与状态一致、无日期不得亮绿灯。
+
+    返回问题列表（空 = 通过）。日期用「相对今天」构造，避免用例随时间腐坏。
+    """
+    problems = []
+    icons = [s['icon'] for s in FRESHNESS_STATES.values()]
+    if len(set(icons)) != len(icons):
+        problems.append(f'新鲜度图标重复（一码两用）: {icons}')
+
+    today = today or date.today()
+    d = lambda n: (today - timedelta(days=n)).isoformat()  # noqa: E731
+
+    # (dataDate, freq, realtime, used_fallback, 期望 state, 期望 alpha, 期望 reason)
+    cases = [
+        (d(1), 'daily', False, False, 'fresh', 1.0, None),
+        (d(70), 'monthly', False, False, 'stale', 0.5, None),
+        (d(100), 'monthly', False, False, 'expired', 0.0, None),
+        (None, 'daily', True, False, 'realtime', 1.0, None),
+        (None, 'daily', False, False, 'unknown', UNKNOWN_ALPHA, 'no_date'),
+        ('-', 'monthly', False, False, 'unknown', UNKNOWN_ALPHA, 'no_date'),
+        ('未来某天', 'monthly', False, False, 'unknown', UNKNOWN_ALPHA, 'no_date'),
+        (d(1), 'daily', True, False, 'fresh', 1.0, None),        # 有日期 → realtime 标记不足为凭
+        (None, 'daily', True, True, 'unknown', UNKNOWN_ALPHA, 'no_date'),  # 兜底时连 realtime 也不算
+        (d(1), 'daily', False, True, 'stale', 0.5, 'used_fallback'),       # 兜底不许自证新鲜
+        (d(400), 'monthly', False, True, 'expired', 0.0, 'used_fallback'),
+    ]
+    for dd, freq, rt, fb, want_state, want_alpha, want_reason in cases:
+        got = resolve_freshness(dd, freq, realtime=rt, used_fallback=fb, today=today)
+        tag = f'freshness[{dd!r},{freq},rt={rt},fb={fb}]'
+        if got['state'] != want_state:
+            problems.append(f'{tag}: state={got["state"]} 期望 {want_state}')
+        if abs(got['alpha'] - want_alpha) > 1e-9:
+            problems.append(f'{tag}: alpha={got["alpha"]} 期望 {want_alpha}')
+        if want_reason and want_reason not in got['reasons']:
+            problems.append(f'{tag}: reasons={got["reasons"]} 缺 {want_reason}')
+        if not want_reason and got['reasons']:
+            problems.append(f'{tag}: 不该带降级原因，实得 {got["reasons"]}')
+        if got['icon'] != FRESHNESS_STATES[want_state]['icon']:
+            problems.append(f'{tag}: icon={got["icon"]} 与状态不符')
+        # 互斥：同一时刻只能命中一个状态
+        hit = [k for k in FRESHNESS_STATES if k == got['state']]
+        if len(hit) != 1:
+            problems.append(f'{tag}: 命中状态数={len(hit)}（必须互斥）')
+        # 无日期且非 realtime 绝不允许亮绿灯
+        if got['days_stale'] is None and not (rt and not fb) and got['state'] in ('fresh',):
+            problems.append(f'{tag}: 无日期却判 fresh（假绿灯）')
+    return problems
+
+
 # ═══════════════════════════════════════════
 # 自检（T6 预置，泰斯特的正式用例会覆盖）
 # ═══════════════════════════════════════════
@@ -534,6 +683,9 @@ def validate_metadata() -> list:
     unscored_orphans = [k for k in orphans if not is_reference_only(k)]
     if unscored_orphans:
         problems.append(f'未归属任何维度却参与打分的指标: {unscored_orphans}')
+
+    # T13-2：三态（fresh / realtime / unknown）互斥、一态一图标、无日期不得亮绿灯
+    problems.extend(validate_freshness_contract())
     return problems
 
 

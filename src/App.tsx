@@ -106,11 +106,20 @@ interface ValidityFailure {
   lastAttempt?: string
 }
 
+interface ValidityDegradedItem {
+  key: string
+  displayName?: string
+  reason: string
+  reasonText?: string
+}
+
 interface ValidityReport {
   total: number
   valid: number
   invalid: number
-  degraded?: number
+  /** T13：后端改为「带 reason 的列表」；老快照仍是数字，两种都要能读 */
+  degraded?: number | ValidityDegradedItem[]
+  degraded_count?: number
   failed?: ValidityFailure[]
 }
 
@@ -267,7 +276,14 @@ function App() {
       total: typeof vr.total === 'number' ? vr.total : 0,
       valid: typeof vr.valid === 'number' ? vr.valid : 0,
       invalid: typeof vr.invalid === 'number' ? vr.invalid : 0,
-      degraded: typeof vr.degraded === 'number' ? vr.degraded : 0,
+      degraded:
+        typeof vr.degraded === 'number'
+          ? vr.degraded
+          : Array.isArray(vr.degraded)
+          ? vr.degraded.length
+          : typeof vr.degraded_count === 'number'
+          ? vr.degraded_count
+          : 0,
       failed: Array.isArray(vr.failed) ? vr.failed : [],
     }
   }, [v4Data])

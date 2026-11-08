@@ -28,7 +28,7 @@ from pathlib import Path
 
 # 加载评分模块
 sys.path.insert(0, str(Path(__file__).parent))
-from scoring import build_indicators_and_meta
+from scoring import build_indicators_and_meta, build_degraded_items
 from indicator_meta import INDICATORS as INDICATOR_META, days_stale as _days_stale
 
 # ========== 配置常量 ==========
@@ -980,12 +980,9 @@ def save_results(results, fetch_ts):
 
     # 找出获取失败 / 降级兜底的指标
     failed_indicators = []
-    degraded = 0
     for key, info in INDICATOR_DEFS.items():
         v = results.get(key, {})
         err = v.get('fetchError')
-        if v.get('used_fallback'):
-            degraded += 1
         if err is None and v.get('value') is not None:
             continue
         if err is None:
@@ -1002,6 +999,10 @@ def save_results(results, fetch_ts):
             'lastAttempt': fetch_ts,
         })
 
+    # T13：degraded 由「计数」改为「带 reason 的列表」——只报个数等于把
+    # 「为什么降级」埋掉。degraded_count 保留给数值型消费者（前端/旧脚本）。
+    degraded_items = build_degraded_items(indicators)
+
     output = {
         'timestamp': fetch_ts,
         'data': results,
@@ -1011,7 +1012,8 @@ def save_results(results, fetch_ts):
             'total': total,
             'valid': valid,
             'invalid': total - valid,
-            'degraded': degraded,
+            'degraded': degraded_items,
+            'degraded_count': len(degraded_items),
             'failed': failed_indicators,
         },
     }

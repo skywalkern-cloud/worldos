@@ -1,7 +1,7 @@
 {
   "timestamp": "2026-11-09T10:00:00",
   "fixture": {
-    "purpose": "边界状态夹具：钉住线上零触发的分支（no_score / expired_alpha0 / insufficient_data / 覆盖率降级）",
+    "purpose": "边界状态夹具：钉住线上零触发的分支（no_score / expired_alpha0 / insufficient_data / 覆盖率降级 / no_date 未知时效）",
     "generatedBy": "scripts/make_fixture_edge_cases.py",
     "notRealData": true
   },
@@ -390,6 +390,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -417,6 +418,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -438,12 +440,15 @@
       "dataDateKind": null,
       "days_stale": null,
       "realtime": false,
-      "dateNote": null,
+      "dateNote": "无数据所属期，时效未知",
       "source": "东方财富-美国商务部",
       "unit": "%",
-      "timeliness": 1.0,
-      "freshness": "🟢",
-      "freshness_level": "fresh",
+      "timeliness": 0.5,
+      "freshness": "⚪",
+      "freshness_level": "unknown",
+      "degraded_reasons": [
+        "no_date"
+      ],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -471,6 +476,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -498,6 +504,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -525,6 +532,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -552,6 +560,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -573,12 +582,16 @@
       "dataDateKind": null,
       "days_stale": null,
       "realtime": false,
-      "dateNote": null,
+      "dateNote": "无数据所属期，时效未知",
       "source": "NYMEX期货",
       "unit": "$/桶",
       "timeliness": 0.5,
-      "freshness": "🟡",
-      "freshness_level": "stale",
+      "freshness": "⚪",
+      "freshness_level": "unknown",
+      "degraded_reasons": [
+        "no_date",
+        "used_fallback"
+      ],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
       "used_fallback": true,
@@ -609,8 +622,9 @@
       "source": "NYMEX期货",
       "unit": "$/MMBtu",
       "timeliness": 1.0,
-      "freshness": "⚪",
+      "freshness": "🔵",
       "freshness_level": "realtime",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -638,6 +652,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -665,6 +680,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -692,6 +708,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -719,6 +736,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -746,6 +764,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -773,6 +792,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -800,6 +820,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -827,6 +848,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -854,6 +876,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -881,6 +904,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -908,6 +932,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -935,6 +960,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -962,6 +988,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -989,6 +1016,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -1016,6 +1044,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -1043,6 +1072,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -1070,6 +1100,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only"
     },
@@ -1097,6 +1128,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only"
     },
@@ -1124,6 +1156,7 @@
       "timeliness": 0.0,
       "freshness": "🔴",
       "freshness_level": "expired",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0"
     },
@@ -1149,8 +1182,9 @@
       "source": "LME-综合铜03",
       "unit": "$/吨",
       "timeliness": 1.0,
-      "freshness": "⚪",
+      "freshness": "🔵",
       "freshness_level": "realtime",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -1178,6 +1212,7 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
@@ -1205,14 +1240,15 @@
       "timeliness": 1.0,
       "freshness": "🟢",
       "freshness_level": "fresh",
+      "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "no_score"
     }
   },
   "meta": {
     "ias": {
-      "score": -0.59,
-      "normalized": -0.1276,
+      "score": -0.6,
+      "normalized": -0.1306,
       "max_possible": 4.6,
       "weight_design_sum": 4.6,
       "weight_effective_sum": 4.0,
@@ -1244,14 +1280,14 @@
         "weight_design": 1.0,
         "weight_effective": 1.0,
         "weight_reason": "满额",
-        "score": -0.243,
+        "score": -0.252,
         "signal": "yellow",
         "valid_count": 5,
         "required_count": 3,
         "active_count": 6,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 1.0
+        "avg_alpha": 0.9
       },
       "inflation": {
         "name": "通胀与政策",
@@ -1349,7 +1385,48 @@
     "total": 32,
     "valid": 31,
     "invalid": 1,
-    "degraded": 1,
+    "degraded": [
+      {
+        "key": "usGdp",
+        "displayName": "GDP增速",
+        "source": "东方财富-美国商务部",
+        "reason": "no_date",
+        "reasonText": "无数据所属期且非实时报价，时效未知（按偏旧 α=0.5 计权）",
+        "dataDate": null,
+        "dataDateISO": null,
+        "days_stale": null,
+        "timeliness": 0.5,
+        "freshness": "⚪",
+        "freshness_level": "unknown"
+      },
+      {
+        "key": "oilPrice",
+        "displayName": "WTI原油",
+        "source": "NYMEX期货",
+        "reason": "no_date",
+        "reasonText": "无数据所属期且非实时报价，时效未知（按偏旧 α=0.5 计权）",
+        "dataDate": null,
+        "dataDateISO": null,
+        "days_stale": null,
+        "timeliness": 0.5,
+        "freshness": "⚪",
+        "freshness_level": "unknown"
+      },
+      {
+        "key": "oilPrice",
+        "displayName": "WTI原油",
+        "source": "NYMEX期货",
+        "reason": "used_fallback",
+        "reasonText": "本轮抓取失败，使用上一轮值兜底（α 封顶 0.5）",
+        "dataDate": null,
+        "dataDateISO": null,
+        "days_stale": null,
+        "timeliness": 0.5,
+        "freshness": "⚪",
+        "freshness_level": "unknown"
+      }
+    ],
+    "degraded_count": 3,
     "failed": [
       {
         "key": "oilPrice",
