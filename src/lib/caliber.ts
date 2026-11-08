@@ -21,7 +21,13 @@ export type FailReason =
   | 'nan_value'
   | 'not_found'
 
-/** 龙五 T5-1 阈值（严格大于即超阈值） */
+/**
+ * 龙五 2026-11-09 核定的描灰阈值（严格大于即超阈值）。
+ *
+ * ⚠️ 这是**回退表**，不是真源。真源应在后端 TIMELINESS_RULES；
+ * 后端一旦输出 `overdue` / `days_overdue`，describeIndicatorState() 会优先读它，
+ * 本表只在老快照（无新字段）时生效。届时后端阈值变更无需改前端。
+ */
 export const OVERDUE_THRESHOLD_DAYS: Record<Cadence, number> = {
   daily: 3,
   monthly: 40,
@@ -158,6 +164,86 @@ export function describeExclusion(reason?: string | null): string {
     default:
       return '未计入综合评分'
   }
+}
+
+// ====== 指标行最终状态（App 与夹具校验共用的唯一实现） ======
+
+export interface IndicatorStateInput extends StalenessInput {
+  reference_only?: boolean | null
+  excluded_from_scoring?: boolean | null
+  exclusion_reason?: string | null
+  timeliness?: number | null
+  /** 后端未来字段：已超阈值天数（未超为 0） */
+  days_overdue?: number | null
+  /** 后端未来字段：是否已超阈值 */
+  overdue?: boolean | null
+}
+
+export interface IndicatorState {
+  stale: StalenessInfo
+  /** 轴一：数据旧了（描灰） */
+  dimmed: boolean
+  /** 轴二：没进综合评分 */
+  excluded: boolean
+  notCounted: boolean
+  /** 物理上只可能为一个（一行禁叠两个标） */
+  exclusionBadge: { text: string; title: string } | null
+}
+
+/**
+ * 指标行状态判定——双轴模型：
+ *   轴一 dimmed（数据旧了）= 超阈值天数，单一真源
+ *   轴二 not_counted（没进综合评分）= excluded_from_scoring
+ * reference_only 优先且排他：只挂「参考项」，不叠描灰。
+ */
+export function describeIndicatorState(info: IndicatorStateInput): IndicatorState {
+  const stale = computeStaleness(info)
+  const isRef = info.reference_only === true
+
+  // 描灰口径：后端若给 overdue / days_overdue 则以其为唯一真源；
+  // 否则回退本地阈值表（龙五 2026-11-09 核定的 日 3 / 月 40 / 季 120）。
+  const overdue =
+    typeof info.overdue === 'boolean'
+      ? info.overdue
+      : typeof info.days_overdue === 'number'
+      ? info.days_overdue > 0
+      : stale.overdue
+
+  // 被排除计分的行不再描灰：排除标是更强的声明（“这值根本没参与打分”），
+  // 再叠一层描灰（“这值可能误导你”）属于视觉过载。数据旧的信号由副行「N 天前」傅达。
+  const excluded =
+    typeof info.excluded_from_scoring === 'boolean'
+      ? info.excluded_from_scoring
+      : isRef || info.timeliness === 0 // 老快照（无新字段）回退
+  const notCounted = excluded && !isRef
+
+  const dimmed = overdue && !excluded
+
+  const exclusionBadge: IndicatorState['exclusionBadge'] = isRef
+    ? { text: '参考项', title: describeExclusion('reference_only') }
+    : notCounted
+    ? {
+        text:
+          info.exclusion_reason === 'no_score'
+            ? '无评分'
+            : info.exclusion_reason === 'expired_alpha0'
+            ? '过期剔除'
+            : '不计分',
+        title: describeExclusion(info.exclusion_reason),
+      }
+    : null
+
+  return { stale, dimmed, excluded, notCounted, exclusionBadge }
+}
+
+/** IAS 数据覆盖分档（降级判断只看 data_coverage，不看 scale_coverage） */
+export type CoverageTier = 'ok' | 'partial' | 'insufficient'
+
+export function resolveCoverageTier(dataCoverage?: number | null): CoverageTier {
+  if (typeof dataCoverage !== 'number' || !Number.isFinite(dataCoverage)) return 'ok'
+  if (dataCoverage < 0.6) return 'insufficient'
+  if (dataCoverage < 0.8) return 'partial'
+  return 'ok'
 }
 
 // ====== 名称解析（T1 单一真源） ======

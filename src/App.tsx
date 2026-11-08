@@ -3,11 +3,11 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useMarketData, MarketDataSkeleton } from './hooks/useMarketData'
 import { getKeyword } from './data/score-keywords'
 import {
-  computeStaleness,
+  describeIndicatorState,
   resolveDisplayName,
   describeFailReason,
   describeFreshness,
-  describeExclusion,
+  resolveCoverageTier,
   type DataDateKind,
   type ContributionEntry,
 } from './lib/caliber'
@@ -489,7 +489,7 @@ function IASCard({ ias }: { ias: IASMeta }) {
       </div>
 
       {/* 数据覆盖中间档（0.6~0.8）：出分但信号仅参考 */}
-      {typeof ias.data_coverage === 'number' && ias.data_coverage >= 0.6 && ias.data_coverage < 0.8 && (
+      {resolveCoverageTier(ias.data_coverage) === 'partial' && (
         <div className="mt-1.5">
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/30 text-yellow-100 border border-yellow-200/40">
             ⚠️ 部分维度缺失，信号仅参考（后端 signal 已带后缀）
@@ -763,36 +763,10 @@ function DimensionCardV4({
 
 function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicatorKey?: string }) {
   const name = resolveDisplayName(info, indicatorKey || '—')
-  const stale = computeStaleness(info)
-
-  // 【龙五 Q2 + Q3 拍板的双轴模型】
-  // 轴一 dimmed（数据旧了）：单一真源 = 超阈值天数。
-  //    freshness_level 是评分层 α 衰减结果，不驱动 UI 着色（两者会打架：α=0 但天数没超 → “描灰了但日期挺新”）。
-  // 轴二 not_counted（这项没进综合评分）：excluded_from_scoring 或 α=0。
-  // 优先级：reference_only 只挂「参考项」，**不再叠加任何其他标**（龙五：一行挂两个标 = 视觉过载）。
-  const isRef = info.reference_only === true
+  // 双轴判定（dimmed / not_counted）统一走 caliber.describeIndicatorState，
+  // 夹具校验 scripts/make_fixture_edge_cases.py + tests/caliber-edge.test.mjs 用的是同一实现
+  const { stale, dimmed, exclusionBadge } = describeIndicatorState(info)
   const isFallback = info.used_fallback === true
-  // 轴一 dimmed（数据旧了）：单一真源 = 超阈值天数。reference_only 优先挂「参考项」，不再叠描灰。
-  const dimmed = stale.overdue && !isRef
-  // 轴二 not_counted（没进综合评分）：直接读后端 excluded_from_scoring（b6d8e65 已上线）
-  const excluded = typeof info.excluded_from_scoring === 'boolean'
-    ? info.excluded_from_scoring
-    : isRef || info.timeliness === 0 // 老快照（无新字段）回退
-  const notCounted = excluded && !isRef
-  // 物理上只可能挂一个标（龙五：一行挂两个标 = 视觉过载）
-  const exclusionBadge: { text: string; title: string } | null = isRef
-    ? { text: '参考项', title: describeExclusion('reference_only') }
-    : notCounted
-    ? {
-        text:
-          info.exclusion_reason === 'no_score'
-            ? '无评分'
-            : info.exclusion_reason === 'expired_alpha0'
-            ? '过期剔除'
-            : '不计分',
-        title: describeExclusion(info.exclusion_reason),
-      }
-    : null
 
   // Determine background color based on signal
   const rowBg = info.signal === 'red'
@@ -817,7 +791,7 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
     : '-'
 
   return (
-    <div className={`${rowBg} py-1 ${dimmed ? 'opacity-55' : ''} ${isRef ? 'opacity-70' : ''}`}>
+    <div className={`${rowBg} py-1 ${dimmed ? 'opacity-55' : ''} ${info.reference_only === true ? 'opacity-70' : ''}`}>
       {/* 主行 */}
       <div className="flex items-center justify-between px-2 rounded text-sm">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
