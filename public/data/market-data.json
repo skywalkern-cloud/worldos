@@ -1411,7 +1411,7 @@
   "meta": {
     "ias": {
       "score": -0.34,
-      "normalized": -0.0734,
+      "normalized": -0.07335,
       "max_possible": 4.6,
       "weight_design_sum": 4.6,
       "weight_effective_sum": 4.0,
@@ -1599,7 +1599,7 @@
       "ias_partial_coverage": 0.8,
       "unknown_alpha": 0.5
     },
-    "rules_hash": "aeeb74397588",
+    "rules_hash": "88cb8f040f89",
     "model": {
       "version": "v4.2",
       "reference_only": [

@@ -26,6 +26,9 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     IAS_PARTIAL_COVERAGE,
     IAS_SCALE,
     UNKNOWN_ALPHA,
+    q,
+    rules_snapshot,
+    compute_rules_hash,
     required_valid_count,
     dimension_weights,
     parse_period,
@@ -35,6 +38,9 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     resolve_freshness,
     FRESHNESS_STATES,
     UNKNOWN_ALPHA,
+    q,
+    rules_snapshot,
+    compute_rules_hash,
 )
 
 # ═══════════════════════════════════════════
@@ -291,7 +297,7 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
             avg_score = None
             signal = 'gray'
         else:
-            avg_score = round(total_weighted / total_alpha, 3)
+            avg_score = q(total_weighted / total_alpha, 3)
             signal = get_signal(avg_score)
 
         w = dimension_weights(dim)
@@ -374,13 +380,13 @@ def calc_ias(dim_scores: dict) -> dict:
             'is_actionable': False,
         }
 
-    normalized = round(total_weighted / valid_weight, 4)
+    normalized = q(total_weighted / valid_weight, 6)   # T15-1: 6 位，half-up
     # score 恒按「设计权重总和(4.6)」还原，保证与历史阈值/前端分档可比的量纲；
     # 有效权重之和是 4.0（D 案收缩后），所以 normalized 才是横比用的那个数。
     if abs(design_weight - IAS_SCALE) > 1e-9:
         # 防御：设计权重总和变了却没人重标阈值
         print(f'⚠️ 设计权重总和 {design_weight} != IAS_SCALE {IAS_SCALE}，阈值可能已失真')
-    ias_score = round(normalized * IAS_SCALE, 2)
+    ias_score = q(normalized * IAS_SCALE, 2)
 
     if coverage < IAS_MIN_COVERAGE:
         signal, position, icon = '数据不足', '不适用', '⚪'
@@ -454,38 +460,6 @@ def build_degraded_items(indicators: dict) -> list:
                 'freshness_level': info.get('freshness_level'),
             })
     return items
-
-
-def rules_snapshot() -> dict:
-    """T14：把「当天用什么规则算的」内嵌进产物。
-
-    动机：阈值/权重一改，历史读数就不可比。data/history 从 2026-11-09 才开始记，
-    今天不内嵌规则快照，三个月后手上只有一堆「分数在变但不知道按什么规则算」的文件，
-    P3 回测直接做不成。成本一个 dict + 一个 hash，价值是把「可复现」从人的记性
-    变成数据自带。
-    """
-    snap = {
-        'staleness_rules': {k: dict(v) for k, v in TIMELINESS_RULES.items()},
-        'dimension_weights_design': {d['id']: d['weight'] for d in DIMENSION_CONFIG},
-        'market_mismatch': {d['id']: d.get('market_mismatch', 1.0)
-                            for d in DIMENSION_CONFIG if d.get('market_mismatch', 1.0) != 1.0},
-        'reference_only': sorted(REFERENCE_ONLY),
-        'min_valid_rule': 'n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母',
-        'ias_scale': IAS_SCALE,
-        'ias_thresholds': [[t, s_, p_] for t, s_, p_, _ in IAS_THRESHOLDS],
-        'ias_min_coverage': IAS_MIN_COVERAGE,
-        'ias_partial_coverage': IAS_PARTIAL_COVERAGE,
-        'unknown_alpha': UNKNOWN_ALPHA,
-    }
-    return snap
-
-
-def rules_hash() -> str:
-    """规则快照的 sha256 前 12 位：两个日期的 hash 相同 = 规则未变，可直接横比。"""
-    import hashlib
-    import json as _json
-    payload = _json.dumps(rules_snapshot(), sort_keys=True, ensure_ascii=False)
-    return hashlib.sha256(payload.encode('utf-8')).hexdigest()[:12]
 
 
 def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
@@ -641,7 +615,7 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         'ias': ias,
         'dimensions': dimensions,
         'rules_snapshot': rules_snapshot(),
-        'rules_hash': rules_hash(),
+        'rules_hash': compute_rules_hash(rules_snapshot()),
         'model': {
             'version': 'v4.2',
             'reference_only': sorted(REFERENCE_ONLY),

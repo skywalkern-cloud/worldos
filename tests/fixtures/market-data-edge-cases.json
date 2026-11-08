@@ -383,6 +383,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 690,
+      "staleness_rule": {
+        "yellow_days": 120,
+        "red_days": 210
+      },
       "realtime": false,
       "dateNote": null,
       "source": "国家统计局",
@@ -411,6 +418,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "东方财富-国家统计局",
@@ -439,6 +453,13 @@
       "dataDateISO": null,
       "dataDateKind": null,
       "days_stale": null,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": null,
+      "staleness_rule": {
+        "yellow_days": 120,
+        "red_days": 210
+      },
       "realtime": false,
       "dateNote": "无数据所属期，时效未知",
       "source": "东方财富-美国商务部",
@@ -469,6 +490,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "东方财富-国家统计局",
@@ -497,6 +525,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "美国劳工统计局",
@@ -525,6 +560,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "FRED API-美国商务部",
@@ -553,6 +595,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "akshare-沪深300ETF期权波动率指数",
@@ -581,6 +630,13 @@
       "dataDateISO": null,
       "dataDateKind": null,
       "days_stale": null,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": null,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": "无数据所属期，时效未知",
       "source": "NYMEX期货",
@@ -617,6 +673,13 @@
       "dataDateISO": null,
       "dataDateKind": null,
       "days_stale": null,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": null,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": true,
       "dateNote": "实时报价，数据源未提供日期",
       "source": "NYMEX期货",
@@ -645,6 +708,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "FOMC会议记录",
@@ -673,6 +743,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "akshare-中美债券",
@@ -701,6 +778,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "akshare-中美债券",
@@ -729,6 +813,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "akshare-中美债券",
@@ -757,6 +848,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "东方财富-美国劳工部",
@@ -785,6 +883,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "CNN Business-Fear&Greed",
@@ -813,6 +918,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "akshare-汇率加权计算",
@@ -841,6 +953,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "东方财富-国家统计局",
@@ -869,6 +988,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "东方财富-国家统计局",
@@ -897,6 +1023,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 810,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "中国人民银行",
@@ -925,6 +1058,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "全国银行间同业拆借中心",
@@ -953,6 +1093,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 810,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "东方财富-中国人民银行",
@@ -981,6 +1128,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "akshare-中美国债利差",
@@ -1009,6 +1163,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "北京碳市场",
@@ -1037,6 +1198,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "国家能源局",
@@ -1065,6 +1233,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "中证新能源指数",
@@ -1093,6 +1268,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "国家能源局-第二产业",
@@ -1121,6 +1303,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "东方财富-规模以上工业增加值",
@@ -1149,6 +1338,13 @@
       "dataDateISO": "2024-05-23",
       "dataDateKind": "day",
       "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 810,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "乘联会-CPCA",
@@ -1177,6 +1373,13 @@
       "dataDateISO": null,
       "dataDateKind": null,
       "days_stale": null,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": null,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": true,
       "dateNote": "实时报价，数据源未提供日期",
       "source": "LME-综合铜03",
@@ -1205,6 +1408,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
       "realtime": false,
       "dateNote": null,
       "source": "上期所-新浪财经",
@@ -1233,6 +1443,13 @@
       "dataDateISO": "2026-11-09",
       "dataDateKind": "day",
       "days_stale": 0,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
       "realtime": false,
       "dateNote": null,
       "source": "夹具-未配评分参数",
@@ -1287,7 +1504,7 @@
         "active_count": 6,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 0.9
+        "avg_alpha": 0.75
       },
       "inflation": {
         "name": "通胀与政策",
@@ -1370,6 +1587,74 @@
         "avg_alpha": 0.0
       }
     },
+    "rules_snapshot": {
+      "staleness_rules": {
+        "daily": {
+          "yellow_days": 5,
+          "red_days": 10
+        },
+        "monthly": {
+          "yellow_days": 60,
+          "red_days": 90
+        },
+        "quarterly": {
+          "yellow_days": 120,
+          "red_days": 210
+        },
+        "yearly": {
+          "yellow_days": 180,
+          "red_days": 365
+        },
+        "other": {
+          "yellow_days": 60,
+          "red_days": 90
+        }
+      },
+      "dimension_weights_design": {
+        "economic": 1.0,
+        "inflation": 1.0,
+        "liquidity": 0.8,
+        "sentiment": 0.8,
+        "resource": 0.6,
+        "techGreen": 0.4
+      },
+      "market_mismatch": {
+        "sentiment": 0.5
+      },
+      "reference_only": [
+        "aiGrowth",
+        "epu",
+        "robotInstall"
+      ],
+      "min_valid_rule": "n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母",
+      "ias_scale": 4.6,
+      "ias_thresholds": [
+        [
+          2.5,
+          "强烈买入",
+          "80-100%"
+        ],
+        [
+          1.0,
+          "增持",
+          "60-80%"
+        ],
+        [
+          -0.5,
+          "持有",
+          "40-60%"
+        ],
+        [
+          -1.5,
+          "减仓",
+          "20-40%"
+        ]
+      ],
+      "ias_min_coverage": 0.6,
+      "ias_partial_coverage": 0.8,
+      "unknown_alpha": 0.5
+    },
+    "rules_hash": "aeeb74397588",
     "model": {
       "version": "v4.2",
       "reference_only": [

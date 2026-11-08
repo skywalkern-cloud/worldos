@@ -16,8 +16,11 @@ WorldOS 指标元数据·单一真源 (P0 / T1)
 """
 
 import calendar
+import hashlib
+import json
 import re
 from datetime import date, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 # ═══════════════════════════════════════════
 # 时间衰减规则
@@ -409,6 +412,60 @@ def dimension_weights(dim: dict) -> dict:
     }
 
 
+def q(x, n: int = 2):
+    """定点舍入：half-up-away-from-zero（T15-1）。
+
+    禁用裸 round()：Python 的 round 是 banker's rounding（.5 取决于奇偶），
+    且 float 是二进制无法精确表示 0.07335 —— 在「恰好平局」时结果不可预期。
+    实测案例：-0.2934 / 4.0 = -0.07335，裸 round(x,4) 给 -0.0733 或 -0.0734 取决于实现路径，
+    测试与实现各得一个值，谁都没错 —— 因为规则不存在。
+
+    全仓只此一份，scoring / 测试一律 import，禁止第二次自己 round。
+    """
+    if x is None:
+        return None
+    return float(Decimal(str(x)).quantize(Decimal(1).scaleb(-n), rounding=ROUND_HALF_UP))
+
+
+def rules_snapshot() -> dict:
+    """把「当天用什么规则算的」固化成可内嵌产物的快照（T14）。
+
+    动机：阈值/权重一改，历史读数就不可比。data/history 从 2026-11-09 才开始记，
+    不内嵌规则快照，三个月后手上只有一堆「分数在变但不知道按什么规则算的」文件。
+    """
+    return {
+        'staleness_rules': {k: dict(v) for k, v in TIMELINESS_RULES.items()},
+        'dimension_weights_design': {d['id']: d['weight'] for d in DIMENSIONS},
+        'market_mismatch': {d['id']: d['market_mismatch']
+                            for d in DIMENSIONS if d.get('market_mismatch', 1.0) != 1.0},
+        'reference_only': sorted(REFERENCE_ONLY),
+        'min_valid_rule': 'n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母',
+        'ias_scale': IAS_SCALE,
+        'ias_thresholds': [[t, sig, pos] for t, sig, pos, _ in IAS_THRESHOLDS],
+        'ias_min_coverage': IAS_MIN_COVERAGE,
+        'ias_partial_coverage': IAS_PARTIAL_COVERAGE,
+        'unknown_alpha': UNKNOWN_ALPHA,
+    }
+
+
+def canonical_rules_json(snapshot: dict) -> str:
+    """rules_hash 的 canonical 形式（T15-2，公开规格）。
+
+    任何第三方（泰斯特 / 将来的维护者 / P3 回测）必须能用这行复现同一个 hash。
+    本函数是**唯一**的 canonical 定义，测试方要独立实现再比对，不许直接调本函数验自己。
+    """
+    return json.dumps(snapshot, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
+
+
+def compute_rules_hash(snapshot: dict = None) -> str:
+    """sha256(canonical_rules_json)[:12]（T15-2）。
+
+    两个产物 rules_hash 相同 ⇔ 规则快照逐字节相同 ⇒ 可直接横比分数。
+    """
+    snap = snapshot if snapshot is not None else rules_snapshot()
+    return hashlib.sha256(canonical_rules_json(snap).encode('utf-8')).hexdigest()[:12]
+
+
 def required_valid_count(dim: dict) -> int:
     """维度最小有效指标数（排除参考项后的分母）。"""
     active = [k for k in dim['indicators'] if not is_reference_only(k)]
@@ -712,4 +769,7 @@ if __name__ == '__main__':
     samples = ['2026-Q1-Q3', '2026-Q3', '2026-11-06', '2026-10', '2026.9', '2026年09', '2026-9月', '2026']
     for s in samples:
         p = parse_period(s)
-        print(f'  {s:<12} → {p["end"] if p else "解析失败"}  ({p["kind"] if p else "-"}, {days_stale(s)}天前)')
+        ds = days_stale(s)
+        if ds is not None and ds < 0:
+            ds = 0   # 未来日期（年度数据期末 12-31）按 0 处理，与 calc_timeliness 同口径
+        print(f'  {s:<12} → {p["end"] if p else "解析失败"}  ({p["kind"] if p else "-"}, {ds}天前)')
