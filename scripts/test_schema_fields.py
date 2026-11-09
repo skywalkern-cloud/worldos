@@ -1066,7 +1066,8 @@ def test_t6b1():
     doc_rules, err = _rules_from_contract_doc()
     ok_shape = isinstance(doc_rules, dict) and bool(doc_rules)
     check('T6b1-01[doc]', ok_shape,
-          err or f'未能从文档解析出非空 dict（got {type(doc_rules).__name__}）')
+          (f'已解析到 {len(doc_rules)} 个频率键' if ok_shape
+           else (err or f'未能从文档解析出非空 dict（got {type(doc_rules).__name__}）')))
     if not ok_shape:
         for cid in ('T6b1-02[doc]', 'T6b1-03[doc]'):
             check(cid, False, '文档 oracle 不可用，无法比对（禁止静默 skip）')
@@ -1112,11 +1113,20 @@ def test_t6b3(doc, label, live):
     另：`total == valid + invalid` 与 S3-01 有意重叠，不计入新增覆盖，仅作本断言的自洽前提。
     """
     data, ind, v = doc['data'], doc['indicators'], doc['validity_report']
-    # live: 定义集 = im.INDICATORS(31)；fixture 故意多 1 个 newIndicatorSample 合成样本
-    want_total = len(im.INDICATORS) if live else len(data)
     bad = []
-    if v.get('total') != want_total:
-        bad.append(f"total={v.get('total')} 期望 {want_total}")
+    if live:
+        # live：定义集即生产口径，不该有多余键 —— 严格 total == len(im.INDICATORS)
+        if v.get('total') != len(im.INDICATORS):
+            bad.append(f"total={v.get('total')} 期望 {len(im.INDICATORS)}(len(IM.INDICATORS))")
+    else:
+        # fixture：数数会与 S3-01 同义重复，改验「定义集一个都不能少」
+        # 夹具只允许一个合成样本 newIndicatorSample 作为额外键
+        missing = set(im.INDICATORS) - set(data)
+        extra = set(data) - set(im.INDICATORS)
+        if missing:
+            bad.append(f'data 缺定义键: {sorted(missing)}')
+        if extra - {'newIndicatorSample'}:
+            bad.append(f'data 多余键（仅允许 newIndicatorSample）: {sorted(extra)}')
     if v.get('valid') != len(ind):
         bad.append(f"valid={v.get('valid')} 期望 {len(ind)}(len(indicators))")
     if v.get('total') != v.get('valid', -1) + v.get('invalid', -1):
