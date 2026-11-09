@@ -223,37 +223,211 @@ console.log('\n[8] 全局不变量')
 console.log('\n[9] 真实快照回归（public/data/market-data.json）')
 {
   const all = Object.entries(real.indicators)
-  check('指标数 30', all.length === 30, `count=${all.length}`)
 
+  // ── 独立复算层 ────────────────────────────────────────────────
+  // 2026-11-09 龙五：本组原先写死 30 / 26-1-1-2 / 223 / 13 / 9。days_stale 每天自然 +1，
+  // 明天 16:30 刷新后必红 4 条（不是「换日才红」，是「明天必红」）。
+  // 改法（与 [14] 同一口径）：期望值从契约推导，不写死可变产物。
+  // 刻意**不复用** caliber 的 overdue 判定，否则等于自己校验自己。
+  const daysOf = v =>
+    typeof v.days_stale === 'number' && Number.isFinite(v.days_stale) ? Math.max(0, Math.trunc(v.days_stale)) : null
+  const deriveOverdue = (v, days) => {
+    if (days === null) return { level: 'none', daysOverdue: null, overdue: false }
+    const rule = v.staleness_rule ?? {}
+    if (days > rule.red_days) return { level: 'red', daysOverdue: days - rule.red_days, overdue: true }
+    if (days > rule.yellow_days) return { level: 'yellow', daysOverdue: days - rule.yellow_days, overdue: true }
+    return { level: 'none', daysOverdue: 0, overdue: false }
+  }
+  const deriveState = (v, days) =>
+    days === null
+      ? v.realtime === true
+        ? 'realtime'
+        : 'unknown'
+      : days > v.staleness_rule.red_days
+      ? 'expired'
+      : days > v.staleness_rule.yellow_days
+      ? 'stale'
+      : 'fresh'
+
+  // ── 指标总数：静态配置派生（Σ 维度计数），不写死 30
+  const dims = Object.values(real.meta.dimensions)
+  const sumActive = dims.reduce((a, d) => a + d.active_count, 0)
+  const sumRefCfg = dims.reduce((a, d) => a + d.reference_only_count, 0)
+  check(
+    '指标数 = Σ维度(active_count + reference_only_count)（静态配置派生）',
+    all.length === sumActive + sumRefCfg,
+    `${all.length} vs ${sumActive}+${sumRefCfg}`
+  )
+
+  const byCat = {}
+  for (const [, v] of all) {
+    byCat[v.category] = byCat[v.category] ?? { active: 0, ref: 0 }
+    if (v.reference_only === true) byCat[v.category].ref += 1
+    else byCat[v.category].active += 1
+  }
+  check(
+    '每维度 active/reference 计数与 indicators 分组一致（分层断言）',
+    Object.entries(real.meta.dimensions).every(
+      ([k, d]) => byCat[k] && byCat[k].active === d.active_count && byCat[k].ref === d.reference_only_count
+    ),
+    JSON.stringify(byCat)
+  )
+
+  // ── 描灰：独立复算「超期 且 非参考项」，不写死 oilPrice,usGdp
+  const dimmedDerived = all
+    .filter(([, v]) => deriveOverdue(v, daysOf(v)).overdue && v.reference_only !== true)
+    .map(([k]) => k)
+    .sort()
   const dimmed = all.filter(([, v]) => describeIndicatorState(v).dimmed).map(([k]) => k).sort()
-  check('描灰 = oilPrice(yellow) + usGdp(red)', dimmed.join(',') === 'oilPrice,usGdp', dimmed.join(','))
+  check(
+    '描灰集合 = 独立复算(超期 且 非参考项)',
+    dimmed.join(',') === dimmedDerived.join(','),
+    `${dimmed.join(',')} vs ${dimmedDerived.join(',')}`
+  )
+  check(
+    '描灰 ⟺ 后端 overdue 且非参考项（逐项）',
+    all.every(([, v]) => describeIndicatorState(v).dimmed === (v.overdue === true && v.reference_only !== true)),
+    all
+      .filter(([, v]) => describeIndicatorState(v).dimmed !== (v.overdue === true && v.reference_only !== true))
+      .map(([k]) => k)
+      .join(',')
+  )
+
+  // 描灰的 reference_only 例外：当前 live 快照里没有任何「参考项超期」样本，
+  // 光靠 live 数据这个分支永远走不到（实测：删掉 !isRef 整跑 243 项仍然全绿）。
+  // 故补字面量探针（同 [14] 半位探针），守住「参考项只挂参考项标、不叠描灰」。
+  const refOverdueProbe = {
+    days_stale: 30,
+    frequency: 'daily',
+    overdue: true,
+    overdue_level: 'red',
+    days_overdue: 20,
+    staleness_rule: { yellow_days: 5, red_days: 10 },
+    reference_only: true,
+    excluded_from_scoring: true,
+    exclusion_reason: 'reference_only',
+  }
+  check(
+    '参考项超期也不描灰（字面量探针，非快照值）',
+    describeIndicatorState(refOverdueProbe).dimmed === false &&
+      describeIndicatorState(refOverdueProbe).exclusionBadge?.text === '参考项',
+    `dimmed=${describeIndicatorState(refOverdueProbe).dimmed} badge=${describeIndicatorState(refOverdueProbe).exclusionBadge?.text}`
+  )
+
+  // ── 排除标：两层分开算，不合成一个写死集合
+  //   层1 静态配置：rules_snapshot.reference_only（= 后端 is_reference_only() 输出）
+  //   层2 当日状态：excluded_from_scoring 且非参考项（α=0 一类）
+  const refCfg = new Set(real.meta.rules_snapshot.reference_only ?? [])
+  const refCfgLive = [...refCfg].filter(k => k in real.indicators)
+  const refLive = all.filter(([, v]) => v.reference_only === true).map(([k]) => k).sort()
+  const zeroAlpha = all
+    .filter(([, v]) => v.excluded_from_scoring === true && v.reference_only !== true)
+    .map(([k]) => k)
+    .sort()
+  check(
+    '参考项 = 静态配置 ∩ 当日指标（不写死 aiGrowth/robotInstall）',
+    refLive.length === refCfgLive.length && refLive.every(k => refCfg.has(k)),
+    `live=${refLive.join(',')} cfg=${refCfgLive.join(',')}`
+  )
 
   const badges = all.filter(([, v]) => describeIndicatorState(v).exclusionBadge)
-  check('排除标 3 个', badges.length === 3, badges.map(([k]) => k).join(','))
   check(
-    '排除标 = usGdp(过期剔除) + aiGrowth/robotInstall(参考项)',
-    badges.map(([k]) => k).sort().join(',') === 'aiGrowth,robotInstall,usGdp',
+    '排除标数量 = |参考项| + |当日 excluded|',
+    badges.length === refLive.length + zeroAlpha.length,
+    `badges=${badges.length} ref=${refLive.length} excl=${zeroAlpha.length}`
+  )
+  check(
+    '排除标集合 = 参考项 ∪ 当日 excluded（分层派生）',
+    badges.map(([k]) => k).sort().join(',') === [...refLive, ...zeroAlpha].sort().join(','),
     badges.map(([k]) => k).join(',')
   )
+  check(
+    '排除标文案按层出：参考项→「参考项」，α=0→按 exclusion_reason',
+    all.every(([, v]) => {
+      const b = describeIndicatorState(v).exclusionBadge
+      if (v.reference_only === true) return b?.text === '参考项'
+      if (v.excluded_from_scoring === true) return b !== null && b.text !== '参考项'
+      return b === null
+    }),
+    all
+      .filter(([, v]) => {
+        const b = describeIndicatorState(v).exclusionBadge
+        if (v.reference_only === true) return b?.text !== '参考项'
+        if (v.excluded_from_scoring === true) return !(b !== null && b.text !== '参考项')
+        return b !== null
+      })
+      .map(([k]) => k)
+      .join(',')
+  )
+
+  // ── 五态：逐项独立复算 + 分布只校验「合计与枚举合法」，不写死 26/1/1/2
+  const stateMismatch = all.filter(([, v]) => resolveFreshnessState(v) !== deriveState(v, daysOf(v))).map(([k]) => k)
+  check('每指标 freshness_level = 独立复算(days_stale vs 黄/红线)', stateMismatch.length === 0, stateMismatch.join(','))
 
   const states = {}
   for (const [, v] of all) {
     const s = resolveFreshnessState(v)
     states[s] = (states[s] ?? 0) + 1
   }
-  check('状态分布 fresh26/expired1/stale1/realtime2', states.fresh === 26 && states.expired === 1 && states.stale === 1 && states.realtime === 2, JSON.stringify(states))
+  check(
+    '状态分布合计 = 指标总数（不写死具体分布）',
+    Object.values(states).reduce((a, b) => a + b, 0) === all.length && Object.keys(states).every(k => k in FRESHNESS_STATE_META),
+    JSON.stringify(states)
+  )
 
   const rt = all.filter(([, v]) => resolveFreshnessState(v) === 'realtime')
   check('realtime 2 个且 days=null', rt.length === 2 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
 
-  check('usGdp 223 天 → expired（红线 210）', resolveFreshnessState(real.indicators.usGdp) === 'expired')
-  check('usGdp overdue_level=red、days_overdue=13', real.indicators.usGdp.overdue_level === 'red' && real.indicators.usGdp.days_overdue === 13)
+  // ── 超期字段：期望值由 max(0, days_stale − 红线) 推导，不写死 13
+  const usGdp = real.indicators.usGdp
+  const usGdpDays = daysOf(usGdp)
+  const usGdpDerived = deriveOverdue(usGdp, usGdpDays)
+  check(
+    'usGdp → expired（days_stale 超红线）',
+    resolveFreshnessState(usGdp) === 'expired' && usGdpDays > usGdp.staleness_rule.red_days,
+    `days=${usGdpDays} red=${usGdp.staleness_rule.red_days}`
+  )
+  check(
+    'usGdp overdue_level=red ⟺ days_stale > 红线',
+    usGdp.overdue_level === usGdpDerived.level && (usGdp.overdue_level === 'red') === usGdpDays > usGdp.staleness_rule.red_days,
+    `${usGdp.overdue_level} / ${usGdpDerived.level}`
+  )
+  check(
+    'usGdp days_overdue = max(0, days_stale − 红线)',
+    usGdp.days_overdue === Math.max(0, usGdpDays - usGdp.staleness_rule.red_days),
+    `${usGdp.days_overdue} vs ${Math.max(0, usGdpDays - usGdp.staleness_rule.red_days)}`
+  )
+  const ovDrift = all.filter(([, v]) => {
+    const x = deriveOverdue(v, daysOf(v))
+    return v.overdue !== x.overdue || v.overdue_level !== x.level || v.days_overdue !== x.daysOverdue
+  }).map(([k]) => k)
+  check('全部指标的 overdue/overdue_level/days_overdue 与独立复算一致', ovDrift.length === 0, ovDrift.join(','))
+
   // 龙五 12:00 指定要盯的两个
-  check('usGdp 走 expired_alpha0（已剔出评分）', real.indicators.usGdp.exclusion_reason === 'expired_alpha0' && real.indicators.usGdp.excluded_from_scoring === true)
+  check('usGdp 走 expired_alpha0（已剔出评分）', usGdp.exclusion_reason === 'expired_alpha0' && usGdp.excluded_from_scoring === true)
   check('naturalGas 🔵 realtime', real.indicators.naturalGas.freshness === '🔵' && resolveFreshnessState(real.indicators.naturalGas) === 'realtime')
   check('lmeIndex 🔵 realtime', real.indicators.lmeIndex.freshness === '🔵' && resolveFreshnessState(real.indicators.lmeIndex) === 'realtime')
-  check('usGdp 文案 =「过期 223 天」', computeStaleness(real.indicators.usGdp).label === '过期 223 天', computeStaleness(real.indicators.usGdp).label)
-  check('oilPrice 文案 =「偏旧 9 天」', computeStaleness(real.indicators.oilPrice).label === '偏旧 9 天', computeStaleness(real.indicators.oilPrice).label)
+
+  // ── 文案：由 days_stale + 状态拼出，N 逐字校验（不写死 223 / 9）
+  const usGdpLabel = computeStaleness(usGdp).label
+  check(
+    `usGdp 文案 =「过期 N 天」（N 由 days_stale 派生）`,
+    typeof usGdpDays === 'number' && usGdpLabel === `过期 ${usGdpDays} 天`,
+    `${usGdpLabel} | N=${usGdpDays}`
+  )
+  const oilPrice = real.indicators.oilPrice
+  const oilDays = daysOf(oilPrice)
+  const oilLabel = computeStaleness(oilPrice).label
+  check(
+    `oilPrice 文案 =「偏旧 N 天」（N 由 days_stale 派生）`,
+    typeof oilDays === 'number' && oilLabel === `偏旧 ${oilDays} 天`,
+    `${oilLabel} | N=${oilDays}`
+  )
+  check(
+    'oilPrice 独立复算 level=yellow（「偏旧」档才成立）',
+    deriveOverdue(oilPrice, oilDays).level === 'yellow',
+    deriveOverdue(oilPrice, oilDays).level
+  )
 }
 
 // ------------------------------------------------------- [10] T13-5 超期字段单一真源
@@ -275,7 +449,10 @@ console.log('\n[10] overdue / overdue_level / days_overdue / staleness_rule（�
   // staleness_rule 进 tooltip
   const t = computeStaleness(real.indicators.usGdp).title
   check('tooltip 含黄/红阈值', /黄线 120/.test(t) && /红线 210/.test(t), t)
-  check('tooltip 含超出天数', /超出 13 天/.test(t), t)
+  // 「超出 N 天」的 N 每日 +1，不能写死（2026-11-09：原写 `/超出 13 天/`，明天必红）
+  const usG = real.indicators.usGdp
+  const usGOver = usG.days_stale - usG.staleness_rule.red_days
+  check('tooltip 含超出天数（N 由 days_stale − 红线 派生）', usGOver > 0 && new RegExp(`超出 ${usGOver} 天`).test(t), `${t} | N=${usGOver}`)
 
   // 无日期一律不描灰（即使后端误给 overdue）
   const contradiction = { days_stale: null, frequency: 'daily', overdue: true, overdue_level: 'red', realtime: false, freshness_level: 'unknown' }
@@ -348,7 +525,7 @@ console.log('\n[13] 失败状态两分：已兜底（有值不可信） vs 数�
   const oilStatus = describeFailureStatus(oil)
   const epuStatus = describeFailureStatus(epu)
   check('oilPrice → variant=fallback', oilStatus.variant === 'fallback')
-  check('oilPrice 文案含「已兜底」且带天数', /已兜底/.test(oilStatus.text) && /9 天前/.test(oilStatus.text), oilStatus.text)
+  check('oilPrice 文案含「已兜底」且带天数（N 由 days_stale 派生）', /已兜底/.test(oilStatus.text) && typeof oil?.days_stale === 'number' && oilStatus.text.includes(`${oil.days_stale} 天前`), `${oilStatus.text} | days=${oil?.days_stale}`)
   check('epu → variant=hard', epuStatus.variant === 'hard')
   check('epu 文案是「数据源无记录」，不含「兜底」', epuStatus.text === '数据源无记录' && !/兜底/.test(epuStatus.text), epuStatus.text)
   check('两者文案不相同', oilStatus.text !== epuStatus.text, `${oilStatus.text} vs ${epuStatus.text}`)
