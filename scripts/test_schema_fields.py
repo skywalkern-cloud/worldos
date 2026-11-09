@@ -14,9 +14,12 @@ WorldOS P0 / T6 — 字段级 schema 校验 + 回归（只读）
   - 时效阈值唯一真源 = indicator_meta.TIMELINESS_RULES，测试内**不硬编码天数**；
   - 评分规则唯一真源 = indicator_meta / scoring，测试只做独立复算与边界钉扎；
   - 参考日一律取 JSON timestamp 的日期（不是运行日），避免隔天 stale 漂移；
-  - 输入文件只读，运行前后 sha256 必须一致。
+  - 输入文件只读，运行前后 sha256 必须一致；
+  - 阈值契约（T6b-1）以 docs/freshness-contract.md 为外部 oracle：
+    测试不回答「210 是否正确」，只回答「文档与代码是否一致」；正确性由龙五签字。
 """
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -1017,6 +1020,127 @@ def test_units():
 
 
 # ═══════════════════════════════════════════
+# T6b 契约守卫（龙五 2026-11-09 派单）
+# ═══════════════════════════════════════════
+
+CONTRACT_DOC = WS / 'docs' / 'freshness-contract.md'
+
+
+def _rules_from_contract_doc():
+    """从冻结契约文档的 python 代码块解析 TIMELINESS_RULES（外部 oracle）。
+
+    刻意不 import、也不在测试里复制常量：测试不回答「210 是否正确」，
+    只回答「文档与代码是否一致」；正确性由龙五签字。
+    解析失败 / 块不存在 / 无该赋值 → 一律 FAIL，禁止静默 skip。
+    """
+    if not CONTRACT_DOC.exists():
+        return None, f'契约文档不存在: {CONTRACT_DOC}'
+    text = CONTRACT_DOC.read_text(encoding='utf-8')
+    blocks = re.findall(r'```python\s*\n(.*?)```', text, re.S)
+    if not blocks:
+        return None, '文档中无 ```python 代码块'
+    hits, errs = [], []
+    for i, b in enumerate(blocks):
+        try:
+            tree = ast.parse(b)
+        except SyntaxError as e:
+            errs.append(f'block#{i} SyntaxError: {e}')
+            continue
+        for node in tree.body:
+            if (isinstance(node, ast.Assign)
+                    and any(isinstance(t, ast.Name) and t.id == 'TIMELINESS_RULES'
+                            for t in node.targets)):
+                try:
+                    hits.append(ast.literal_eval(node.value))
+                except Exception as e:  # noqa: BLE001
+                    errs.append(f'block#{i} literal_eval: {e}')
+    if not hits:
+        return None, '未找到 TIMELINESS_RULES 赋值' + (f'（{"; ".join(errs)}）' if errs else '')
+    if len(hits) > 1:
+        return None, f'找到 {len(hits)} 处 TIMELINESS_RULES 赋值（应唯一，避免多真源）'
+    return hits[0], None
+
+
+def test_t6b1():
+    """T6b-1：冻结文档 vs 代码常量，逐键逐值比对（文档为 oracle）。"""
+    doc_rules, err = _rules_from_contract_doc()
+    ok_shape = isinstance(doc_rules, dict) and bool(doc_rules)
+    check('T6b1-01[doc]', ok_shape,
+          err or f'未能从文档解析出非空 dict（got {type(doc_rules).__name__}）')
+    if not ok_shape:
+        for cid in ('T6b1-02[doc]', 'T6b1-03[doc]'):
+            check(cid, False, '文档 oracle 不可用，无法比对（禁止静默 skip）')
+        return
+
+    want, got = im.TIMELINESS_RULES, doc_rules
+    bad = []
+    if set(got) != set(want):
+        bad.append(f'键集合 文档={sorted(got)} 代码={sorted(want)}')
+    for k in sorted(set(got) & set(want)):
+        if not isinstance(got[k], dict) or 'yellow_days' not in got[k]:
+            bad.append(f'{k}.yellow_days 缺失/非对象')
+        elif got[k]['yellow_days'] != want[k]['yellow_days']:
+            bad.append(f"{k}.yellow_days 文档={got[k]['yellow_days']} 代码={want[k]['yellow_days']}")
+    check('T6b1-02[doc]', not bad, '; '.join(bad[:6]))
+
+    bad = []
+    for k in sorted(set(got) & set(want)):
+        if not isinstance(got[k], dict) or 'red_days' not in got[k]:
+            bad.append(f'{k}.red_days 缺失/非对象')
+        elif got[k]['red_days'] != want[k]['red_days']:
+            bad.append(f"{k}.red_days 文档={got[k]['red_days']} 代码={want[k]['red_days']}")
+    check('T6b1-03[doc]', not bad, '; '.join(bad[:6]))
+
+
+def test_t6b2(doc, label):
+    """T6b-2：reference_only 与 exclusion_reason 的双向不变式（live + fixture 全量）。"""
+    ind = doc['indicators']
+    bad = [f"{k}: reference_only={v.get('reference_only')!r} "
+           f"reason={v.get('exclusion_reason')!r}"
+           for k, v in ind.items()
+           if bool(v.get('reference_only')) != (v.get('exclusion_reason') == 'reference_only')]
+    check(f'T6b2[{label}]', bool(ind) and not bad,
+          f'{len(bad)} 处不一致: ' + '; '.join(bad[:6]))
+
+
+def test_t6b3(doc, label, live):
+    """T6b-3：账本闭合（定义数 / 产出数 / 失败项可追溯）。
+
+    注意 invalid 与 len(failed) 不是一回事，禁止互相断言：
+      invalid = data 里 value 为 null 的个数；failed = 本轮抓取失败个数；
+      两者交叉但不重合（oilPrice 有值兜底却在 failed；epu 无值且在 failed/不在 indicators）。
+    另：`total == valid + invalid` 与 S3-01 有意重叠，不计入新增覆盖，仅作本断言的自洽前提。
+    """
+    data, ind, v = doc['data'], doc['indicators'], doc['validity_report']
+    # live: 定义集 = im.INDICATORS(31)；fixture 故意多 1 个 newIndicatorSample 合成样本
+    want_total = len(im.INDICATORS) if live else len(data)
+    bad = []
+    if v.get('total') != want_total:
+        bad.append(f"total={v.get('total')} 期望 {want_total}")
+    if v.get('valid') != len(ind):
+        bad.append(f"valid={v.get('valid')} 期望 {len(ind)}(len(indicators))")
+    if v.get('total') != v.get('valid', -1) + v.get('invalid', -1):
+        bad.append(f"total={v.get('total')} != valid+invalid")
+    check(f'T6b3-01[{label}]', not bad, '; '.join(bad))
+
+    failed = v.get('failed')
+    bad = []
+    if not isinstance(failed, list):
+        bad.append(f'failed 非数组: {type(failed).__name__}')
+    else:
+        for f in failed:
+            k = f.get('key')
+            x = data.get(k) if isinstance(k, str) else None
+            fe = x.get('fetchError') if isinstance(x, dict) else None
+            if not isinstance(fe, dict):
+                bad.append(f'{k}: data[{k!r}] 无 fetchError 对象')
+            elif fe.get('reason') != f.get('reason'):
+                bad.append(f"{k}: fetchError.reason={fe.get('reason')!r} "
+                           f"!= failed.reason={f.get('reason')!r}")
+    check(f'T6b3-02[{label}]', not bad, '; '.join(bad[:6]))
+
+
+# ═══════════════════════════════════════════
 # main
 # ═══════════════════════════════════════════
 
@@ -1039,6 +1163,9 @@ def run_one(json_path, fixture_path=None, do_units=True):
     safe('S6', test_s6, doc, label, ref)
     safe('S7', test_s7, doc, text, label, live)
     safe('S6B', test_s6_boundaries)
+    safe('T6b1', test_t6b1)
+    safe('T6b2', test_t6b2, doc, label)
+    safe('T6b3', test_t6b3, doc, label, live)
     if do_units:
         safe('S4U', test_units)
     if live:
@@ -1060,6 +1187,8 @@ def run_one(json_path, fixture_path=None, do_units=True):
     if live and fixture_path and Path(fixture_path).exists():
         fix, _, _ = load_strict(fixture_path)
         test_s8(fix)
+        safe('T6b2', test_t6b2, fix, 'fixture')
+        safe('T6b3', test_t6b3, fix, 'fixture', False)
     return sha
 
 
