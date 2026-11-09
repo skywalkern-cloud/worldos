@@ -1182,12 +1182,21 @@ def run_one(json_path, fixture_path=None, do_units=True):
         try:
             a_ind, a_meta = scoring.build_indicators_and_meta(doc['data'], doc['data'])
             b_ind, b_meta = scoring.build_indicators_and_meta(doc['data'], doc['data'])
-            check('R-07[replay]',
-                  json.dumps(a_ind, sort_keys=True, ensure_ascii=False)
-                  == json.dumps(doc['indicators'], sort_keys=True, ensure_ascii=False)
-                  and json.dumps(a_meta, sort_keys=True, ensure_ascii=False)
-                  == json.dumps(doc['meta'], sort_keys=True, ensure_ascii=False),
-                  'JSON 不能由 data 块逐字节重放')
+            # trend 是「相对上一份快照」派生的（涨/跌/平），不是 data 块的函数：
+            # 用同一份 data 当 prev 重建，trend 必然全 neutral（2026-11-09 16:40
+            # 数据落地后 cpi/fearGreed/ppi/shanghaiCopper/naturalGas/lmeIndex/dr007 七例真红）。
+            # 故 replay 契约显式排除 prev 派生字段；白名单之外必须逐字节一致。
+            # 注意：不得为了让断言变绿去改 neutral 判定，也不得降级为 warn。
+            drop = {'trend'}
+            a_s = {k: {f: x for f, x in v.items() if f not in drop}
+                   for k, v in a_ind.items()}
+            j_s = {k: {f: x for f, x in v.items() if f not in drop}
+                   for k, v in doc['indicators'].items()}
+            diff = sorted(k for k in set(a_s) | set(j_s) if a_s.get(k) != j_s.get(k))
+            meta_same = (json.dumps(a_meta, sort_keys=True, ensure_ascii=False)
+                         == json.dumps(doc['meta'], sort_keys=True, ensure_ascii=False))
+            check('R-07[replay]', not diff and meta_same,
+                  f'白名单 {sorted(drop)} 外不一致的指标={diff[:8]}；meta 一致={meta_same}')
             check('R-08[idempotent]',
                   json.dumps((a_ind, a_meta), sort_keys=True, ensure_ascii=False)
                   == json.dumps((b_ind, b_meta), sort_keys=True, ensure_ascii=False),
