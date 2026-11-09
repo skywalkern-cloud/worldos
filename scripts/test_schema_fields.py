@@ -39,6 +39,13 @@ import scoring  # noqa: E402  (仅 S4-U*/S5-U* 白盒夹具)
 RESULTS = []
 FAILED = []
 
+# ── prev 派生字段：不得进入 data-only replay 契约 ──
+# trend = calc_trend(value, prev_value)（scoring.py:168-181 / 503-508），
+# 传同一份 data 当 prev 时 diff 恒 0 ⇒ 恒返回 neutral。它需要「上一份快照」才能重放。
+# 若要覆盖 trend 的重放，必须另立一条用「冻 prev 夹具」，本次不做。
+PREV_DERIVED = {'trend'}
+TREND_ENUM = {'up', 'down', 'neutral'}
+
 
 def record(cid, ok, detail='', warn=False):
     RESULTS.append({'id': cid, 'status': 'WARN' if (warn and not ok) else ('PASS' if ok else 'FAIL'),
@@ -1189,18 +1196,28 @@ def run_one(json_path, fixture_path=None, do_units=True):
             # trend 是「相对上一份快照」派生的（涨/跌/平），不是 data 块的函数：
             # 用同一份 data 当 prev 重建，trend 必然全 neutral（2026-11-09 16:40
             # 数据落地后 cpi/fearGreed/ppi/shanghaiCopper/naturalGas/lmeIndex/dr007 七例真红）。
-            # 故 replay 契约显式排除 prev 派生字段；白名单之外必须逐字节一致。
+            # 故 replay 契约显式排除 PREV_DERIVED；白名单之外必须逐字节一致。
             # 注意：不得为了让断言变绿去改 neutral 判定，也不得降级为 warn。
-            drop = {'trend'}
-            a_s = {k: {f: x for f, x in v.items() if f not in drop}
+            a_s = {k: {f: x for f, x in v.items() if f not in PREV_DERIVED}
                    for k, v in a_ind.items()}
-            j_s = {k: {f: x for f, x in v.items() if f not in drop}
+            j_s = {k: {f: x for f, x in v.items() if f not in PREV_DERIVED}
                    for k, v in doc['indicators'].items()}
             diff = sorted(k for k in set(a_s) | set(j_s) if a_s.get(k) != j_s.get(k))
             meta_same = (json.dumps(a_meta, sort_keys=True, ensure_ascii=False)
                          == json.dumps(doc['meta'], sort_keys=True, ensure_ascii=False))
-            check('R-07[replay]', not diff and meta_same,
-                  f'白名单 {sorted(drop)} 外不一致的指标={diff[:8]}；meta 一致={meta_same}')
+            # 覆盖率不倒退：trend 被排除在重放之外，但不能变成「没人管」的字段。
+            # 仍须全量 ∈ 合法枚举，并打印分布（up/down 多为真数据，全 neutral 需警觉）。
+            trends = [v.get('trend') for v in doc['indicators'].values()]
+            trend_ok = bool(trends) and all(t in TREND_ENUM for t in trends)
+            n_up = trends.count('up')
+            n_down = trends.count('down')
+            n_neu = trends.count('neutral')
+            print(f"  ℹ️ trend 覆盖: total={len(trends)} up={n_up} down={n_down} "
+                  f"neutral={n_neu}（均 ∈ {sorted(TREND_ENUM)}）")
+            check('R-07[replay]',
+                  not diff and meta_same and trend_ok,
+                  f'白名单 {sorted(PREV_DERIVED)} 外不一致的指标={diff[:8]}；'
+                  f'meta 一致={meta_same}；trend 枚举合法={trend_ok}')
             check('R-08[idempotent]',
                   json.dumps((a_ind, a_meta), sort_keys=True, ensure_ascii=False)
                   == json.dumps((b_ind, b_meta), sort_keys=True, ensure_ascii=False),
