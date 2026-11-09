@@ -374,13 +374,30 @@ console.log('\n[14] half-up-away-from-zero：不能用 toFixed / 裸 Math.round'
   check('formatSigned null → 占位', formatSigned(null, 2, '-') === '-')
   check('formatDecimal 缺省占位', formatDecimal(undefined) === '—')
 
-  // 与后端实际值对账
+  // 与后端实际值对账。
+  //
+  // 2026-11-09 R-07 同型病修复：这里原本写死了「上一份快照」的数字
+  // （-0.07335 / -0.0734 / -0.34 / -0.073350），16:40 新数据落地后（IAS -0.38 持有）
+  // 无故飘红 4 条。契约是「展示 = roundHalfUp(真值, 位数)」，**具体数字不是契约**，
+  // 故改为拿同一份 live 值自证。数据换日不再误报。
   const norm = real.meta.ias.normalized
-  check('真实 normalized 原值 -0.07335 量级', Math.abs(norm - -0.07335) < 1e-9, String(norm))
-  check('卡上展示 -0.0734', formatSigned(norm, 4) === '-0.0734', formatSigned(norm, 4))
-  check('IAS score 展示 -0.34', formatSigned(real.meta.ias.score, 2) === '-0.34', formatSigned(real.meta.ias.score, 2))
+  // 与 formatSigned 的符号约定对齐（>0 加 '+'），避免正数日假红
+  const expectSigned = (v, places) => {
+    const s = roundHalfUp(v, places).toFixed(places)
+    return v > 0 ? `+${s}` : s
+  }
+  const normShown = formatSigned(norm, 4)
+  check('卡上 normalized 展示 = roundHalfUp(真值, 4)', normShown === expectSigned(norm, 4), `${normShown} vs ${expectSigned(norm, 4)}`)
+  // 位数契约（与快照无关）：4 位格式；且必须走定点 half-up。
+  // 附「半位探针」：live 值有效位 ≤ 展示位数时，toFixed 与 half-up 输出完全相同，
+  // 光靠 live 值抓不到「formatSigned/formatDecimal 绕过 roundHalfUp 改用 toFixed」这类真回归。
+  // 探针输入是字面量常量（同 [14] 361-369 组），不是快照值 -> 不构成快照耦合。
+  const probe = formatSigned(-0.07335, 4)
+  check('normalized 展示固定 4 位 + 走 half-up（半位探针）', /^[+-]?\d+\.\d{4}$/.test(normShown) && probe === '-0.0734', `${normShown} | probe=${probe}`)
+  const scoreShown = formatSigned(real.meta.ias.score, 2)
+  check('IAS score 展示 = roundHalfUp(真值, 2)', scoreShown === expectSigned(real.meta.ias.score, 2), `${scoreShown} vs ${expectSigned(real.meta.ias.score, 2)}`)
   // 龙六约束：显示位数是排版选择，但真值必须可对照（tooltip 露 6 位）
-  check('6 位真值可原样输出', formatDecimal(norm, 6) === '-0.073350', formatDecimal(norm, 6))
+  check('6 位真值可原样还原', formatDecimal(norm, 6) === roundHalfUp(norm, 6).toFixed(6), formatDecimal(norm, 6))
   check('展示值与真值同源（不是 score/4.6 反推）', Math.abs(Number(formatDecimal(norm, 6)) - norm) < 1e-12)
 }
 
