@@ -621,7 +621,11 @@ def test_s5(doc, label):
                  if ind.get(k) and ind[k]['score'] is not None and ind[k]['timeliness'] > 0]
         if valid:
             sa = sum(a for _, a in valid)
-            want = round(sum(s * a for s, a in valid) / sa, 3)
+            # 跟随后端 scoring.py:300 的 q(...,3)：定点 half-up away-from-zero。
+            # 不得用裸 round()（banker's rounding）：-0.4325 会被舍成 -0.432，
+            # 而后端 q() 给 -0.433（T15-1 单一舍入真源，测试侧 import 同一实现）。
+            # 也不许放宽容差来掩饰差异。
+            want = im.q(sum(s * a for s, a in valid) / sa, 3)
             if abs(x['score'] - want) > 1e-9:
                 bad.append(f'{d["id"]}.score {x["score"]} != {want}')
             # T14: avg_alpha = Σα(score≠null) / active_count（含 α=0），不是 /valid_count
