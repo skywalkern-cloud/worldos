@@ -238,16 +238,53 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
     if (days > rule.yellow_days) return { level: 'yellow', daysOverdue: days - rule.yellow_days, overdue: true }
     return { level: 'none', daysOverdue: 0, overdue: false }
   }
-  const deriveState = (v, days) =>
-    days === null
-      ? v.realtime === true
-        ? 'realtime'
-        : 'unknown'
-      : days > v.staleness_rule.red_days
-      ? 'expired'
-      : days > v.staleness_rule.yellow_days
-      ? 'stale'
-      : 'fresh'
+  // 2026-11-10 龙五：光按 days_stale vs 黄/红线推状态，**判据比契约少两个来源**，
+  // 把正确实现（dollarIndex days=1 但 used_fallback=true → stale）判成了错的。
+  // oracle 必须是契约的完整镜像（scripts/indicator_meta.resolve_freshness）：
+  //   ① 无日期：realtime 且**非兜底** → realtime；否则 unknown（无日期永不 fresh）
+  //   ② 有日期：按 days_stale vs 黄/红线判（realtime 标记不足为凭，有日期就得比）
+  //   ③ used_fallback=true：兜底值来自上一轮，α 封顶 0.5，最鲜只能到 stale
+  const deriveState = (v, days) => {
+    const usedFallback = v.used_fallback === true
+    let state
+    if (days === null) {
+      state = v.realtime === true && !usedFallback ? 'realtime' : 'unknown'
+    } else {
+      const rule = v.staleness_rule ?? {}
+      state = days > rule.red_days ? 'expired' : days > rule.yellow_days ? 'stale' : 'fresh'
+    }
+    if (usedFallback && state === 'fresh') state = 'stale'
+    return state
+  }
+
+  // ── 契约探针（输入是字面量，不是快照值）：钉住 ①②③ 三条判据
+  // 没这组，oracle 被简化成「只看天数」时 live 数据照样全绿（今天就是这么漏的），
+  // 只在 dollarIndex 这种「天数新鲜但兜底」的样本上才会咬住 —— 即数据碰巧对上就假绿。
+  const ruleProbe = { yellow_days: 5, red_days: 10 }
+  check(
+    '探针：used_fallback=true 时 fresh → stale（α 封顶 0.5）',
+    deriveState({ days_stale: 1, staleness_rule: ruleProbe, used_fallback: true }, 1) === 'stale'
+  )
+  check(
+    '探针：同一输入去掉 used_fallback 仍 fresh（证明上一条真在看 used_fallback）',
+    deriveState({ days_stale: 1, staleness_rule: ruleProbe, used_fallback: false }, 1) === 'fresh'
+  )
+  check(
+    '探针：realtime 且无日期 → realtime',
+    deriveState({ days_stale: null, realtime: true }, null) === 'realtime'
+  )
+  check(
+    '探针：realtime 但有日期 → 按日期判（34 天 > 红线 → expired，标记不足为凭）',
+    deriveState({ days_stale: 34, realtime: true, staleness_rule: ruleProbe }, 34) === 'expired'
+  )
+  check(
+    '探针：无日期且非 realtime → unknown（永不 fresh）',
+    deriveState({ days_stale: null, realtime: false }, null) === 'unknown'
+  )
+  check(
+    '探针：无日期 + 兜底 → unknown（兜底时连 realtime 也不算）',
+    deriveState({ days_stale: null, realtime: true, used_fallback: true }, null) === 'unknown'
+  )
 
   // ── 指标总数：静态配置派生（Σ 维度计数），不写死 30
   const dims = Object.values(real.meta.dimensions)
@@ -362,7 +399,18 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
 
   // ── 五态：逐项独立复算 + 分布只校验「合计与枚举合法」，不写死 26/1/1/2
   const stateMismatch = all.filter(([, v]) => resolveFreshnessState(v) !== deriveState(v, daysOf(v))).map(([k]) => k)
-  check('每指标 freshness_level = 独立复算(days_stale vs 黄/红线)', stateMismatch.length === 0, stateMismatch.join(','))
+  check('每指标 freshness_level = 独立复算(days_stale/黄红线 + realtime + used_fallback)', stateMismatch.length === 0, stateMismatch.join(','))
+
+  // live 派生不变量：兜底项永不自证新鲜（α 封顶 0.5 → 最鲜 stale）
+  const fbFresh = all
+    .filter(([, v]) => v.used_fallback === true && ['fresh', 'realtime'].includes(deriveState(v, daysOf(v))))
+    .map(([k]) => k)
+  check('兜底项不得判 fresh/realtime（live 派生）', fbFresh.length === 0, fbFresh.join(','))
+  // live 派生不变量：无日期项永不 fresh
+  const noDateFresh = all
+    .filter(([, v]) => daysOf(v) === null && deriveState(v, null) === 'fresh')
+    .map(([k]) => k)
+  check('无日期项不得判 fresh（live 派生）', noDateFresh.length === 0, noDateFresh.join(','))
 
   const states = {}
   for (const [, v] of all) {
@@ -515,15 +563,41 @@ console.log('\n[12] 不计分 = 中性色：判定只认 excluded，不按 exclu
 console.log('\n[13] 失败状态两分：已兜底（有值不可信） vs 数据源无记录（没值）')
 {
   const failed = real.validity_report.failed
-  check('真实快照 failed 有 2 条', failed.length === 2, `count=${failed.length}`)
+  // 2026-11-10 龙五：原先写死「有 2 条」，今日 dollarIndex 也进 failed（count=3）→ 误判。
+  // 条数不是契约，改从 doc 派生（同 scripts/test_schema_fields.py T6b3-02 的 reason 对齐写法）：
+  //   failed 键集 ≡ data 里带 fetchError 的键集，且 reason / used_fallback 必须同源。
+  const dataMap = real.data ?? {}
+  const failedKeys = failed.map(f => f.key).sort()
+  const errKeys = Object.entries(dataMap)
+    .filter(([, x]) => x?.fetchError)
+    .map(([k]) => k)
+    .sort()
+  check(
+    'failed 键集 = data 里带 fetchError 的键集（派生，不写死条数）',
+    failedKeys.join(',') === errKeys.join(','),
+    `failed=${failedKeys.join(',')} fetchError=${errKeys.join(',')}`
+  )
+  const reasonDrift = failed
+    .filter(f => (dataMap[f.key]?.fetchError?.reason ?? null) !== f.reason)
+    .map(f => `${f.key}:${f.reason}≠${dataMap[f.key]?.fetchError?.reason}`)
+  check('failed.reason ≡ data[key].fetchError.reason（T6b3-02 同口径）', reasonDrift.length === 0, reasonDrift.join(';'))
+  const fallbackDrift = failed
+    .filter(f => f.key in dataMap && (dataMap[f.key].used_fallback === true) !== (f.used_fallback === true))
+    .map(f => f.key)
+  check('failed.used_fallback ≡ data[key].used_fallback（兜底标记同源）', fallbackDrift.length === 0, fallbackDrift.join(','))
+  // 下限留 2 而不是删掉条数断言：oilPrice（长期兜底）+ epu（数据源无记录）历史恒定。
+  // 若某日 failed 被整体清空，「键集对齐」会因两侧同时为空而假绿 —— 这个下限正是防它。
+  check('failed 至少 2 条（下限，防双侧空集假绿）', failed.length >= 2, `count=${failed.length}`)
 
   const oil = failed.find(f => f.key === 'oilPrice')
   const epu = failed.find(f => f.key === 'epu')
   check('oilPrice 在 failed 里且 used_fallback=true', oil?.used_fallback === true)
   check('epu 在 failed 里且 used_fallback=false', epu?.used_fallback === false)
 
-  const oilStatus = describeFailureStatus(oil)
-  const epuStatus = describeFailureStatus(epu)
+  // `?? {}`：样本缺失时走「断言红」，不要让 describeFailureStatus 抛 TypeError
+  // 把整份报告截断（M5 变异复现过：failed=[] 时五行断言一条都看不见）
+  const oilStatus = describeFailureStatus(oil ?? {})
+  const epuStatus = describeFailureStatus(epu ?? {})
   check('oilPrice → variant=fallback', oilStatus.variant === 'fallback')
   check('oilPrice 文案含「已兜底」且带天数（N 由 days_stale 派生）', /已兜底/.test(oilStatus.text) && typeof oil?.days_stale === 'number' && oilStatus.text.includes(`${oil.days_stale} 天前`), `${oilStatus.text} | days=${oil?.days_stale}`)
   check('epu → variant=hard', epuStatus.variant === 'hard')
