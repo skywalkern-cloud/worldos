@@ -44,6 +44,14 @@ FAILED = []
 # 传同一份 data 当 prev 时 diff 恒 0 ⇒ 恒返回 neutral。它需要「上一份快照」才能重放。
 # 若要覆盖 trend 的重放，必须另立一条用「冻 prev 夹具」，本次不做。
 PREV_DERIVED = {'trend'}
+
+# ── 时钟派生字段：不得进入 data-only replay 的逐字节比对，但必须另立派生断言 ──
+# days_stale = (今天 − 数据所属期末日)，days_overdue = max(0, days_stale − 阈值)：
+# scoring 按「运行日」算，快照按「生成日」算，隔天重放两者必然差 drift 天。
+# 单纯丢进白名单 = 覆盖丧失（字段没人管），故：
+#   1) 字节比对排除 CLOCK_DERIVED；2) R-07a/b 用 drift 公式独立复算并逐指标比对；
+#   3) drift 由「今天 − 快照 timestamp 所在日」推出，同日时 drift=0、断言退化为等值比对，仍然有效。
+CLOCK_DERIVED = {'days_stale', 'days_overdue'}
 TREND_ENUM = {'up', 'down', 'neutral'}
 
 
@@ -1199,9 +1207,12 @@ def run_one(json_path, fixture_path=None, do_units=True):
             # 数据落地后 cpi/fearGreed/ppi/shanghaiCopper/naturalGas/lmeIndex/dr007 七例真红）。
             # 故 replay 契约显式排除 PREV_DERIVED；白名单之外必须逐字节一致。
             # 注意：不得为了让断言变绿去改 neutral 判定，也不得降级为 warn。
-            a_s = {k: {f: x for f, x in v.items() if f not in PREV_DERIVED}
+            # 时钟派生字段（days_stale/days_overdue）同样不做字节比对，但由下面 R-07a/b
+            # 用 drift 公式独立复算兜住（不是「没人管」）。
+            SKIP = PREV_DERIVED | CLOCK_DERIVED
+            a_s = {k: {f: x for f, x in v.items() if f not in SKIP}
                    for k, v in a_ind.items()}
-            j_s = {k: {f: x for f, x in v.items() if f not in PREV_DERIVED}
+            j_s = {k: {f: x for f, x in v.items() if f not in SKIP}
                    for k, v in doc['indicators'].items()}
             diff = sorted(k for k in set(a_s) | set(j_s) if a_s.get(k) != j_s.get(k))
             meta_same = (json.dumps(a_meta, sort_keys=True, ensure_ascii=False)
@@ -1217,8 +1228,75 @@ def run_one(json_path, fixture_path=None, do_units=True):
                   f"neutral={n_neu}（均 ∈ {sorted(TREND_ENUM)}）")
             check('R-07[replay]',
                   not diff and meta_same and trend_ok,
-                  f'白名单 {sorted(PREV_DERIVED)} 外不一致的指标={diff[:8]}；'
+                  f'白名单 {sorted(SKIP)} 外不一致的指标={diff[:8]}；'
                   f'meta 一致={meta_same}；trend 枚举合法={trend_ok}')
+
+            # ── R-07a/b：时钟派生字段的显式派生断言（替代被排除的字节比对） ──
+            # drift = 今天 − 快照 timestamp 所在日；重算值必须 = 快照值 + drift。
+            # red_days 一律从 indicator_meta.TIMELINESS_RULES 读（单一真源），不写死天数。
+            drift = (date.today() - ref_date_of(doc)).days
+            # days_overdue 的口径（抄 scoring.py:510-519 的语义，不抄数字）：
+            #   超红线 → days_stale − red_days；超黄线未超红 → days_stale − yellow_days；未超 → 0；无日期 → null。
+            # 注：龙五派单原文写的是 max(0, days_stale − red_days)，对「黄档」项不成立
+            # （oilPrice 9 天 / 黄线 5 → 快照 4，而 9−10 = −1），故按被测实现语义走，已回报。
+            def over_of(ds, red, yellow):
+                if ds is None:
+                    return None
+                if ds > red:
+                    return ds - red
+                if ds > yellow:
+                    return ds - yellow
+                return 0
+
+            bad_stale, bad_over, bad_rule, missing = [], [], [], []
+            for k, jv in doc['indicators'].items():
+                av = a_ind.get(k)
+                if av is None:
+                    missing.append(k)
+                    continue
+                js, as_ = jv.get('days_stale'), av.get('days_stale')
+                if js is None or as_ is None:
+                    # null 语义不得漂移：快照说「不知道多旧」，重算也必须不知道
+                    if js != as_:
+                        bad_stale.append(f"{k}: 快照={js} 重算={as_}（null 语义漂移）")
+                elif js + drift != as_:
+                    bad_stale.append(f'{k}: 快照 {js} + drift {drift} = {js + drift} != 重算 {as_}')
+
+                freq = jv.get('frequency') or av.get('frequency')
+                rule = im.TIMELINESS_RULES.get(freq, im.TIMELINESS_RULES['other'])
+                red, yellow = rule['red_days'], rule['yellow_days']
+                # 快照自带 staleness_rule 必须与单一真源一致，否则阈值漂移会被白名单掩盖
+                sr = jv.get('staleness_rule') or {}
+                if sr.get('red_days') != red or sr.get('yellow_days') != yellow:
+                    bad_rule.append(
+                        f'{k}({freq}): 快照 staleness_rule={sr} != 单一真源 '
+                        f'{{"yellow_days": {yellow}, "red_days": {red}}}')
+                # 重算侧：days_overdue = 超出「已被突破的那条阈值」的天数
+                exp_over = over_of(as_, red, yellow)
+                if av.get('days_overdue') != exp_over:
+                    bad_over.append(
+                        f'{k}: 重算 days_overdue={av.get("days_overdue")} != '
+                        f'over({as_}, red={red}, yellow={yellow}) = {exp_over}')
+                # 快照侧自洽：否则「改快照 days_overdue」不会被任何断言咬住
+                exp_over_snap = over_of(js, red, yellow)
+                if jv.get('days_overdue') != exp_over_snap:
+                    bad_over.append(
+                        f'{k}: 快照 days_overdue={jv.get("days_overdue")} != '
+                        f'over({js}, red={red}, yellow={yellow}) = {exp_over_snap}')
+
+            print(f'  ℹ️ 时钟派生: drift={drift} 天 '
+                  f'（快照 {ref_date_of(doc)} → 今天 {date.today()}）'
+                  f' 覆盖 {len(doc["indicators"]) - len(missing)}/{len(doc["indicators"])} 指标')
+            check('R-07a[clock-derived days_stale]',
+                  not bad_stale and not missing,
+                  f'drift={drift}; ' + '; '.join(bad_stale[:6]) +
+                  (f'; 重算缺指标={missing[:6]}' if missing else ''))
+            check('R-07b[clock-derived days_overdue]',
+                  not bad_over,
+                  '; '.join(bad_over[:6]))
+            check('R-07c[staleness_rule 单一真源]',
+                  not bad_rule,
+                  '; '.join(bad_rule[:6]))
             check('R-08[idempotent]',
                   json.dumps((a_ind, a_meta), sort_keys=True, ensure_ascii=False)
                   == json.dumps((b_ind, b_meta), sort_keys=True, ensure_ascii=False),
