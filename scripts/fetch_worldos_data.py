@@ -360,19 +360,111 @@ def get_vix():
     return round(float(close), 2), str(row['date'])[:10], 'daily'
 
 
-@with_timeout(20)
-def get_oil_price():
+def _oil_from_spot_em():
+    """东财全球期货现货表：CL00Y 主连实时价（源本身不含交易日期）。"""
     import akshare as ak
     import pandas as pd
     df = ak.futures_global_spot_em()
+    if df is None or df.empty:
+        return None
     cl = df[df['代码'] == 'CL00Y']
     if cl.empty:
-        return None, None, None
+        return None
     price = cl.iloc[0]['最新价']
-    if pd.isna(price):
-        return None, None, None
-    # T11: futures_global_spot_em 不含交易日期，不伪造当天 → dataDate=None(realtime)
+    if pd.isna(price) or _is_bad_number(price):
+        return None
     return round(float(price), 2), None, 'daily'
+
+
+def _oil_from_hist_em():
+    """东财 CL00Y 日线：返回「最新价」+ 真实交易日期（日期不可解析即放弃，不伪造）。"""
+    import akshare as ak
+    import pandas as pd
+    df = ak.futures_global_hist_em(symbol='CL00Y')
+    if df is None or df.empty or '最新价' not in df.columns:
+        return None
+    for _, row in df.iloc[::-1].iterrows():
+        price = row.get('最新价')
+        if pd.isna(price) or _is_bad_number(price):
+            continue
+        ds = str(row.get('日期'))[:10] if row.get('日期') is not None else ''
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', ds):
+            return None
+        return round(float(price), 2), ds, 'daily'
+    return None
+
+
+def _oil_from_yfinance():
+    """yfinance CL=F 最近一根有效日线的收盘价 + 该日日期。"""
+    import yfinance as yf
+    h = yf.Ticker('CL=F').history(period='5d')
+    if h is None or h.empty or 'Close' not in h.columns:
+        return None
+    h = h[h['Close'].notna()]
+    if h.empty:
+        return None
+    close = h['Close'].iloc[-1]
+    if _is_bad_number(close):
+        return None
+    ds = str(h.index[-1])[:10]
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', ds):
+        return None
+    return round(float(close), 2), ds, 'daily'
+
+
+@with_timeout(45)
+def get_oil_price():
+    """WTI 近月结算价：显式降级链，主源缺失必须如实标注（不许静默冒充成功）。
+
+    a) futures_global_spot_em() 的 CL00Y  → 实时价；源不含日期 → dataDate=None(realtime)
+    b) futures_global_hist_em('CL00Y')   → 日线「最新价」+ 真实交易日（不伪造/不回填）
+    c) yfinance CL=F                     → 最近一根日线收盘 + 其日期
+    d) 全失败 → None（交给上一轮值兜底）
+
+    命中 b/c 时额外返回第 4 项 sourceDegraded：有值 ≠ 主源成功，
+    上层据此写 actualSource 并进 validity_report.source_degraded。
+    """
+    errors = []
+    try:
+        got = _oil_from_spot_em()
+        if got:
+            return got
+        errors.append('spot_em: 已无 CL00Y 主连')
+    except Exception as e:
+        errors.append(f'spot_em: {type(e).__name__}: {e}'[:120])
+
+    try:
+        got = _oil_from_hist_em()
+        if got:
+            val, dd, freq = got
+            return val, dd, freq, {
+                'source': '东财CL00Y日线',
+                'primarySource': '东财 futures_global_spot_em CL00Y(主连实时)',
+                'reason': 'primary_source_missing',
+                'reasonText': '主源已无 CL00Y 主连；降级取东财 CL00Y 日线（真实交易日，非实时报价）',
+                'triedErrors': errors,
+            }
+        errors.append('hist_em: 无有效日线')
+    except Exception as e:
+        errors.append(f'hist_em: {type(e).__name__}: {e}'[:120])
+
+    try:
+        got = _oil_from_yfinance()
+        if got:
+            val, dd, freq = got
+            return val, dd, freq, {
+                'source': 'yfinance CL=F',
+                'primarySource': '东财 futures_global_spot_em CL00Y(主连实时)',
+                'reason': 'primary_source_missing',
+                'reasonText': '主源已无 CL00Y 主连、东财日线亦不可用；降级取 yfinance CL=F 日线收盘',
+                'triedErrors': errors,
+            }
+        errors.append('yfinance: 无有效日线')
+    except Exception as e:
+        errors.append(f'yfinance: {type(e).__name__}: {e}'[:120])
+
+    print(f" (WTI 三路全失败: {' | '.join(errors)})", end='')
+    return None, None, None
 
 
 @with_timeout(20)
@@ -1003,6 +1095,28 @@ def save_results(results, fetch_ts):
     # 「为什么降级」埋掉。degraded_count 保留给数值型消费者（前端/旧脚本）。
     degraded_items = build_degraded_items(indicators)
 
+    # 「成功但有降级原因」单独一栏：主源缺失、改用备源，值有效但来源不同。
+    # 不进 degraded[]（degraded 的枚举码与 α 封顶口径由 resolve_freshness 独家定义），
+    # 也不进 failed[]（这些指标确实取到了新值）。
+    source_degraded_items = []
+    for key, info in INDICATOR_DEFS.items():
+        v = results.get(key, {})
+        sd = v.get('sourceDegraded')
+        if not sd or v.get('value') is None:
+            continue
+        source_degraded_items.append({
+            'key': key,
+            'displayName': info['name'],
+            'source': v.get('source'),
+            'actualSource': sd.get('source'),
+            'primarySource': sd.get('primarySource'),
+            'reason': sd.get('reason', 'primary_source_missing'),
+            'reasonText': sd.get('reasonText', ''),
+            'value': v.get('value'),
+            'dataDate': v.get('dataDate'),
+            'lastAttempt': fetch_ts,
+        })
+
     output = {
         'timestamp': fetch_ts,
         'data': results,
@@ -1015,6 +1129,8 @@ def save_results(results, fetch_ts):
             'degraded': degraded_items,
             'degraded_count': len(degraded_items),
             'failed': failed_indicators,
+            'source_degraded': source_degraded_items,
+            'source_degraded_count': len(source_degraded_items),
         },
     }
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -1062,13 +1178,18 @@ def main():
 
         val, dd, freq = None, None, info['frequency']
         fetch_error = None
+        # 「成功但有降级原因」：抓取函数用 4 元组显式上报降级源，
+        # 有值 ≠ 主源成功，不得静默当成正常抓取。
+        source_degraded = None
 
         try:
             result = info['func']()
             if result is None:
                 fetch_error = {'reason': 'empty_response', 'reasonText': '数据源返回空'}
             elif isinstance(result, tuple):
-                val, dd, got_freq = result
+                val, dd, got_freq = result[:3]
+                if len(result) > 3 and isinstance(result[3], dict):
+                    source_degraded = result[3]
                 # T10: freq 以指标定义为准；抓取函数返回 None 时绝不能把日频降级成 other
                 if got_freq:
                     freq = got_freq
@@ -1107,9 +1228,18 @@ def main():
                         fetch_error.get('reasonText', '') + '（已用上一轮值兜底）'
                     )
 
+        # 上一轮兜底优先级高于「备源降级」：两者同时出现时以兜底为准（更旧更弱）
+        if used_fallback:
+            source_degraded = None
+
         dd_display = dd if dd else '-'
         if val is not None:
-            flag = ' ↺兜底' if used_fallback else ''
+            flags = []
+            if used_fallback:
+                flags.append('↺兜底')
+            elif source_degraded:
+                flags.append(f"⚠备源:{source_degraded.get('source')}")
+            flag = (' ' + ' '.join(flags)) if flags else ''
             print(f" {val} {info['unit']} [{dd_display}]{flag}")
         else:
             print(f" ⚠️ N/A [{fetch_error.get('reason') if fetch_error else '-'}]")
@@ -1121,10 +1251,17 @@ def main():
             'source': info['source'],
             'dataDate': dd,
             'lastFetched': fetch_ts,
-            'realtime': INDICATOR_META.get(key, {}).get('dateSource') == 'realtime',
+            # realtime 是对「源不提供日期」的声明：本次拿到了真实交易日（备源日线）
+            # 就不能再标 realtime，否则前端会当成实时报价展示。
+            'realtime': (INDICATOR_META.get(key, {}).get('dateSource') == 'realtime'
+                         and not (source_degraded and dd)),
             'used_fallback': used_fallback,
             'fetchError': fetch_error if (fetch_error and (used_fallback or val is None)) else None,
         }
+        if source_degraded:
+            # source 保持冻结口径（NYMEX期货）；actualSource 写实际取数路径
+            results[key]['actualSource'] = source_degraded.get('source')
+            results[key]['sourceDegraded'] = source_degraded
 
     # 每次循环后尝试保存（防止超时导致数据丢失）
     valid, total = save_results(results, fetch_ts)

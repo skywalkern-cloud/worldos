@@ -582,6 +582,11 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         if info.get('used_fallback'):
             indicators[key]['used_fallback'] = True
             indicators[key]['fetchError'] = info.get('fetchError')
+        # fetch 阶段带入的「备源降级」痕迹（主源缺失、改用备源，值仍有效）
+        # 只做透传：不改 α、不改降级枚举码、不参评分。
+        if info.get('actualSource'):
+            indicators[key]['actualSource'] = info.get('actualSource')
+            indicators[key]['sourceDegraded'] = info.get('sourceDegraded')
         data_values[key] = value
 
     # 维度评分
