@@ -36,6 +36,23 @@ const load = p => JSON.parse(readFileSync(resolve(here, p), 'utf8'))
 const fixture = load('./fixtures/market-data-edge-cases.json')
 const real = load('../public/data/market-data.json')
 
+// ── IAS 判级 oracle ────────────────────────────────────────────────────────
+// 镜像 scripts/indicator_meta.IAS_THRESHOLDS（后端唯一真源）。
+// ⚠️ 禁止为了迁就当日快照去改这张表：它是契约，不是行情快照。
+const IAS_TIERS = [
+  [2.5, '强烈买入', '🚀'],
+  [1.0, '增持', '✅'],
+  [-0.5, '持有', '➖'],
+  [-1.5, '减仓', '⚠️'],
+]
+const IAS_ICON = Object.fromEntries(IAS_TIERS.map(([, s, icon]) => [s, icon]))
+IAS_ICON['清仓/防御'] = '🛑'
+function deriveIasSignal(score) {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return '数据不足'
+  for (const [t, sig] of IAS_TIERS) if (score >= t) return sig
+  return '清仓/防御'
+}
+
 let pass = 0
 const failures = []
 
@@ -423,8 +440,16 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
     JSON.stringify(states)
   )
 
+  // 2026-11-24 龙五批准重定基线：WTI 主源改 OilPrice.com 现货后，oilPrice 也回到 realtime（无日期），
+  // realtime 名额 2 → 3（oilPrice/naturalGas/lmeIndex）。名额是当日事实，但
+  // 「每个 realtime 项必须 days=null」是契约（无日期项永不 fresh，realtime 只描述无日期主源命中）。
   const rt = all.filter(([, v]) => resolveFreshnessState(v) === 'realtime')
-  check('realtime 2 个且 days=null', rt.length === 2 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
+  check(
+    'realtime 3 个 = {oilPrice, naturalGas, lmeIndex}',
+    rt.map(([k]) => k).sort().join(',') === 'lmeIndex,naturalGas,oilPrice',
+    rt.map(([k]) => k).join(',')
+  )
+  check('每个 realtime 项 days=null（强断言，不是只看个数）', rt.length === 3 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
 
   // ── 超期字段：期望值由 max(0, days_stale − 红线) 推导，不写死 13
   const usGdp = real.indicators.usGdp
@@ -463,18 +488,30 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
     typeof usGdpDays === 'number' && usGdpLabel === `过期 ${usGdpDays} 天`,
     `${usGdpLabel} | N=${usGdpDays}`
   )
+  // 2026-11-24 重定基线：oilPrice 主源（OilPrice.com 现货）命中 → realtime，不再天天兜底。
+  // 断言对象从「天天兜底」换成「主源命中」的新真值，但每条仍是强断言 —— 任一退化即红。
   const oilPrice = real.indicators.oilPrice
   const oilDays = daysOf(oilPrice)
   const oilLabel = computeStaleness(oilPrice).label
   check(
-    `oilPrice 文案 =「偏旧 N 天」（N 由 days_stale 派生）`,
-    typeof oilDays === 'number' && oilLabel === `偏旧 ${oilDays} 天`,
-    `${oilLabel} | N=${oilDays}`
+    'oilPrice 主源命中：realtime 且 days=null',
+    resolveFreshnessState(oilPrice) === 'realtime' && oilDays === null,
+    `state=${resolveFreshnessState(oilPrice)} days=${oilDays}`
   )
   check(
-    'oilPrice 独立复算 level=yellow（「偏旧」档才成立）',
-    deriveOverdue(oilPrice, oilDays).level === 'yellow',
-    deriveOverdue(oilPrice, oilDays).level
+    'oilPrice 不在 failed 里（兜底已解除）',
+    !real.validity_report.failed.some(f => f.key === 'oilPrice'),
+    real.validity_report.failed.map(f => f.key).join(',')
+  )
+  check(
+    'oilPrice 文案不含「已兜底 / 偏旧」',
+    !/已兜底|偏旧/.test(oilLabel) && oilLabel === '实时',
+    oilLabel
+  )
+  check(
+    'oilPrice 超期档不是 yellow',
+    oilPrice.overdue_level !== 'yellow' && deriveOverdue(oilPrice, oilDays).level !== 'yellow',
+    `${oilPrice.overdue_level}/${deriveOverdue(oilPrice, oilDays).level}`
   )
 }
 
@@ -585,24 +622,33 @@ console.log('\n[13] 失败状态两分：已兜底（有值不可信） vs 数�
     .filter(f => f.key in dataMap && (dataMap[f.key].used_fallback === true) !== (f.used_fallback === true))
     .map(f => f.key)
   check('failed.used_fallback ≡ data[key].used_fallback（兜底标记同源）', fallbackDrift.length === 0, fallbackDrift.join(','))
-  // 下限留 2 而不是删掉条数断言：oilPrice（长期兜底）+ epu（数据源无记录）历史恒定。
-  // 若某日 failed 被整体清空，「键集对齐」会因两侧同时为空而假绿 —— 这个下限正是防它。
-  check('failed 至少 2 条（下限，防双侧空集假绿）', failed.length >= 2, `count=${failed.length}`)
+  // 2026-11-24 重定基线：oilPrice 兜底解除后 failed 只剩 epu。
+  // 下限改 1（不删条数断言），但**必须含 epu** —— 否则「键集对齐」在两侧同时为空时假绿。
+  check(
+    'failed ≥ 1 条且必含 epu（下限，防双侧空集假绿）',
+    failed.length >= 1 && failed.some(f => f.key === 'epu'),
+    `count=${failed.length} keys=${failedKeys.join(',')}`
+  )
 
-  const oil = failed.find(f => f.key === 'oilPrice')
   const epu = failed.find(f => f.key === 'epu')
-  check('oilPrice 在 failed 里且 used_fallback=true', oil?.used_fallback === true)
   check('epu 在 failed 里且 used_fallback=false', epu?.used_fallback === false)
+  check('oilPrice 不在 failed（主源命中，兜底路径已解除）', failed.every(f => f.key !== 'oilPrice'), failedKeys.join(','))
 
   // `?? {}`：样本缺失时走「断言红」，不要让 describeFailureStatus 抛 TypeError
   // 把整份报告截断（M5 变异复现过：failed=[] 时五行断言一条都看不见）
-  const oilStatus = describeFailureStatus(oil ?? {})
+  // 「兜底 vs 硬缺失」两分文案改用**字面量探针**（同 [14] 半位探针）：
+  // live 里已无兜底样本，靠快照守这条分支等于永远假绿。
   const epuStatus = describeFailureStatus(epu ?? {})
-  check('oilPrice → variant=fallback', oilStatus.variant === 'fallback')
-  check('oilPrice 文案含「已兜底」且带天数（N 由 days_stale 派生）', /已兜底/.test(oilStatus.text) && typeof oil?.days_stale === 'number' && oilStatus.text.includes(`${oil.days_stale} 天前`), `${oilStatus.text} | days=${oil?.days_stale}`)
+  const fallbackProbe = describeFailureStatus({ used_fallback: true, days_stale: 3 })
+  const hardProbe = describeFailureStatus({ used_fallback: false, reason: 'not_found' })
   check('epu → variant=hard', epuStatus.variant === 'hard')
   check('epu 文案是「数据源无记录」，不含「兜底」', epuStatus.text === '数据源无记录' && !/兜底/.test(epuStatus.text), epuStatus.text)
-  check('两者文案不相同', oilStatus.text !== epuStatus.text, `${oilStatus.text} vs ${epuStatus.text}`)
+  check(
+    '探针：兜底 → variant=fallback 且含「已兜底」+ 天数',
+    fallbackProbe.variant === 'fallback' && /已兜底/.test(fallbackProbe.text) && fallbackProbe.text.includes('3 天前'),
+    fallbackProbe.text
+  )
+  check('探针：兜底 / 硬缺失 文案不同源', fallbackProbe.text !== hardProbe.text, `${fallbackProbe.text} vs ${hardProbe.text}`)
 
   // 无日期兜底不能写成「0 天前」
   const noDate = describeFailureStatus({ used_fallback: true, days_stale: null })
@@ -656,8 +702,19 @@ console.log('\n[14] half-up-away-from-zero：不能用 toFixed / 裸 Math.round'
 console.log('\n[15] IAS 关键词读 ias.signal，不按 score 另算一套阈值')
 {
   const ias = real.meta.ias
-  check('后端 signal = 持有', ias.signal === '持有', ias.signal)
-  check('后端 signal_icon = ➖', ias.signal_icon === '➖', ias.signal_icon)
+  // 2026-11-24 重定基线：不把当日 live 结论（曾「持有」、现「减仓」）钉进测试 ——
+  // 那是把今天的行情写进契约，明天数据一动就红。改成**结构断言**：
+  //   signal 必须与 score 按后端 IAS_THRESHOLDS 同源推导，icon 必须与 signal 档位配套。
+  check(
+    'ias.signal ≡ score 经 IAS_THRESHOLDS 推导的档位（同源，不写死具体档）',
+    ias.signal === deriveIasSignal(ias.score),
+    `${ias.signal} vs ${deriveIasSignal(ias.score)}(score=${ias.score})`
+  )
+  check(
+    'ias.signal_icon ≡ signal 档位对应图标',
+    ias.signal_icon === IAS_ICON[deriveIasSignal(ias.score)],
+    `${ias.signal_icon} vs ${IAS_ICON[deriveIasSignal(ias.score)]}`
+  )
 
   const kw = resolveIasKeyword(ias)
   check('keyword === ias.signal', kw?.keyword === ias.signal, String(kw?.keyword))
@@ -698,7 +755,37 @@ console.log('\n[16] IAS 档位只读 signal，前端不再比数字阈值')
   check('带后缀仍能判档', resolveIasLevel('减仓（部分维度缺失·参考）') === 'reduce')
   check('带后缀的买入档不掉', resolveIasLevel('增持（部分维度缺失·参考）') === 'buy')
 
-  check('真实 ias.signal → hold', resolveIasLevel(real.meta.ias.signal) === 'hold', real.meta.ias.signal)
+  check(
+    '真实 ias.signal 能判出合法档位（不钉死具体档）',
+    ['strong-buy', 'buy', 'hold', 'reduce', 'sell'].includes(resolveIasLevel(real.meta.ias.signal)),
+    real.meta.ias.signal
+  )
+  check(
+    '真实 ias.signal 档位 ≡ score 推导档位（同源交叉验证）',
+    resolveIasLevel(real.meta.ias.signal) === resolveIasLevel(deriveIasSignal(real.meta.ias.score)),
+    `${resolveIasLevel(real.meta.ias.signal)} vs ${deriveIasSignal(real.meta.ias.score)}`
+  )
+
+  // 三档映射用例（夹具字面量，固定不随行情漂移；阈值镜像 indicator_meta.IAS_THRESHOLDS）
+  // 注：后端阈值是 2.5 / 1.0 / -0.5 / -1.5（量纲=Σ权重 4.6），
+  //     故「中间持有」区间是 [-0.5, 1.0)，「加仓」档从 ≥1.0（增持）起，不是 ±0.5。
+  const tierCases = [
+    [-1.6, '清仓/防御', 'sell'],
+    [-1.5, '减仓', 'reduce'],
+    [-0.51, '减仓', 'reduce'],
+    [-0.5, '持有', 'hold'],
+    [0, '持有', 'hold'],
+    [0.99, '持有', 'hold'],
+    [1.0, '增持', 'buy'],
+    [1.2, '增持', 'buy'],
+  ]
+  for (const [score, sig, level] of tierCases) {
+    check(
+      `夹具 score=${score} → ${sig}/${level}`,
+      deriveIasSignal(score) === sig && resolveIasLevel(deriveIasSignal(score)) === level,
+      `${deriveIasSignal(score)}/${resolveIasLevel(deriveIasSignal(score))}`
+    )
+  }
 
   // 回归护栏：App.tsx 不允许再出现 IAS 数字阈值比较
   const appSrc = readFileSync(resolve(here, '../src/App.tsx'), 'utf8')

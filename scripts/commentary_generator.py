@@ -367,7 +367,7 @@ def _dim_commentary_sentiment(indicators: dict, dim_meta: dict) -> str:
     if epu_v is not None:
         lines.append(f"EPU指数{value_str(epu)}，政策不确定性{'高企' if epu_v > 150 else '中等' if epu_v > 100 else '较低'}。")
     else:
-        lines.append("EPU指数暂缺有效数据，情绪维度数据面偏薄，需警惕沪深300期权波动率未充分反映的实际风险。")
+        lines.append("EPU指数暂缺有效数据，情绪维度数据面偏薄，需警惕 VIX 未充分反映的实际风险。")
 
     return ''.join(lines)
 

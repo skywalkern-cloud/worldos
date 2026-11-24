@@ -247,7 +247,7 @@ def build_prompt(indicators: dict, meta: dict, prev_commentary: Optional[dict] =
 
 | 禁止写的词 | 必须写成 |
 |---|---|
-| VIX、VIX恐慌指数、恐慌指数 | 沪深300期权波动率(QVIX) |
+| VIX、VIX恐慌指数、恐慌指数 | VIX（CBOE 官方波动率指数，美股） |
 | 恐惧贪婪、恐惧贪婪指数、F&G | 美股恐惧贪婪(CNN) |
 | 信用利差 | 中美10年利差 |
 | AI产业增速 | 第二产业用电增速(代理) |
@@ -256,7 +256,7 @@ def build_prompt(indicators: dict, meta: dict, prev_commentary: Optional[dict] =
 
 另外两条：
 - 标记为 `reference_only` 的指标是**参考项，不参与评分**，只能描述其数值，**不得**用它推导维度结论。
-- 标的与市场必须说清：「沪深300期权波动率」是 A 股指标，不是 VIX；「美股恐惧贪婪」是美股指标，不代表 A 股情绪。
+- 标的与市场必须说清：「VIX」指 **CBOE 官方 VIX（美股波动率指数）**，**禁止**写成「沪深300期权波动率 / QVIX」（不同标的、不同量纲，冒充即为数据造假）；「美股恐惧贪婪」是美股指标，不代表 A 股情绪。
 
 ## 核心要求
 
@@ -292,7 +292,7 @@ def build_prompt(indicators: dict, meta: dict, prev_commentary: Optional[dict] =
       "commentary": "<流动性维度解读，约100-200字，国内宽松vs美债压制>"
     }},
     "sentiment": {{
-      "commentary": "<市场情绪维度解读，约100-200字，沪深300期权波动率与美股恐惧贪婪>"
+      "commentary": "<市场情绪维度解读，约100-200字，VIX（CBOE 官方，美股）与美股恐惧贪婪>"
     }},
     "resource": {{
       "commentary": "<资源与供应链维度解读，约100-200字，能源、碳价、铜价等>"
