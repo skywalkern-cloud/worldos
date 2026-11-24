@@ -180,7 +180,7 @@ EXPECTED_SOURCE = {
     'dr007': ('全国银行间同业拆借中心', '🇨🇳', 'daily'),
     'm2': ('东方财富-中国人民银行', '🇨🇳', 'monthly'),
     'creditSpread': ('akshare-中美国债利差', '🌐', 'daily'),
-    'epu': ('FRED API-EPU指数', '🌐', 'monthly'),
+    'epu': ('policyuncertainty.com-BakerBloomDavis', '🌐', 'monthly'),
     'carbonPrice': ('北京碳市场', '🇨🇳', 'daily'),
     'electricity': ('国家能源局', '🇨🇳', 'monthly'),
     'renewEnergyInvest': ('中证新能源指数', '🇨🇳', 'daily'),
@@ -344,8 +344,10 @@ def test_s2(doc, text, label, live):
             bad.append(f'{k}.frequency {ind[k]["frequency"]!r} != {want[2]!r}')
     check(f'S2-01[{label}]', not bad, '; '.join(bad[:6]))
 
+    # 2026-11-24：epu 换源后 policyuncertainty.com 是**正确来源**（官方 xlsx），
+    # 不再是旧源残留；黑名单只保留已废弃的 alternative.me。
     low = text.lower()
-    hits = [s for s in ('alternative.me', 'policyuncertainty.com') if s in low]
+    hits = [s for s in ('alternative.me',) if s in low]
     check(f'S2-02[{label}]', not hits, f'旧源残留: {hits}')
 
     if live:
@@ -1129,7 +1131,8 @@ def test_t6b3(doc, label, live):
 
     注意 invalid 与 len(failed) 不是一回事，禁止互相断言：
       invalid = data 里 value 为 null 的个数；failed = 本轮抓取失败个数；
-      两者交叉但不重合（oilPrice 有值兜底却在 failed；epu 无值且在 failed/不在 indicators）。
+      两者交叉但不重合（oilPrice 有值兜底却在 failed；epu 换源前无值且在 failed/不在 indicators，
+      换源后已有值、不再进 failed —— 夹具仍保留 epu=None 的硬失效样本守该分支）。
     另：`total == valid + invalid` 与 S3-01 有意重叠，不计入新增覆盖，仅作本断言的自洽前提。
     """
     data, ind, v = doc['data'], doc['indicators'], doc['validity_report']

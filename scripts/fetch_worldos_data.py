@@ -5,7 +5,7 @@ WorldOS 数据获取脚本 v5.0 - 第五轮修复（数据源替换版）
 1. chinaPmi/servicePmi/cpi/ppi/m2 - 从 akshare(jin10) 替换为 East Money 数据中心API
 2. usGdp - 从 akshare(jin10) 替换为 East Money RPT_ECONOMICVALUE_USA
 3. corePce - 从 akshare(jin10) 替换为 FRED API (PCEPILFE)
-4. epu - 从 akshare(policyuncertainty.com) 替换为 FRED API (CHNEPUINDXM)
+4. epu - 直连 policyuncertainty.com 官方 xlsx（FRED 无中国经济政策不确定性系列）
 5. robotInstall(industrialProduction) - 从 akshare(jin10) 替换为 East Money RPT_ECONOMY_INDUS_GROW (通过akshare.macro_china_gyzjz)
 6. extremeWeather - 派生自servicePmi，自动恢复
 7. fedRate - 真实美联储利率（已知降息至3.75%）
@@ -856,31 +856,43 @@ def get_m2():
         return None, None, None
 
 
-@with_timeout(20)
+@with_timeout(40)
 def get_epu():
-    """中国经济政策不确定性指数 - FRED API (CHNEPUINDXM)"""
-    if FRED_API_KEY:
-        try:
-            series_id = "CHNEPUINDXM"
-            url = "https://api.stlouisfed.org/fred/series/observations"
-            params = {
-                "series_id": series_id,
-                "api_key": FRED_API_KEY,
-                "file_type": "json",
-                "sort_order": "desc",
-                "limit": 3,
-            }
-            r = requests.get(url, params=params, timeout=15)
-            data = r.json()
-            if "observations" in data:
-                for obs in data["observations"]:
-                    val = obs.get("value")
-                    if val and val != ".":
-                        date_str = obs.get("date", "")
-                        return round(float(val), 1), date_str[:7], "monthly"
-        except Exception:
-            pass
-    return None, None, None
+    """中国经济政策不确定性指数 - Baker-Bloom-Davis 官方站 (policyuncertainty.com)
+
+    源：China_Mainland_Paper_EPU.xlsx（sheet 'EPU 2000 onwards'，列 year/month/EPU）
+    说明：FRED 上并无中国经济政策不确定性系列（CHNEPUINDX* 全 404），故直连官方站。
+    约定：取不到 / 字段缺失 / 值非法 → (None, None, None)，不兜底、不猜日期。
+    """
+    import io
+    import pandas as pd
+
+    url = "https://www.policyuncertainty.com/media/China_Mainland_Paper_EPU.xlsx"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    try:
+        r = requests.get(url, headers=headers, timeout=25)
+        if r.status_code != 200 or not r.content:
+            return None, None, None
+        df = pd.read_excel(io.BytesIO(r.content), sheet_name="EPU 2000 onwards")
+        if not {"year", "month", "EPU"}.issubset(df.columns):
+            return None, None, None
+        df = df[df["EPU"].apply(lambda x: isinstance(x, (int, float)) and not pd.isna(x))]
+        if df.empty:
+            return None, None, None
+        row = df.iloc[-1]
+        year = int(row["year"])
+        month = int(row["month"])
+        val = float(row["EPU"])
+        if not (1990 <= year <= 2100 and 1 <= month <= 12):
+            return None, None, None
+        if not math.isfinite(val) or val < 0:
+            return None, None, None
+        return round(val, 1), f"{year}-{month:02d}", "monthly"
+    except Exception:
+        return None, None, None
 
 
 @with_timeout(20)

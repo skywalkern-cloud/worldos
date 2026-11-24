@@ -255,7 +255,7 @@
       "value": null,
       "unit": "",
       "frequency": "monthly",
-      "source": "FRED API-EPU指数",
+      "source": "policyuncertainty.com-BakerBloomDavis",
       "dataDate": null,
       "lastFetched": "2026-11-09T10:00:00",
       "realtime": false,
@@ -1727,7 +1727,7 @@
       {
         "key": "epu",
         "displayName": "经济政策不确定性",
-        "source": "FRED API-EPU指数",
+        "source": "policyuncertainty.com-BakerBloomDavis",
         "reason": "timeout",
         "reasonText": "夹具：超时",
         "dataDate": null,

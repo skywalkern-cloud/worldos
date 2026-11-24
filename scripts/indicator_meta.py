@@ -202,8 +202,8 @@ INDICATORS = {
     },
     'epu': {
         'name': '经济政策不确定性', 'short': 'EPU',
-        'source': 'FRED API-EPU指数', 'country': '🌐', 'unit': '', 'frequency': 'monthly',
-        'caliberNote': '中国EPU指数（Baker-Bloom-Davis），非高频指标，仅作背景参考',
+        'source': 'policyuncertainty.com-BakerBloomDavis', 'country': '🌐', 'unit': '', 'frequency': 'monthly',
+        'caliberNote': '中国EPU指数（Baker-Bloom-Davis 官方站原始月度数），月度、滞后约 1 个月、参考项不参与 IAS 评分',
         # 孤儿指标：不在任何维度里（历史上就没进过打分），显式标为参考项，
         # 避免「抓了 31 个但只有 30 个在算」却看不出来。
         'reference_only': True,

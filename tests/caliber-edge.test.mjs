@@ -303,14 +303,23 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
     deriveState({ days_stale: null, realtime: true, used_fallback: true }, null) === 'unknown'
   )
 
-  // ── 指标总数：静态配置派生（Σ 维度计数），不写死 30
+  // ── 指标总数：静态配置派生（Σ 维度计数 + 非维度参考项），不写死 30
+  // 2026-11-24 换源：epu 取到值后进入 indicators，但它是**不属于任何维度**的
+  // reference_only 孤儿项（category='other'，见 indicator_meta REFERENCE_ONLY）。
+  // 计数公式补上这类孤儿，且反过来钉死「非维度项必须是参考项」。
   const dims = Object.values(real.meta.dimensions)
   const sumActive = dims.reduce((a, d) => a + d.active_count, 0)
   const sumRefCfg = dims.reduce((a, d) => a + d.reference_only_count, 0)
+  const orphans = all.filter(([, v]) => !(v.category in real.meta.dimensions))
   check(
-    '指标数 = Σ维度(active_count + reference_only_count)（静态配置派生）',
-    all.length === sumActive + sumRefCfg,
-    `${all.length} vs ${sumActive}+${sumRefCfg}`
+    '非维度指标只能是参考项（孤儿项不得参与打分）',
+    orphans.every(([, v]) => v.reference_only === true),
+    orphans.map(([k]) => k).join(',')
+  )
+  check(
+    '指标数 = Σ维度(active_count + reference_only_count) + 非维度参考项（静态配置派生）',
+    all.length === sumActive + sumRefCfg + orphans.length,
+    `${all.length} vs ${sumActive}+${sumRefCfg}+${orphans.length}`
   )
 
   const byCat = {}
@@ -622,27 +631,26 @@ console.log('\n[13] 失败状态两分：已兜底（有值不可信） vs 数�
     .filter(f => f.key in dataMap && (dataMap[f.key].used_fallback === true) !== (f.used_fallback === true))
     .map(f => f.key)
   check('failed.used_fallback ≡ data[key].used_fallback（兜底标记同源）', fallbackDrift.length === 0, fallbackDrift.join(','))
-  // 2026-11-24 重定基线：oilPrice 兜底解除后 failed 只剩 epu。
-  // 下限改 1（不删条数断言），但**必须含 epu** —— 否则「键集对齐」在两侧同时为空时假绿。
-  check(
-    'failed ≥ 1 条且必含 epu（下限，防双侧空集假绿）',
-    failed.length >= 1 && failed.some(f => f.key === 'epu'),
-    `count=${failed.length} keys=${failedKeys.join(',')}`
-  )
-
+  // 2026-11-24 换源：epu 改读 policyuncertainty.com 官方 xlsx 后**已有值**（299.0 @ 2026-10），
+  // 不再永久 failed。原先「failed ≥1 且必含 epu」的下限断言随之失效；
+  // 但空集不能放任变绿，改为「有值 ⟺ 不在 failed」二选一互斥（不得双空、不得双占）。
+  const epuData = dataMap.epu
   const epu = failed.find(f => f.key === 'epu')
-  check('epu 在 failed 里且 used_fallback=false', epu?.used_fallback === false)
+  const epuHasValue = typeof epuData?.value === 'number' && Number.isFinite(epuData.value)
+  check(
+    'epu 二选一：有值 ⟺ 不在 failed（防双侧空集假绿）',
+    Boolean(epu) !== epuHasValue,
+    `inFailed=${Boolean(epu)} hasValue=${epuHasValue} value=${epuData?.value}`
+  )
+  if (epu) check('epu 在 failed 里且 used_fallback=false', epu.used_fallback === false)
   check('oilPrice 不在 failed（主源命中，兜底路径已解除）', failed.every(f => f.key !== 'oilPrice'), failedKeys.join(','))
 
-  // `?? {}`：样本缺失时走「断言红」，不要让 describeFailureStatus 抛 TypeError
-  // 把整份报告截断（M5 变异复现过：failed=[] 时五行断言一条都看不见）
-  // 「兜底 vs 硬缺失」两分文案改用**字面量探针**（同 [14] 半位探针）：
-  // live 里已无兜底样本，靠快照守这条分支等于永远假绿。
-  const epuStatus = describeFailureStatus(epu ?? {})
+  // 「兜底 vs 硬缺失」两分文案继续用**字面量探针**（同 [14] 半位探针）：
+  // live 里已无兜底/硬缺失样本，靠快照守这两条分支等于永远假绿。
   const fallbackProbe = describeFailureStatus({ used_fallback: true, days_stale: 3 })
   const hardProbe = describeFailureStatus({ used_fallback: false, reason: 'not_found' })
-  check('epu → variant=hard', epuStatus.variant === 'hard')
-  check('epu 文案是「数据源无记录」，不含「兜底」', epuStatus.text === '数据源无记录' && !/兜底/.test(epuStatus.text), epuStatus.text)
+  check('探针：硬缺失 → variant=hard', hardProbe.variant === 'hard')
+  check('探针：硬缺失文案是「数据源无记录」，不含「兜底」', hardProbe.text === '数据源无记录' && !/兜底/.test(hardProbe.text), hardProbe.text)
   check(
     '探针：兜底 → variant=fallback 且含「已兜底」+ 天数',
     fallbackProbe.variant === 'fallback' && /已兜底/.test(fallbackProbe.text) && fallbackProbe.text.includes('3 天前'),
