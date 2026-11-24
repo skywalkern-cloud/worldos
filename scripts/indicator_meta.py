@@ -276,11 +276,12 @@ DIMENSIONS = [
     {
         'id': 'sentiment', 'name': '市场情绪', 'icon': '🧠', 'weight': 0.8,
         'indicators': ['vix', 'fearGreed'],
-        # D(2026-11-09 龙五拍板)：该维度 2 项里只有 1 项是 A 股市场指标
-        # （沪深300 QVIX），美股 CNN F&G 占 50%。0.8 是按「A股情绪齐备」设计的，
-        # 与现构成不符 → 声明式折半到 0.4，P1 补 A 股情绪代理后移除本标记恢复。
+        # D(2026-11-09 龙五拍板)：该维度按「A股情绪齐备」设计权重 0.8。
+        # 2026-11-24 变更：vix 已换为美股 CBOE VIX，本维度 2 项均为美股指标
+        # （CBOE VIX + CNN F&G），A 股情绪代理为 0 项，与设计构成不符（错配更严重、非消失）
+        # → 维持声明式折半到 0.4；P1 补齐 A 股情绪代理（如 50ETF QVIX）后方可移除本标记恢复满额。
         'market_mismatch': 0.5,
-        'mismatch_reason': '2 项中仅 1 项为 A 股指标（美股 F&G 占 50%）',
+        'mismatch_reason': '2 项均为美股指标（CBOE VIX + CNN F&G），无 A 股情绪代理',
     },
     {
         'id': 'resource', 'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.6,
