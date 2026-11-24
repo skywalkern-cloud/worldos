@@ -337,43 +337,140 @@ def get_core_pce_fallback():
     return None, None, None
 
 
-@with_timeout(20)
+CBOE_VIX_URL = 'https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv'
+FRED_VIX_URL = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS'
+BROWSER_UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+              'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36')
+
+
+def _vix_from_cboe():
+    """CBOE 官方 VIX 日线：VIX_History.csv 最后一行 Close + 该行日期。
+
+    行格式 `11/20/2026,28.630000,40.030000,26.940000,35.890000`（DATE,OPEN,HIGH,LOW,CLOSE）。
+    日期解析失败即放弃（不伪造当天）。
+    """
+    r = requests.get(CBOE_VIX_URL, headers={'User-Agent': BROWSER_UA}, timeout=20)
+    r.raise_for_status()
+    for line in reversed(r.text.strip().splitlines()):
+        parts = [p.strip() for p in line.split(',')]
+        if len(parts) < 5:
+            continue
+        m = re.match(r'^(\d{1,2})/(\d{1,2})/(\d{4})$', parts[0])
+        if not m:
+            continue
+        close = parts[4]
+        if _is_bad_number(close):
+            continue
+        iso = f'{m.group(3)}-{int(m.group(1)):02d}-{int(m.group(2)):02d}'
+        return round(float(close), 2), iso
+    return None
+
+
+def _vix_from_fred():
+    """FRED VIXCLS 兜底：最后一条有效 `YYYY-MM-DD,值`。"""
+    r = requests.get(FRED_VIX_URL, headers={'User-Agent': BROWSER_UA}, timeout=20)
+    r.raise_for_status()
+    for line in reversed(r.text.strip().splitlines()):
+        parts = [p.strip() for p in line.split(',')]
+        if len(parts) < 2:
+            continue
+        ds, close = parts[0][:10], parts[1]
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', ds) or _is_bad_number(close):
+            continue
+        return round(float(close), 2), ds
+    return None
+
+
+@with_timeout(60)  # 主源 CBOE + 兜底 FRED，各自 requests timeout=20
 def get_vix():
-    import akshare as ak
-    import pandas as pd
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        df = ak.index_option_300etf_qvix()
-    if df is None or df.empty:
-        return None, None, None
-    # akshare 会把当周剩余交易日（含未来日期）的空行一起返回，
-    # 因此 iloc[-1] 在周一~周四永远命中未来空行（close=NaN）。
-    # 必须先丢掉 NaN 行，再取最后一条有效数据（对齐 _fetch_bond_yields 的写法）。
-    valid = df[df['close'].notna()]
-    if valid.empty:
-        return None, None, None
-    row = valid.iloc[-1]
-    close = row['close']
-    if _is_bad_number(close):
-        return None, None, None
-    return round(float(close), 2), str(row['date'])[:10], 'daily'
+    """CBOE 官方 VIX 恐慌指数（日线收盘）。
+
+    主源：CBOE VIX_History.csv → 真实交易日期
+    兜底：FRED VIXCLS（同为 CBOE VIX 收盘价序列）
+    两路皆失败 → (None, None, None)，交上一轮兜底并进 validity_report.failed。
+    **不得回退到沪深300 QVIX**（不同标的、不同量纲，冒充即为数据造假）。
+    """
+    errors = []
+    try:
+        got = _vix_from_cboe()
+        if got:
+            return got[0], got[1], 'daily'
+        errors.append('cboe: 无有效行')
+    except Exception as e:
+        errors.append(f'cboe: {type(e).__name__}: {e}'[:120])
+
+    try:
+        got = _vix_from_fred()
+        if got:
+            print(f" (VIX 主源失败，FRED VIXCLS 兜底: {' | '.join(errors)})", end='')
+            return got[0], got[1], 'daily', {
+                'source': 'FRED VIXCLS',
+                'primarySource': 'CBOE VIX_History.csv',
+                'reason': 'primary_source_failed',
+                'reasonText': f'CBOE 官方日线不可用（{" | ".join(errors)}）；降级取 FRED VIXCLS（同为 CBOE VIX 收盘价）',
+                'triedErrors': errors,
+            }
+        errors.append('fred: 无有效行')
+    except Exception as e:
+        errors.append(f'fred: {type(e).__name__}: {e}'[:120])
+
+    print(f" (VIX 两路全失败: {' | '.join(errors)})", end='')
+    return None, None, None
+
+
+# WTI 合约代码：CL + 两位年 + 月份码（F Jan … Z Dec），如 CL27F
+_CL_CONTRACT_RE = re.compile(r'^CL(\d{2})([FGHJKMNQUVXZ])$')
+_MONTH_CODES = 'FGHJKMNQUVXZ'
+
+
+def _oil_from_oilprice():
+    """OilPrice.com 首页 WTI Crude 报价（源不含交易日期 → dataDate=None/realtime）。
+
+    逻辑内联自 workspace-market-insight/scripts/oil_price.py（不跨仓库 import）：
+    抓 data-hash="WTI-Crude" 行里的 <td class="value">；带 UA / timeout / 异常上抛。
+    """
+    r = requests.get('https://oilprice.com/', headers={'User-Agent': BROWSER_UA}, timeout=15)
+    r.raise_for_status()
+    html = r.text
+    pattern = (
+        r'data-hash="WTI-Crude"[^>]*>'
+        r'.*?<td class="value">\s*([0-9]+(?:\.[0-9]+)?)\s*(?:<i[^<]*</i>)?\s*</td>'
+    )
+    m = re.search(pattern, html, re.DOTALL)
+    if not m:
+        return None
+    price = float(m.group(1))
+    if _is_bad_number(price) or price <= 0:
+        return None
+    return round(price, 2), None, 'daily'
 
 
 def _oil_from_spot_em():
-    """东财全球期货现货表：CL00Y 主连实时价（源本身不含交易日期）。"""
+    """东财全球期货现货表：最近月 CL 合约最新价（源不含交易日期 → None）。
+
+    CL00Y 主连已从该表下线，只剩具体月合约（CL27F…CL28H）。
+    按 (两位年, 月份码) 显式排序取最近月，不写死月份、不依赖表内行序。
+    """
     import akshare as ak
     import pandas as pd
     df = ak.futures_global_spot_em()
-    if df is None or df.empty:
+    if df is None or df.empty or '代码' not in df.columns:
         return None
-    cl = df[df['代码'] == 'CL00Y']
-    if cl.empty:
+    cands = []
+    for _, row in df.iterrows():
+        code = str(row.get('代码', '')).strip()
+        m = _CL_CONTRACT_RE.match(code)
+        if not m:
+            continue
+        price = row.get('最新价')
+        if pd.isna(price) or _is_bad_number(price):
+            continue
+        cands.append(((int(m.group(1)), _MONTH_CODES.index(m.group(2))), code, float(price)))
+    if not cands:
         return None
-    price = cl.iloc[0]['最新价']
-    if pd.isna(price) or _is_bad_number(price):
-        return None
-    return round(float(price), 2), None, 'daily'
+    cands.sort(key=lambda x: x[0])
+    _, code, price = cands[0]
+    return round(price, 2), None, 'daily', code
 
 
 def _oil_from_hist_em():
@@ -412,24 +509,41 @@ def _oil_from_yfinance():
     return round(float(close), 2), ds, 'daily'
 
 
-@with_timeout(45)
+@with_timeout(90)  # 四路降级链（OilPrice 15s + akshare 两路 + yfinance），旧 45s 偏紧
 def get_oil_price():
-    """WTI 近月结算价：显式降级链，主源缺失必须如实标注（不许静默冒充成功）。
+    """WTI 近月价：显式降级链，主源失败必须如实标注（不许静默冒充成功）。
 
-    a) futures_global_spot_em() 的 CL00Y  → 实时价；源不含日期 → dataDate=None(realtime)
-    b) futures_global_hist_em('CL00Y')   → 日线「最新价」+ 真实交易日（不伪造/不回填）
-    c) yfinance CL=F                     → 最近一根日线收盘 + 其日期
-    d) 全失败 → None（交给上一轮值兜底）
+    a) OilPrice.com 首页 WTI Crude  → 报价（源不含日期 → dataDate=None/realtime）
+    b) 东财 futures_global_spot_em  → 最近月 CL 合约最新价（无日期）
+    c) 东财 futures_global_hist_em('CL00Y') → 日线「最新价」+ 真实交易日
+    d) yfinance CL=F               → 最近一根日线收盘 + 其日期
+    e) 全失败 → None（交给上一轮值兜底）
 
-    命中 b/c 时额外返回第 4 项 sourceDegraded：有值 ≠ 主源成功，
+    命中 b/c/d 时额外返回第 4 项 sourceDegraded：有值 ≠ 主源成功，
     上层据此写 actualSource 并进 validity_report.source_degraded。
     """
+    PRIMARY = 'OilPrice.com WTI Crude'
     errors = []
+    try:
+        got = _oil_from_oilprice()
+        if got:
+            return got[:3]
+        errors.append('oilprice: 未解析到 WTI Crude 行')
+    except Exception as e:
+        errors.append(f'oilprice: {type(e).__name__}: {e}'[:120])
+
     try:
         got = _oil_from_spot_em()
         if got:
-            return got
-        errors.append('spot_em: 已无 CL00Y 主连')
+            val, _, freq, code = got
+            return val, None, freq, {
+                'source': f'东财最近月合约({code})',
+                'primarySource': PRIMARY,
+                'reason': 'primary_source_failed',
+                'reasonText': f'OilPrice.com 不可用；降级取东财现货表最近月合约 {code} 最新价（源不含日期，非实时报价）',
+                'triedErrors': errors,
+            }
+        errors.append('spot_em: 无可用 CL 月合约')
     except Exception as e:
         errors.append(f'spot_em: {type(e).__name__}: {e}'[:120])
 
@@ -439,9 +553,9 @@ def get_oil_price():
             val, dd, freq = got
             return val, dd, freq, {
                 'source': '东财CL00Y日线',
-                'primarySource': '东财 futures_global_spot_em CL00Y(主连实时)',
-                'reason': 'primary_source_missing',
-                'reasonText': '主源已无 CL00Y 主连；降级取东财 CL00Y 日线（真实交易日，非实时报价）',
+                'primarySource': PRIMARY,
+                'reason': 'primary_source_failed',
+                'reasonText': 'OilPrice.com 与东财现货表均不可用；降级取东财 CL00Y 日线（真实交易日，非实时报价）',
                 'triedErrors': errors,
             }
         errors.append('hist_em: 无有效日线')
@@ -454,16 +568,16 @@ def get_oil_price():
             val, dd, freq = got
             return val, dd, freq, {
                 'source': 'yfinance CL=F',
-                'primarySource': '东财 futures_global_spot_em CL00Y(主连实时)',
-                'reason': 'primary_source_missing',
-                'reasonText': '主源已无 CL00Y 主连、东财日线亦不可用；降级取 yfinance CL=F 日线收盘',
+                'primarySource': PRIMARY,
+                'reason': 'primary_source_failed',
+                'reasonText': 'OilPrice.com、东财现货表与东财日线均不可用；降级取 yfinance CL=F 日线收盘',
                 'triedErrors': errors,
             }
         errors.append('yfinance: 无有效日线')
     except Exception as e:
         errors.append(f'yfinance: {type(e).__name__}: {e}'[:120])
 
-    print(f" (WTI 三路全失败: {' | '.join(errors)})", end='')
+    print(f" (WTI 四路全失败: {' | '.join(errors)})", end='')
     return None, None, None
 
 

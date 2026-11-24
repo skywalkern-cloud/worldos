@@ -164,7 +164,7 @@ EXPECTED_SOURCE = {
     'servicePmi': ('东方财富-国家统计局', '🇨🇳', 'monthly'),
     'usCpi': ('美国劳工统计局', '🇺🇸', 'monthly'),
     'corePce': ('FRED API-美国商务部', '🇺🇸', 'monthly'),
-    'vix': ('akshare-沪深300ETF期权波动率指数', '🇨🇳', 'daily'),
+    'vix': ('CBOE波动率指数(官方日线)', '🇺🇸', 'daily'),
     'oilPrice': ('NYMEX期货', '🌐', 'daily'),
     'naturalGas': ('NYMEX期货', '🌐', 'daily'),
     'fedRate': ('FOMC会议记录', '🇺🇸', 'monthly'),
@@ -350,8 +350,8 @@ def test_s2(doc, text, label, live):
 
     if live:
         v = ind['vix']
-        ok = ('QVIX' in v['displayName'] and '沪深300' in v['displayName']
-              and '非CBOE VIX' in v['caliberNote'] and v['country'] == '🇨🇳')
+        ok = (v['displayName'] == 'VIX恐慌指数' and 'CBOE' in v['caliberNote']
+              and '非沪深300 QVIX' in v['caliberNote'] and v['country'] == '🇺🇸')
         check(f'S2-03[{label}]', ok, json.dumps(
             {k: v[k] for k in ('source', 'displayName', 'caliberNote', 'country')},
             ensure_ascii=False))

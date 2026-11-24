@@ -119,9 +119,9 @@ INDICATORS = {
         'caliberNote': '美联储通胀锚，核心PCE同比',
     },
     'vix': {
-        'name': '沪深300期权波动率(QVIX)', 'short': '沪深300期权波动率',
-        'source': 'akshare-沪深300ETF期权波动率指数', 'country': '🇨🇳', 'unit': '', 'frequency': 'daily',
-        'caliberNote': '沪深300ETF期权波动率指数(QVIX)，非CBOE VIX；阈值已按QVIX量纲校准',
+        'name': 'VIX恐慌指数', 'short': 'VIX',
+        'source': 'CBOE波动率指数(官方日线)', 'country': '🇺🇸', 'unit': '', 'frequency': 'daily',
+        'caliberNote': 'CBOE 官方 VIX 收盘价（VIX_History.csv），FRED VIXCLS 兜底；非沪深300 QVIX',
     },
     'oilPrice': {
         'dateSource': 'realtime',   # 现货/场外报价，数据源不提供交易日期（禁止伪造当天）
