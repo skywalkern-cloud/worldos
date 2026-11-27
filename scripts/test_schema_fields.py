@@ -189,6 +189,11 @@ EXPECTED_SOURCE = {
     'evPenetration': ('乘联会-CPCA', '🇨🇳', 'monthly'),
     'lmeIndex': ('LME-综合铜03', '🌐', 'daily'),
     'shanghaiCopper': ('上期所-新浪财经', '🇨🇳', 'daily'),
+    # WorldOS V1a（2026-11-27）新增 4 个 A股/港股情绪代理（reference_only）
+    'ashareTurnover': ('腾讯行情-沪深交易所', '🇨🇳', 'daily'),
+    'marginBalance': ('东方财富-沪深交易所', '🇨🇳', 'daily'),
+    'southboundNet': ('东方财富-港交所', '🇨🇳', 'daily'),
+    'hstechMomentum': ('东方财富-港交所', '🇨🇳', 'daily'),
 }
 
 SIGNALS = {'red', 'yellow', 'gray', 'lightgreen', 'green', 'reference'}
@@ -297,8 +302,16 @@ def test_s1(doc, label, ref, live):
 
     bad = []
     for k, v in ind.items():
-        want = (v['exclusion_reason'] == 'no_score')
-        if (v['score'] is None) != want:
+        # 不变式（V1a 修正后的准确表述）：
+        #   无分数 ⇔ 被排除，且理由 ∈ {no_score, reference_only}；
+        #   有分数 ⇒ 理由不得是 no_score。
+        # 旧版写的是 `(score is None) == (reason == 'no_score')`，它默认了
+        # 「参考项一定有分数」（当时 epu/aiGrowth/robotInstall 都有参量表）。
+        # V1a 新增的 4 个 A股/港股代理**无评分参数**却 reference_only，
+        # 旧式会把正确实现判成错的（参考项本来就不该有分数）。
+        if v['score'] is None and v['exclusion_reason'] not in ('no_score', 'reference_only'):
+            bad.append(f'{k}.score={v["score"]!r} reason={v["exclusion_reason"]!r}')
+        if v['score'] is not None and v['exclusion_reason'] == 'no_score':
             bad.append(f'{k}.score={v["score"]!r} reason={v["exclusion_reason"]!r}')
     check(f'S1-10[{label}]', not bad, '; '.join(bad[:6]))
 
@@ -604,7 +617,9 @@ def test_s5(doc, label):
     for d in im.DIMENSIONS:
         x = dims[d['id']]
         active = [k for k in d['indicators'] if not im.is_reference_only(k)]
-        refs = [k for k in d['indicators'] if im.is_reference_only(k)]
+        # V1a：参考项数 = 计分列表里的参考项 + 单独的 reference_indicators（只展示不打分）
+        refs = [k for k in list(d['indicators']) + list(d.get('reference_indicators', []))
+                if im.is_reference_only(k)]
         if x['required_count'] != expected_required(len(active)):
             bad.append(f'{d["id"]}.required {x["required_count"]} != {expected_required(len(active))}')
         if x['active_count'] != len(active):

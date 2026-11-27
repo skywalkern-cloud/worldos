@@ -41,6 +41,9 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     q,
     rules_snapshot,
     compute_rules_hash,
+    # V1a：响应速度（由 frequency 映射 / 指标显式覆盖，前端不自己算）
+    responsiveness_of,
+    dimension_responsiveness,
 )
 
 # ═══════════════════════════════════════════
@@ -196,9 +199,13 @@ def get_signal(score: float) -> str:
 
 
 def get_category(key: str) -> str:
-    """根据指标名返回分类"""
+    """根据指标名返回分类
+
+    V1a：用 display_indicators（= 计分成员 + 只展示的参考项），
+    否则新挂的 4 个 A股/港股代理会落到 'other'，前端维度卡就挂错位置。
+    """
     for dim in DIMENSION_CONFIG:
-        if key in dim['indicators']:
+        if key in dim['indicators'] or key in dim.get('display_indicators', []):
             return dim['id']
     return 'other'
 
@@ -291,6 +298,8 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
                 valid_count += 1
 
         required = required_valid_count(dim)
+        # V1a：只展示不打分的参考项也计入参考项数（它们不在 indicators 里，需要单独加）
+        ref_count += len(dim.get('reference_indicators', []))
         insufficient = valid_count < required
 
         if insufficient:
@@ -534,8 +543,11 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
 
         # T12：参考项固定灰信号，不能显示红/黄——它根本没进结论，
         # 却给读者一个红灯，正是我们要消灭的展示层误导。
+        # V1a 补充：参考项若连评分参数都没有（新增的 A股/港股代理就是），score 恒为 None。
+        # 此时必须落 'gray'——S1-06 契约「score=null ⇒ signal 必须 gray」优先，
+        # 参考身份由 reference_only 布尔字段表达，不靠 signal 兼职。
         if ref_only:
-            signal = 'reference'
+            signal = 'reference' if score is not None else 'gray'
         elif score is not None:
             signal = get_signal(score)
         else:
@@ -555,6 +567,8 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'caliberNote': caliber_of(key),
             'reference_only': ref_only,
             'frequency': freq,
+            # V1a：响应速度标注（T+0 / T+1 / 月 / 季），单一真源在 indicator_meta
+            'responsiveness': responsiveness_of(key),
             'dataDate': data_date,
             'dataDateISO': period['end'].isoformat() if period else None,
             'dataDateKind': period['kind'] if period else None,
@@ -587,6 +601,9 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         if info.get('actualSource'):
             indicators[key]['actualSource'] = info.get('actualSource')
             indicators[key]['sourceDegraded'] = info.get('sourceDegraded')
+        # V1a：参考项的附加展示字段（如 20 日涨幅 / 3 日变化 / 两市拆分）
+        if isinstance(info.get('extras'), dict) and info['extras']:
+            indicators[key]['extras'] = info['extras']
         data_values[key] = value
 
     # 维度评分
@@ -599,6 +616,7 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
     dimensions = {}
     for dim in DIMENSION_CONFIG:
         ds = dim_scores.get(dim['id'], {})
+        dim_resp = dimension_responsiveness(dim)
         dimensions[dim['id']] = {
             'name': dim['name'],
             'icon': dim['icon'],
@@ -614,6 +632,14 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'reference_only_count': ds.get('reference_only_count', 0),
             'insufficient_data': ds.get('insufficient_data', False),
             'avg_alpha': ds.get('avg_alpha', 0.0),
+            # V1a：前端三件套（有效权重已在上方 weight_effective）
+            # 1) 口径：维度级 caliberNote（指标级在 indicators[key].caliberNote）
+            'caliberNote': dim.get('caliberNote', ''),
+            # 2) 响应速度：slowest=计分项里最慢的（最慢决定这维何时能拐头）+ 明细
+            'responsiveness': dim_resp,
+            # 3) 展示成员（含只展示不打分的参考项），前端按这个列表渲染
+            'display_indicators': list(dim['indicators']) + list(dim.get('reference_indicators', [])),
+            'reference_indicators': list(dim.get('reference_indicators', [])),
         }
 
     meta = {

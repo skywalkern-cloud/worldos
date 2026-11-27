@@ -1069,6 +1069,271 @@ def get_shanghai_copper():
 
 
 # ═══════════════════════════════════════════
+# A股/港股情绪代理（WorldOS V1a，2026-11-27）
+# ═══════════════════════════════════════════
+# 全部 reference_only：只采集 + 只展示，不打分。
+# 纪律（10-22 裸 NaN 事故）：抓不到就抛异常/返回 None → 由 main() 落 null + fetchError，
+# 绝不塞假值（0 也是假值）、绝不产出 NaN（write_json_strict 会二次兜底）。
+# 返回值约定：5 元组 (value, dataDate, freq, source_degraded, extras)
+#   extras = 额外只展示字段（可空），前端从 indicators[key].extras 读。
+
+def _tencent_quote(*codes):
+    """腾讯行情 qt.gtimg.cn 通用解析。
+
+    返回 {code: [字段...]}（“~” 分隔后的原始数组）。字段序号经 11-27 实测：
+      [3]=最新价 [4]=昨收 [5]=今开 [6]=成交量(手) [30]=时间戳 [32]=涨跌幅%
+      [37]=成交额(万元)  ← ashareTurnover 用的就是它，**不是 [6]**（[6] 是成交量）
+      [38]=换手率 [39]=市盈率
+    """
+    import requests
+    url = 'https://qt.gtimg.cn/q=' + ','.join(codes)
+    r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0',
+                                   'Referer': 'https://gu.qq.com/'}, timeout=10)
+    r.encoding = 'gbk'          # 腾讯行情是 GBK，不解码会乱码
+    out = {}
+    for line in r.text.split(';'):
+        line = line.strip()
+        if not line.startswith('v_') or '="' not in line:
+            continue
+        head, body = line.split('="', 1)
+        out[head[2:]] = body.rstrip('"').split('~')
+    return out
+
+
+def _tencent_trade_date(fields):
+    """从腾讯行情字段里取交易日期（[30] 形如 20261127161427 或 2026/11/27 16:09:22）。"""
+    if len(fields) <= 30:
+        return None
+    raw = (fields[30] or '').strip()
+    digits = re.sub(r'[^0-9]', '', raw)
+    if len(digits) < 8:
+        return None
+    y, m, d = digits[:4], digits[4:6], digits[6:8]
+    if not (1900 < int(y) < 2200 and 1 <= int(m) <= 12 and 1 <= int(d) <= 31):
+        return None
+    return f'{y}-{m}-{d}'
+
+
+def get_ashare_turnover():
+    """两市成交额（亿元）= 上证(000001) + 深证(399001) 的 [37] 成交额(万元) 相加 ÷ 1e4。
+
+    单位核实（11-27 19:40 实测）：上证 [37]=92977724 万元 = 9297.77 亿；
+    深证 [37]=107001721 万元 = 10700.17 亿；合计 ≈ 19997.94 亿 ≈ 2.0 万亿，
+    与当日大涨行情（涨停 1487 家）量级吸合。
+    """
+    quote = _tencent_quote('sh000001', 'sz399001')
+    total_wan = 0.0
+    per_market = {}
+    dates = []
+    for code, label in (('sh000001', '沪'), ('sz399001', '深')):
+        f = quote.get(code)
+        if not f or len(f) <= 37:
+            raise ValueError(f'腾讯行情缺 {code} 或字段不足（len={len(f) if f else 0}）')
+        amt_wan = f[37].strip()
+        if not amt_wan or _is_bad_number(amt_wan):
+            raise ValueError(f'{code} 成交额非法: {amt_wan!r}')
+        amt_wan = float(amt_wan)
+        if amt_wan <= 0:
+            raise ValueError(f'{code} 成交额非正数: {amt_wan}')
+        total_wan += amt_wan
+        per_market[label] = round(amt_wan / 1e4, 2)     # 万元 → 亿元
+        d = _tencent_trade_date(f)
+        if d:
+            dates.append(d)
+    return (round(total_wan / 1e4, 2),            # 亿元
+            min(dates) if dates else None,       # 两市必须同一交易日，取较早（更保守）
+            'daily',
+            None,
+            {'unit': '亿元', 'sh': per_market.get('沪'), 'sz': per_market.get('深'),
+             'rawUnit': '万元'})
+
+
+def _em_datacenter(report_name, *, filter_expr=None, sort_column='DIM_DATE',
+                   page_size=6):
+    """东方财富数据中心通用查询（只读）。"""
+    import requests
+    from urllib.parse import quote as _q
+    params = [f'reportName={report_name}', 'columns=ALL', 'source=WEB', 'client=WEB',
+              f'sortColumns={sort_column}', 'sortTypes=-1',
+              'pageNumber=1', f'pageSize={page_size}', 'pageNo=1']
+    if filter_expr:
+        params.append('filter=' + _q(filter_expr))
+    url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?' + '&'.join(params)
+    r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0',
+                                   'Referer': 'https://data.eastmoney.com/'}, timeout=15)
+    r.raise_for_status()
+    doc = r.json()
+    rows = (doc.get('result') or {}).get('data') or []
+    if not rows:
+        raise ValueError(f'{report_name} 返回空数据（code={doc.get("code")}）')
+    return rows
+
+
+def get_margin_balance():
+    """两融余额（亿元）= RPTA_RZRQ_LSHJ.**RZYE 融资余额**（源单位元）÷ 1e8。
+
+    口径修正（2026-11-27 复核）：只打融资余额。旧版打的是 RZRQYE（含融券），
+    融资=杠杆做多意愿、融券=反向，两者混在一起会互相稀释 → 错。
+    含融券的 marginTotal 仅放 extras 标明「不参与打分」。
+    T+1 披露属实锤：11-27 晚间最新一行 DIM_DATE=2026-11-26。
+    """
+    rows = _em_datacenter('RPTA_RZRQ_LSHJ', page_size=6)
+    latest = rows[0]
+    raw = latest.get('RZYE')                      # 融资余额（非 RZRQYE）
+    if raw is None or _is_bad_number(raw):
+        raise ValueError(f'RZYE 非法: {raw!r}')
+    rz_yi = round(float(raw) / 1e8, 2)
+    dd = (latest.get('DIM_DATE') or '')[:10] or None
+
+    chg3d = None
+    base_row = rows[3] if len(rows) >= 4 else None
+    if base_row and base_row.get('RZYE') and not _is_bad_number(base_row['RZYE']):
+        chg3d = round((float(raw) - float(base_row['RZYE'])) / 1e8, 2)
+
+    def _yi(v):
+        return round(float(v) / 1e8, 2) if v is not None and not _is_bad_number(v) else None
+
+    extras = {
+        'unit': '亿元',
+        'chg3d': chg3d,                            # 融资余额 3 日变化
+        'chg3dUnit': '亿元',
+        'chg3dBaseDate': (base_row.get('DIM_DATE') or '')[:10] if base_row else None,
+        'rzYe': _yi(raw),                          # = value 本体
+        'rqYe': _yi(latest.get('RQYE')),           # 融券余额（反向，不参与打分）
+        'marginTotal': _yi(latest.get('RZRQYE')),  # 融资+融券，不参与打分
+        'marginTotalNote': '含融券，仅参考不参与打分',
+        'rawUnit': '元',
+    }
+    return rz_yi, dd, 'daily', None, extras
+
+
+def get_southbound_net():
+    """南向净买入（亿元）= 港股通沪(004) + 港股通深(006) 的 NET_DEAL_AMT（源百万元）÷100 相加。
+
+    口径修正（2026-11-27 复核）：旧版只取 004（沪），少一半以上；且文案写「沪+深合计」
+    → 文案与实现自相矛盾。实测 11-27：004=3393.79、006=4586.57 百万元
+    → 33.94 + 45.87 = 79.81 亿元。
+    两路必须同一交易日，否则视为失败（不拿不同日的数据相加冒充当日合计）。
+    """
+    legs = {}
+    for mutual_type, label in (('004', 'sh'), ('006', 'sz')):
+        rows = _em_datacenter('RPT_MUTUAL_DEAL_HISTORY',
+                              filter_expr=f'(MUTUAL_TYPE="{mutual_type}")',
+                              sort_column='TRADE_DATE', page_size=1)
+        latest = rows[0]
+        raw = latest.get('NET_DEAL_AMT')
+        if raw is None or _is_bad_number(raw):
+            raise ValueError(f'{mutual_type} NET_DEAL_AMT 非法: {raw!r}')
+        legs[label] = {
+            'net': round(float(raw) / 100, 2),                      # 百万元 → 亿元
+            'date': (latest.get('TRADE_DATE') or '')[:10] or None,
+            'buy': round(float(latest['BUY_AMT']) / 100, 2) if latest.get('BUY_AMT') is not None else None,
+            'sell': round(float(latest['SELL_AMT']) / 100, 2) if latest.get('SELL_AMT') is not None else None,
+            'deal': round(float(latest['DEAL_AMT']) / 100, 2) if latest.get('DEAL_AMT') is not None else None,
+            'leadStock': latest.get('LEAD_STOCKS_NAME'),
+            'hsiChange': latest.get('INDEX_CHANGE_RATE'),
+        }
+
+    dates = {v['date'] for v in legs.values()}
+    if len(dates) != 1 or None in dates:
+        raise ValueError(f'两路南向交易日不一致: { {k: v["date"] for k, v in legs.items()} }')
+
+    total = round(legs['sh']['net'] + legs['sz']['net'], 2)
+    extras = {
+        'unit': '亿元',
+        'shNet': legs['sh']['net'],      # 004 港股通沪
+        'szNet': legs['sz']['net'],      # 006 港股通深
+        'total': total,
+        'sh': legs['sh'],
+        'sz': legs['sz'],
+        'rawUnit': '百万元',
+    }
+    return total, legs['sh']['date'], 'daily', None, extras
+
+
+def _em_kline(secid, lmt=40):
+    """东财日 K（收盘序列）。返回 [(date, close)] 升序。
+
+    口径统一（2026-11-27 复核）：恒生科技用 124.HSTECH（100.HSTECH 返回 rc=100），
+    上证用 1.000001 —— 两边同一数据源，日期才能对齐。
+    """
+    import requests
+    url = ('https://push2his.eastmoney.com/api/qt/stock/kline/get'
+           f'?secid={secid}&fields1=f1,f2&fields2=f51,f52,f53,f54,f55,f56,f57'
+           f'&klt=101&fqt=1&end=20500101&lmt={lmt}')
+    r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0',
+                                   'Referer': 'https://quote.eastmoney.com/'}, timeout=15)
+    r.raise_for_status()
+    doc = r.json()
+    if doc.get('rc') not in (0, None):
+        raise ValueError(f'{secid} rc={doc.get("rc")}')
+    klines = (doc.get('data') or {}).get('klines') or []
+    out = []
+    for line in klines:
+        parts = line.split(',')
+        if len(parts) < 3:
+            continue
+        try:
+            close = float(parts[2])
+        except (TypeError, ValueError):
+            continue
+        if close > 0:
+            out.append((parts[0], close))
+    out.sort(key=lambda x: x[0])
+    return out
+
+
+def _close_on_or_before(bars, target_date):
+    """取 <= target_date 的最近一根收盘（港股/A股节假日不完全重合，按日期对齐而非按位置）。"""
+    hit = None
+    for d, c in bars:
+        if d <= target_date:
+            hit = (d, c)
+        else:
+            break
+    return hit
+
+
+def get_hstech_momentum():
+    """恒生科技 20 日相对强弱（百分点）= 恒科 20 日涨幅 − 上证 20 日涨幅。
+
+    口径修正（2026-11-27 复核）：旧版 value 存的是指数点位，不是动量 → 错。
+    现：value = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，保留 1 位；
+    unit = 百分点；指数点位挤到 extras.indexLevel（只展示，不参与打分）。
+    历史取不到就抛异常 → 落 null + fetchError，绝不拿点位冒充动量。
+    """
+    hst = _em_kline('124.HSTECH', lmt=40)
+    sh = _em_kline('1.000001', lmt=40)
+    if len(hst) < 21:
+        raise ValueError(f'HSTECH 日线不足（{len(hst)} 根，需 21 根）')
+    t_date, t_close = hst[-1]
+    base_date, base_close = hst[-21]
+
+    sh_t = _close_on_or_before(sh, t_date)
+    sh_b = _close_on_or_before(sh, base_date)
+    if not sh_t or not sh_b or sh_b[1] <= 0:
+        raise ValueError(f'上证日线无法覆盖 {base_date}/{t_date}')
+
+    hst_ret = (t_close / base_close - 1) * 100
+    sh_ret = (sh_t[1] / sh_b[1] - 1) * 100
+    rs = round(hst_ret - sh_ret, 1)
+
+    extras = {
+        'unit': '百分点',
+        'indexLevel': round(t_close, 2),          # 指数点位（只展示）
+        'indexLevelUnit': '点',
+        'chg20d': round(hst_ret, 2),              # 恒科 20 日涨幅 %
+        'shChg20d': round(sh_ret, 2),             # 上证 20 日涨幅 %
+        'baseDate': base_date,
+        'baseHstech': base_close,
+        'baseSh': sh_b[1],
+        'shDateUsed': {'t': sh_t[0], 'base': sh_b[0]},
+        'note': f"{base_date}→{t_date}：恒科 {hst_ret:+.2f}% − 上证 {sh_ret:+.2f}% = {rs:+.1f}pp",
+    }
+    return rs, t_date, 'daily', None, extras
+
+
+# ═══════════════════════════════════════════
 # 指标定义（名称/单位/频率/来源 均取自 indicator_meta 单一真源，T1）
 # ═══════════════════════════════════════════
 # 本文件只声明「用哪个抓取函数 → 哪个 key」，不再写第二份指标名。
@@ -1104,6 +1369,11 @@ FETCH_FUNCS = {
     'evPenetration': get_nev_penetration_rate,
     'lmeIndex': get_lme_index,
     'shanghaiCopper': get_shanghai_copper,
+    # WorldOS V1a（11-27）：A股/港股情绪代理，全部 reference_only
+    'ashareTurnover': get_ashare_turnover,
+    'marginBalance': get_margin_balance,
+    'southboundNet': get_southbound_net,
+    'hstechMomentum': get_hstech_momentum,
 }
 
 # 由单一真源生成原有结构，保持下游 `info['name'] / ['unit'] / ['source']` 可用
@@ -1304,6 +1574,7 @@ def main():
 
         val, dd, freq = None, None, info['frequency']
         fetch_error = None
+        extras = None
         # 「成功但有降级原因」：抓取函数用 4 元组显式上报降级源，
         # 有值 ≠ 主源成功，不得静默当成正常抓取。
         source_degraded = None
@@ -1316,6 +1587,9 @@ def main():
                 val, dd, got_freq = result[:3]
                 if len(result) > 3 and isinstance(result[3], dict):
                     source_degraded = result[3]
+                # V1a：第 5 位 = 只展示的附加字段（extras），透传给 indicators[key].extras
+                if len(result) > 4 and isinstance(result[4], dict):
+                    extras = result[4]
                 # T10: freq 以指标定义为准；抓取函数返回 None 时绝不能把日频降级成 other
                 if got_freq:
                     freq = got_freq
@@ -1388,6 +1662,9 @@ def main():
             # source 保持冻结口径（NYMEX期货）；actualSource 写实际取数路径
             results[key]['actualSource'] = source_degraded.get('source')
             results[key]['sourceDegraded'] = source_degraded
+        # V1a：参考项的附加展示字段（20日涨幅 / 3日变化 / 两市拆分）
+        if extras:
+            results[key]['extras'] = extras
 
     # 每次循环后尝试保存（防止超时导致数据丢失）
     valid, total = save_results(results, fetch_ts)

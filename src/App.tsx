@@ -40,6 +40,10 @@ interface IndicatorInfo {
   shortName?: string
   caliberNote?: string
   reference_only?: boolean
+  /** V1a：响应速度标注（T+0 / T+1 / 月 / 季），单一真源在后端 indicator_meta，前端只读不算 */
+  responsiveness?: string
+  /** V1a：参考项附加展示字段（较 20 日涨跌幅 / 3 日变化 / 两市拆分），可缺失 */
+  extras?: Record<string, unknown> | null
   // === P0/T2 后端新增（时效，前端只读不算） ===
   dataDateISO?: string | null
   dataDateKind?: DataDateKind | null
@@ -83,6 +87,18 @@ interface DimensionMeta {
   weight_design?: number
   weight_effective?: number
   weight_reason?: string
+  // === V1a：前端三件套（权重/口径/响应速度）后端单一真源 ===
+  /** 维度级口径（指标级在 indicators[key].caliberNote） */
+  caliberNote?: string
+  /** slowest = 计分项里最慢的一项；slowest_reference = 参考项里最慢的（可无） */
+  responsiveness?: {
+    slowest?: string
+    slowest_reference?: string | null
+    detail?: { key: string; label: string; reference_only?: boolean }[]
+  }
+  /** 该维度展示成员（含只展示不打分的参考项），按此列表渲染，优先于前端硬编码表 */
+  display_indicators?: string[]
+  reference_indicators?: string[]
   // P1 预留：后端将来给指标级贡献度明细
   indicators?: Record<string, ContributionEntry>
 }
@@ -718,10 +734,25 @@ function DimensionCardV4({
   const excludedCount = counts.excluded
   const requiredCount = counts.required
 
+  // 指标成员：优先读后端单一真源（display_indicators），老数据回退前端硬编码表
+  const memberKeys = dimMeta?.display_indicators?.length ? dimMeta.display_indicators : indicatorKeys
+  // V1a：响应速度（最慢一项决定这维最早何时能拐头；明细进 tooltip）
+  const resp = dimMeta?.responsiveness
+  const respLabel = resp?.slowest && resp.slowest !== '—' ? resp.slowest : null
+  const respTitle = resp?.detail?.length
+    ? '响应速度（由指标 frequency 映射）\n' +
+      resp.detail
+        .map(d => `${d.label}\t${indicators[d.key]?.displayName || d.key}${d.reference_only ? '（参考）' : ''}`)
+        .join('\n') +
+      (resp.slowest_reference && resp.slowest_reference !== resp.slowest
+        ? `\n注：参考项中最慢 ${resp.slowest_reference}（不参与打分）`
+        : '')
+    : '响应速度'
+
   // Group indicators by country
   const grouped = useMemo(() => {
     const groups: Record<string, { key: string; info: IndicatorInfo }[]> = {}
-    for (const key of indicatorKeys) {
+    for (const key of memberKeys) {
       const info = indicators[key]
       if (!info) continue
       const country = info.country || '🌐'
@@ -732,7 +763,7 @@ function DimensionCardV4({
     return Object.entries(groups).sort(
       (a, b) => (COUNTRY_ORDER[a[0]] ?? 99) - (COUNTRY_ORDER[b[0]] ?? 99)
     )
-  }, [indicatorKeys, indicators])
+  }, [memberKeys, indicators])
 
   return (
     <div
@@ -756,6 +787,14 @@ function DimensionCardV4({
             w={weightShrunk ? wEffective : (wDesign ?? '-')}
             {weightShrunk && <span className="text-amber-500/80">（设计 {wDesign}）</span>}
           </span>
+          {respLabel && (
+            <span
+              className="text-[10px] px-1 rounded border border-gray-700 text-gray-500 flex-shrink-0 cursor-help"
+              title={respTitle}
+            >
+              ⏱{respLabel}
+            </span>
+          )}
           <span className="text-[10px] text-gray-600 flex-shrink-0">
             {expanded ? '▲' : '▼'}
           </span>
@@ -787,6 +826,13 @@ function DimensionCardV4({
         )}
         {typeof requiredCount === 'number' && <span className="text-gray-600">· 需 ≥{requiredCount}</span>}
       </div>
+
+      {/* V1a：口径（后端单一真源 caliberNote，前端只展示不做判断） */}
+      {dimMeta?.caliberNote && (
+        <div className="mb-2 text-[10px] text-gray-600 leading-snug">
+          口径：{dimMeta.caliberNote}
+        </div>
+      )}
 
       {/* 置灰说明 */}
       {insufficient && (
@@ -856,6 +902,20 @@ function DimensionCardV4({
 
 function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicatorKey?: string }) {
   const name = resolveDisplayName(info, indicatorKey || '—')
+  // V1a：参考项的附加展示字段（较 20 日涨幅 / 3 日变化），取不到数字就不显示，绝不编 0
+  const extras = info.extras || null
+  const extraNote = (() => {
+    if (!extras) return null
+    const chg20d = extras['chg20d']
+    if (typeof chg20d === 'number' && Number.isFinite(chg20d)) {
+      return `20日 ${chg20d > 0 ? '+' : ''}${chg20d}%`
+    }
+    const chg3d = extras['chg3d']
+    if (typeof chg3d === 'number' && Number.isFinite(chg3d)) {
+      return `3日 ${chg3d > 0 ? '+' : ''}${chg3d}亿`
+    }
+    return null
+  })()
   // 双轴判定（dimmed / not_counted）统一走 caliber.describeIndicatorState，
   // 夹具校验 scripts/make_fixture_edge_cases.py + tests/caliber-edge.test.mjs 用的是同一实现
   const { stale, dimmed, excluded, exclusionBadge } = describeIndicatorState(info)
@@ -891,7 +951,8 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
           <span className="text-xs flex-shrink-0">{info.country}</span>
           <span
             className={`truncate ${dimmed ? 'text-gray-500' : 'text-gray-300'}`}
-            title={[name, info.caliberNote].filter(Boolean).join('\n')}
+            title={[name, info.caliberNote, info.responsiveness ? `响应速度 ${info.responsiveness}` : null]
+              .filter(Boolean).join('\n')}
           >
             {name}
           </span>
@@ -945,6 +1006,7 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
         <div className="flex items-center gap-2 px-2 text-[10px] text-gray-600">
           {info.source && <span className="truncate max-w-[55%]" title={info.source}>{info.source}</span>}
           {info.dataDate && <span className="flex-shrink-0">· {info.dataDate}</span>}
+          {extraNote && <span className="flex-shrink-0 text-gray-500">{extraNote}</span>}
           <span className={`flex-shrink-0 ${stale.overdue ? 'text-amber-500/90 font-medium' : stale.kind === 'unknown' ? 'text-amber-600/70' : ''}`} title={stale.title}>
             （{stale.label}）
           </span>

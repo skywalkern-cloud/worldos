@@ -59,6 +59,12 @@ SAMPLE_VALUES = {
     # 情绪：正常
     'vix': (20.52, FRESH, 'daily'),
     'fearGreed': (22.1, FRESH, 'daily'),
+    # V1a（11-27）新增 A股/港股情绪代理：全部 reference_only，给正常值让它们出现在
+    # indicators 里（前端要验「参考项行 + 响应速度标注」），且永不计分
+    'ashareTurnover': (19997.94, FRESH, 'daily'),
+    'marginBalance': (21055.79, FRESH, 'daily'),     # 只打融资余额，不含融券
+    'southboundNet': (79.81, FRESH, 'daily'),        # 沪 33.94 + 深 45.87
+    'hstechMomentum': (-3.3, FRESH, 'daily'),        # 相对强弱（百分点），不是点位
     # 资源：一个 realtime 无日期 + 一个兜底
     'oilPrice': (102.95, None, 'daily'),
     'naturalGas': (3.003, None, 'daily'),

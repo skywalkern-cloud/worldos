@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-24T12:32:23.420890",
+  "timestamp": "2026-11-28T00:03:37.104475",
   "data": {
     "chinaGdp": {
       "value": 4.6,
@@ -7,7 +7,7 @@
       "frequency": "quarterly",
       "source": "国家统计局",
       "dataDate": "2026-Q1-Q3",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -18,7 +18,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -29,7 +29,7 @@
       "frequency": "quarterly",
       "source": "东方财富-美国商务部",
       "dataDate": "2026-Q1",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -40,7 +40,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -51,7 +51,7 @@
       "frequency": "monthly",
       "source": "美国劳工统计局",
       "dataDate": "2026-09",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -62,40 +62,40 @@
       "frequency": "monthly",
       "source": "FRED API-美国商务部",
       "dataDate": "2026-09",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "vix": {
-      "value": 26.62,
+      "value": 26.8,
       "unit": "",
       "frequency": "daily",
       "source": "CBOE波动率指数(官方日线)",
-      "dataDate": "2026-11-23",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-26",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "oilPrice": {
-      "value": 79.79,
+      "value": 83.68,
       "unit": "$/桶",
       "frequency": "daily",
       "source": "NYMEX期货",
       "dataDate": null,
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": true,
       "used_fallback": false,
       "fetchError": null
     },
     "naturalGas": {
-      "value": 3.543,
+      "value": 3.507,
       "unit": "$/MMBtu",
       "frequency": "daily",
       "source": "NYMEX期货",
       "dataDate": null,
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": true,
       "used_fallback": false,
       "fetchError": null
@@ -106,40 +106,40 @@
       "frequency": "monthly",
       "source": "FOMC会议记录",
       "dataDate": "2026-10-01",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "usBond2Y": {
-      "value": 4.63,
+      "value": 4.61,
       "unit": "%",
       "frequency": "daily",
       "source": "akshare-中美债券",
-      "dataDate": "2026-11-23",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-25",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "usBond5Y": {
-      "value": 4.74,
+      "value": 4.65,
       "unit": "%",
       "frequency": "daily",
       "source": "akshare-中美债券",
-      "dataDate": "2026-11-23",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-25",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "usBond10Y": {
-      "value": 4.92,
+      "value": 4.85,
       "unit": "%",
       "frequency": "daily",
       "source": "akshare-中美债券",
-      "dataDate": "2026-11-23",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-25",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -150,29 +150,29 @@
       "frequency": "monthly",
       "source": "东方财富-美国劳工部",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "fearGreed": {
-      "value": 17.0,
+      "value": 24.6,
       "unit": "",
       "frequency": "daily",
       "source": "CNN Business-Fear&Greed",
-      "dataDate": "2026-11-23",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-27",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "dollarIndex": {
-      "value": 97.9,
+      "value": 97.6,
       "unit": "",
       "frequency": "daily",
       "source": "akshare-汇率加权计算",
-      "dataDate": "2026-11-24",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-27",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -183,7 +183,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -194,7 +194,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -205,18 +205,18 @@
       "frequency": "monthly",
       "source": "中国人民银行",
       "dataDate": "2026-11-20",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "dr007": {
-      "value": 1.274,
+      "value": 1.28,
       "unit": "%",
       "frequency": "daily",
       "source": "全国银行间同业拆借中心",
-      "dataDate": "2026-11-24",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-27",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -227,43 +227,40 @@
       "frequency": "monthly",
       "source": "东方财富-中国人民银行",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "creditSpread": {
-      "value": 333,
+      "value": 326,
       "unit": "bp",
       "frequency": "daily",
       "source": "akshare-中美国债利差",
-      "dataDate": "2026-11-23",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-25",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "epu": {
-      "value": null,
+      "value": 299.0,
       "unit": "",
       "frequency": "monthly",
-      "source": "FRED API-EPU指数",
-      "dataDate": null,
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "source": "policyuncertainty.com-BakerBloomDavis",
+      "dataDate": "2026-10",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
-      "fetchError": {
-        "reason": "not_found",
-        "reasonText": "数据源无有效记录"
-      }
+      "fetchError": null
     },
     "carbonPrice": {
-      "value": 93.9,
+      "value": 97.0,
       "unit": "¥/吨",
       "frequency": "daily",
       "source": "北京碳市场",
-      "dataDate": "2026-11-20",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-26",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -274,18 +271,18 @@
       "frequency": "monthly",
       "source": "国家能源局",
       "dataDate": "2026.9",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "renewEnergyInvest": {
-      "value": 1131.0,
+      "value": 1117.0,
       "unit": "点",
       "frequency": "daily",
       "source": "中证新能源指数",
-      "dataDate": "2026-11-23",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-27",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -296,7 +293,7 @@
       "frequency": "monthly",
       "source": "国家能源局-第二产业",
       "dataDate": "2026.9",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -307,7 +304,7 @@
       "frequency": "monthly",
       "source": "东方财富-规模以上工业增加值",
       "dataDate": "2026年10",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -318,32 +315,133 @@
       "frequency": "monthly",
       "source": "乘联会-CPCA",
       "dataDate": "2026-10月",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "lmeIndex": {
-      "value": 12190.5,
+      "value": 12239.0,
       "unit": "$/吨",
       "frequency": "daily",
       "source": "LME-综合铜03",
       "dataDate": null,
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": true,
       "used_fallback": false,
       "fetchError": null
     },
     "shanghaiCopper": {
-      "value": 92130.0,
+      "value": 92270.0,
       "unit": "¥/吨",
       "frequency": "daily",
       "source": "上期所-新浪财经",
-      "dataDate": "2026-11-24",
-      "lastFetched": "2026-11-24T12:32:23.420890",
+      "dataDate": "2026-11-28",
+      "lastFetched": "2026-11-28T00:03:37.104475",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
+    },
+    "ashareTurnover": {
+      "value": 19997.94,
+      "unit": "亿元",
+      "frequency": "daily",
+      "source": "腾讯行情-沪深交易所",
+      "dataDate": "2026-11-27",
+      "lastFetched": "2026-11-28T00:03:37.104475",
+      "realtime": false,
+      "used_fallback": false,
+      "fetchError": null,
+      "extras": {
+        "unit": "亿元",
+        "sh": 9297.77,
+        "sz": 10700.17,
+        "rawUnit": "万元"
+      }
+    },
+    "marginBalance": {
+      "value": 21055.79,
+      "unit": "亿元",
+      "frequency": "daily",
+      "source": "东方财富-沪深交易所",
+      "dataDate": "2026-11-26",
+      "lastFetched": "2026-11-28T00:03:37.104475",
+      "realtime": false,
+      "used_fallback": false,
+      "fetchError": null,
+      "extras": {
+        "unit": "亿元",
+        "chg3d": -363.59,
+        "chg3dUnit": "亿元",
+        "chg3dBaseDate": "2026-11-23",
+        "rzYe": 21055.79,
+        "rqYe": 290.63,
+        "marginTotal": 21346.42,
+        "marginTotalNote": "含融券，仅参考不参与打分",
+        "rawUnit": "元"
+      }
+    },
+    "southboundNet": {
+      "value": 79.81,
+      "unit": "亿元",
+      "frequency": "daily",
+      "source": "东方财富-港交所",
+      "dataDate": "2026-11-27",
+      "lastFetched": "2026-11-28T00:03:37.104475",
+      "realtime": false,
+      "used_fallback": false,
+      "fetchError": null,
+      "extras": {
+        "unit": "亿元",
+        "shNet": 33.94,
+        "szNet": 45.87,
+        "total": 79.81,
+        "sh": {
+          "net": 33.94,
+          "date": "2026-11-27",
+          "buy": 199.27,
+          "sell": 165.33,
+          "deal": 364.59,
+          "leadStock": "卓越睿新",
+          "hsiChange": 2.11
+        },
+        "sz": {
+          "net": 45.87,
+          "date": "2026-11-27",
+          "buy": 572.11,
+          "sell": 526.24,
+          "deal": 1098.35,
+          "leadStock": "卓越睿新",
+          "hsiChange": 2.11
+        },
+        "rawUnit": "百万元"
+      }
+    },
+    "hstechMomentum": {
+      "value": -3.3,
+      "unit": "百分点",
+      "frequency": "daily",
+      "source": "东方财富-港交所",
+      "dataDate": "2026-11-27",
+      "lastFetched": "2026-11-28T00:03:37.104475",
+      "realtime": false,
+      "used_fallback": false,
+      "fetchError": null,
+      "extras": {
+        "unit": "百分点",
+        "indexLevel": 3637.88,
+        "indexLevelUnit": "点",
+        "chg20d": -3.12,
+        "shChg20d": 0.21,
+        "baseDate": "2026-10-30",
+        "baseHstech": 3754.9,
+        "baseSh": 3599.02,
+        "shDateUsed": {
+          "t": "2026-11-27",
+          "base": "2026-10-30"
+        },
+        "note": "2026-10-30→2026-11-27：恒科 -3.12% − 上证 +0.21% = -3.3pp"
+      }
     }
   },
   "indicators": {
@@ -360,10 +458,11 @@
       "caliberNote": "年内累计同比（Q1-Q3 为前三季度累计，非单季）",
       "reference_only": false,
       "frequency": "quarterly",
+      "responsiveness": "季",
       "dataDate": "2026-Q1-Q3",
       "dataDateISO": "2026-09-30",
       "dataDateKind": "cumulative",
-      "days_stale": 55,
+      "days_stale": 59,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -395,10 +494,11 @@
       "caliberNote": "官方制造业采购经理指数，50 为荣枯线",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -430,13 +530,14 @@
       "caliberNote": "美国实际GDP环比折年率；季频数据有 1-2 季发布延迟",
       "reference_only": false,
       "frequency": "quarterly",
+      "responsiveness": "季",
       "dataDate": "2026-Q1",
       "dataDateISO": "2026-03-31",
       "dataDateKind": "quarter",
-      "days_stale": 238,
+      "days_stale": 242,
       "overdue": true,
       "overdue_level": "red",
-      "days_overdue": 28,
+      "days_overdue": 32,
       "staleness_rule": {
         "yellow_days": 120,
         "red_days": 210
@@ -465,10 +566,11 @@
       "caliberNote": "官方非制造业商务活动指数，50 为荣枯线",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -500,10 +602,11 @@
       "caliberNote": "美国CPI同比（未季调）",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-09",
       "dataDateISO": "2026-09-30",
       "dataDateKind": "month",
-      "days_stale": 55,
+      "days_stale": 59,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -535,10 +638,11 @@
       "caliberNote": "美联储通胀锚，核心PCE同比",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-09",
       "dataDateISO": "2026-09-30",
       "dataDateKind": "month",
-      "days_stale": 55,
+      "days_stale": 59,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -558,8 +662,8 @@
       "exclusion_reason": null
     },
     "vix": {
-      "value": 26.62,
-      "score": -0.441,
+      "value": 26.8,
+      "score": -0.453,
       "trend": "down",
       "signal": "yellow",
       "category": "sentiment",
@@ -570,10 +674,11 @@
       "caliberNote": "CBOE 官方 VIX 收盘价（VIX_History.csv），FRED VIXCLS 兜底；非沪深300 QVIX",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-23",
-      "dataDateISO": "2026-11-23",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-26",
+      "dataDateISO": "2026-11-26",
       "dataDateKind": "day",
-      "days_stale": 1,
+      "days_stale": 2,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -593,7 +698,7 @@
       "exclusion_reason": null
     },
     "oilPrice": {
-      "value": 79.79,
+      "value": 83.68,
       "score": 0.0,
       "trend": "down",
       "signal": "gray",
@@ -605,6 +710,7 @@
       "caliberNote": "WTI 近月期货结算价",
       "reference_only": false,
       "frequency": "daily",
+      "responsiveness": "T+0",
       "dataDate": null,
       "dataDateISO": null,
       "dataDateKind": null,
@@ -628,9 +734,9 @@
       "exclusion_reason": null
     },
     "naturalGas": {
-      "value": 3.543,
+      "value": 3.507,
       "score": 0.0,
-      "trend": "neutral",
+      "trend": "down",
       "signal": "gray",
       "category": "resource",
       "country": "🌐",
@@ -640,6 +746,7 @@
       "caliberNote": "Henry Hub 天然气期货",
       "reference_only": false,
       "frequency": "daily",
+      "responsiveness": "T+0",
       "dataDate": null,
       "dataDateISO": null,
       "dataDateKind": null,
@@ -675,10 +782,11 @@
       "caliberNote": "联邦基金目标利率上限；仅 FOMC 会议日变动",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10-01",
       "dataDateISO": "2026-10-01",
       "dataDateKind": "day",
-      "days_stale": 54,
+      "days_stale": 58,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -698,8 +806,8 @@
       "exclusion_reason": null
     },
     "usBond2Y": {
-      "value": 4.63,
-      "score": -0.087,
+      "value": 4.61,
+      "score": -0.073,
       "trend": "neutral",
       "signal": "gray",
       "category": "liquidity",
@@ -710,10 +818,11 @@
       "caliberNote": "美国2年期国债到期收益率",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-23",
-      "dataDateISO": "2026-11-23",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-25",
+      "dataDateISO": "2026-11-25",
       "dataDateKind": "day",
-      "days_stale": 1,
+      "days_stale": 3,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -733,7 +842,7 @@
       "exclusion_reason": null
     },
     "usBond5Y": {
-      "value": 4.74,
+      "value": 4.65,
       "score": 0.0,
       "trend": "neutral",
       "signal": "gray",
@@ -745,10 +854,11 @@
       "caliberNote": "美国5年期国债到期收益率",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-23",
-      "dataDateISO": "2026-11-23",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-25",
+      "dataDateISO": "2026-11-25",
       "dataDateKind": "day",
-      "days_stale": 1,
+      "days_stale": 3,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -768,7 +878,7 @@
       "exclusion_reason": null
     },
     "usBond10Y": {
-      "value": 4.92,
+      "value": 4.85,
       "score": 0.0,
       "trend": "neutral",
       "signal": "gray",
@@ -780,10 +890,11 @@
       "caliberNote": "美国10年期国债到期收益率（全球资产定价锚）",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-23",
-      "dataDateISO": "2026-11-23",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-25",
+      "dataDateISO": "2026-11-25",
       "dataDateKind": "day",
-      "days_stale": 1,
+      "days_stale": 3,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -815,10 +926,11 @@
       "caliberNote": "美国非农新增就业人数（万人）",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -838,9 +950,9 @@
       "exclusion_reason": null
     },
     "fearGreed": {
-      "value": 17.0,
-      "score": -1.0,
-      "trend": "neutral",
+      "value": 24.6,
+      "score": -0.77,
+      "trend": "up",
       "signal": "red",
       "category": "sentiment",
       "country": "🇺🇸",
@@ -850,8 +962,9 @@
       "caliberNote": "美股恐惧贪婪(CNN)，非A股情绪",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-23",
-      "dataDateISO": "2026-11-23",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-27",
+      "dataDateISO": "2026-11-27",
       "dataDateKind": "day",
       "days_stale": 1,
       "overdue": false,
@@ -873,8 +986,8 @@
       "exclusion_reason": null
     },
     "dollarIndex": {
-      "value": 97.9,
-      "score": 0.262,
+      "value": 97.6,
+      "score": 0.3,
       "trend": "neutral",
       "signal": "lightgreen",
       "category": "liquidity",
@@ -885,10 +998,11 @@
       "caliberNote": "代理指标：由 USDCNY/EURUSD/USDJPY 加权计算，非 ICE DXY 官方值",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-24",
-      "dataDateISO": "2026-11-24",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-27",
+      "dataDateISO": "2026-11-27",
       "dataDateKind": "day",
-      "days_stale": 0,
+      "days_stale": 1,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -920,10 +1034,11 @@
       "caliberNote": "中国CPI当月同比",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -955,10 +1070,11 @@
       "caliberNote": "中国PPI当月同比",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -990,10 +1106,11 @@
       "caliberNote": "1年期贷款市场报价利率",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-11-20",
       "dataDateISO": "2026-11-20",
       "dataDateKind": "day",
-      "days_stale": 4,
+      "days_stale": 8,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1013,9 +1130,9 @@
       "exclusion_reason": null
     },
     "dr007": {
-      "value": 1.274,
-      "score": 0.657,
-      "trend": "up",
+      "value": 1.28,
+      "score": 0.65,
+      "trend": "neutral",
       "signal": "green",
       "category": "liquidity",
       "country": "🇨🇳",
@@ -1025,10 +1142,11 @@
       "caliberNote": "银行间7天质押式回购加权利率",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-24",
-      "dataDateISO": "2026-11-24",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-27",
+      "dataDateISO": "2026-11-27",
       "dataDateKind": "day",
-      "days_stale": 0,
+      "days_stale": 1,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1060,10 +1178,11 @@
       "caliberNote": "M2余额同比",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1083,8 +1202,8 @@
       "exclusion_reason": null
     },
     "creditSpread": {
-      "value": 333,
-      "score": -0.665,
+      "value": 326,
+      "score": -0.63,
       "trend": "neutral",
       "signal": "red",
       "category": "liquidity",
@@ -1095,10 +1214,11 @@
       "caliberNote": "中美10年期国债收益率之差(bp)；非信用利差",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-23",
-      "dataDateISO": "2026-11-23",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-25",
+      "dataDateISO": "2026-11-25",
       "dataDateKind": "day",
-      "days_stale": 1,
+      "days_stale": 3,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1117,8 +1237,44 @@
       "excluded_from_scoring": false,
       "exclusion_reason": null
     },
+    "epu": {
+      "value": 299.0,
+      "score": -0.993,
+      "trend": "neutral",
+      "signal": "reference",
+      "category": "other",
+      "country": "🌐",
+      "name": "经济政策不确定性",
+      "displayName": "经济政策不确定性",
+      "shortName": "EPU",
+      "caliberNote": "中国EPU指数（Baker-Bloom-Davis 官方站原始月度数），月度、滞后约 1 个月、参考项不参与 IAS 评分",
+      "reference_only": true,
+      "frequency": "monthly",
+      "responsiveness": "月",
+      "dataDate": "2026-10",
+      "dataDateISO": "2026-10-31",
+      "dataDateKind": "month",
+      "days_stale": 28,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 60,
+        "red_days": 90
+      },
+      "realtime": false,
+      "dateNote": null,
+      "source": "policyuncertainty.com-BakerBloomDavis",
+      "unit": "",
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh",
+      "degraded_reasons": [],
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only"
+    },
     "carbonPrice": {
-      "value": 93.9,
+      "value": 97.0,
       "score": 1.0,
       "trend": "neutral",
       "signal": "green",
@@ -1130,10 +1286,11 @@
       "caliberNote": "北京碳市场配额成交价",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-20",
-      "dataDateISO": "2026-11-20",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-26",
+      "dataDateISO": "2026-11-26",
       "dataDateKind": "day",
-      "days_stale": 4,
+      "days_stale": 2,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1165,10 +1322,11 @@
       "caliberNote": "全社会用电量当月同比",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026.9",
       "dataDateISO": "2026-09-30",
       "dataDateKind": "month",
-      "days_stale": 55,
+      "days_stale": 59,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1188,8 +1346,8 @@
       "exclusion_reason": null
     },
     "renewEnergyInvest": {
-      "value": 1131.0,
-      "score": -0.172,
+      "value": 1117.0,
+      "score": -0.208,
       "trend": "neutral",
       "signal": "yellow",
       "category": "techGreen",
@@ -1200,8 +1358,9 @@
       "caliberNote": "中证新能源指数点位（非投资额）",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-23",
-      "dataDateISO": "2026-11-23",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-27",
+      "dataDateISO": "2026-11-27",
       "dataDateKind": "day",
       "days_stale": 1,
       "overdue": false,
@@ -1235,10 +1394,11 @@
       "caliberNote": "第二产业用电量同比，制造业活动代理，参考项",
       "reference_only": true,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026.9",
       "dataDateISO": "2026-09-30",
       "dataDateKind": "month",
-      "days_stale": 55,
+      "days_stale": 59,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1270,10 +1430,11 @@
       "caliberNote": "规上工业增加值同比，机器人安装代理，参考项",
       "reference_only": true,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026年10",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1305,10 +1466,11 @@
       "caliberNote": "新能源乘用车零售渗透率",
       "reference_only": false,
       "frequency": "monthly",
+      "responsiveness": "月",
       "dataDate": "2026-10月",
       "dataDateISO": "2026-10-31",
       "dataDateKind": "month",
-      "days_stale": 24,
+      "days_stale": 28,
       "overdue": false,
       "overdue_level": "none",
       "days_overdue": 0,
@@ -1328,8 +1490,8 @@
       "exclusion_reason": null
     },
     "lmeIndex": {
-      "value": 12190.5,
-      "score": -0.064,
+      "value": 12239.0,
+      "score": -0.08,
       "trend": "down",
       "signal": "gray",
       "category": "resource",
@@ -1340,6 +1502,7 @@
       "caliberNote": "代理指标：LME 3个月铜价，非 LME 综合金属指数",
       "reference_only": false,
       "frequency": "daily",
+      "responsiveness": "T+0",
       "dataDate": null,
       "dataDateISO": null,
       "dataDateKind": null,
@@ -1363,7 +1526,7 @@
       "exclusion_reason": null
     },
     "shanghaiCopper": {
-      "value": 92130.0,
+      "value": 92270.0,
       "score": -1.0,
       "trend": "down",
       "signal": "red",
@@ -1375,8 +1538,9 @@
       "caliberNote": "沪铜主力连续合约价",
       "reference_only": false,
       "frequency": "daily",
-      "dataDate": "2026-11-24",
-      "dataDateISO": "2026-11-24",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-28",
+      "dataDateISO": "2026-11-28",
       "dataDateKind": "day",
       "days_stale": 0,
       "overdue": false,
@@ -1396,12 +1560,213 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null
+    },
+    "ashareTurnover": {
+      "value": 19997.94,
+      "score": null,
+      "trend": "neutral",
+      "signal": "gray",
+      "category": "sentiment",
+      "country": "🇨🇳",
+      "name": "两市成交额",
+      "displayName": "两市成交额",
+      "shortName": "两市成交额",
+      "caliberNote": "上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值",
+      "reference_only": true,
+      "frequency": "daily",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-27",
+      "dataDateISO": "2026-11-27",
+      "dataDateKind": "day",
+      "days_stale": 1,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
+      "realtime": false,
+      "dateNote": null,
+      "source": "腾讯行情-沪深交易所",
+      "unit": "亿元",
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh",
+      "degraded_reasons": [],
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only",
+      "extras": {
+        "unit": "亿元",
+        "sh": 9297.77,
+        "sz": 10700.17,
+        "rawUnit": "万元"
+      }
+    },
+    "marginBalance": {
+      "value": 21055.79,
+      "score": null,
+      "trend": "down",
+      "signal": "gray",
+      "category": "sentiment",
+      "country": "🇨🇳",
+      "name": "两融余额",
+      "displayName": "两融余额",
+      "shortName": "两融余额",
+      "caliberNote": "**只打融资余额**（RPTA_RZRQ_LSHJ.RZYE，源为元、已÷1e8 换算亿元）。融资=杠杆做多意愿，融券=反向，两者性质不同、混在一起会互相稀释，故不合并；含融券的两融余额(marginTotal)仅放 extras 参考、不参与打分。T+1 披露",
+      "reference_only": true,
+      "frequency": "daily",
+      "responsiveness": "T+1",
+      "dataDate": "2026-11-26",
+      "dataDateISO": "2026-11-26",
+      "dataDateKind": "day",
+      "days_stale": 2,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
+      "realtime": false,
+      "dateNote": null,
+      "source": "东方财富-沪深交易所",
+      "unit": "亿元",
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh",
+      "degraded_reasons": [],
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only",
+      "extras": {
+        "unit": "亿元",
+        "chg3d": -363.59,
+        "chg3dUnit": "亿元",
+        "chg3dBaseDate": "2026-11-23",
+        "rzYe": 21055.79,
+        "rqYe": 290.63,
+        "marginTotal": 21346.42,
+        "marginTotalNote": "含融券，仅参考不参与打分",
+        "rawUnit": "元"
+      }
+    },
+    "southboundNet": {
+      "value": 79.81,
+      "score": null,
+      "trend": "up",
+      "signal": "gray",
+      "category": "sentiment",
+      "country": "🇨🇳",
+      "name": "南向净买入",
+      "displayName": "南向净买入",
+      "shortName": "南向净买入",
+      "caliberNote": "港股通(沪 MUTUAL_TYPE=004 + 深 MUTUAL_TYPE=006)两路净买入相加（源为百万元、已÷100 换算亿元）；正值=资金南下净买入。extras 分列 shNet/szNet/total",
+      "reference_only": true,
+      "frequency": "daily",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-27",
+      "dataDateISO": "2026-11-27",
+      "dataDateKind": "day",
+      "days_stale": 1,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
+      "realtime": false,
+      "dateNote": null,
+      "source": "东方财富-港交所",
+      "unit": "亿元",
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh",
+      "degraded_reasons": [],
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only",
+      "extras": {
+        "unit": "亿元",
+        "shNet": 33.94,
+        "szNet": 45.87,
+        "total": 79.81,
+        "sh": {
+          "net": 33.94,
+          "date": "2026-11-27",
+          "buy": 199.27,
+          "sell": 165.33,
+          "deal": 364.59,
+          "leadStock": "卓越睿新",
+          "hsiChange": 2.11
+        },
+        "sz": {
+          "net": 45.87,
+          "date": "2026-11-27",
+          "buy": 572.11,
+          "sell": 526.24,
+          "deal": 1098.35,
+          "leadStock": "卓越睿新",
+          "hsiChange": 2.11
+        },
+        "rawUnit": "百万元"
+      }
+    },
+    "hstechMomentum": {
+      "value": -3.3,
+      "score": null,
+      "trend": "down",
+      "signal": "gray",
+      "category": "sentiment",
+      "country": "🇨🇳",
+      "name": "恒生科技动量",
+      "displayName": "恒生科技动量",
+      "shortName": "恒科动量",
+      "caliberNote": "恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分",
+      "reference_only": true,
+      "frequency": "daily",
+      "responsiveness": "T+0",
+      "dataDate": "2026-11-27",
+      "dataDateISO": "2026-11-27",
+      "dataDateKind": "day",
+      "days_stale": 1,
+      "overdue": false,
+      "overdue_level": "none",
+      "days_overdue": 0,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
+      "realtime": false,
+      "dateNote": null,
+      "source": "东方财富-港交所",
+      "unit": "百分点",
+      "timeliness": 1.0,
+      "freshness": "🟢",
+      "freshness_level": "fresh",
+      "degraded_reasons": [],
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only",
+      "extras": {
+        "unit": "百分点",
+        "indexLevel": 3637.88,
+        "indexLevelUnit": "点",
+        "chg20d": -3.12,
+        "shChg20d": 0.21,
+        "baseDate": "2026-10-30",
+        "baseHstech": 3754.9,
+        "baseSh": 3599.02,
+        "shDateUsed": {
+          "t": "2026-11-27",
+          "base": "2026-10-30"
+        },
+        "note": "2026-10-30→2026-11-27：恒科 -3.12% − 上证 +0.21% = -3.3pp"
+      }
     }
   },
   "meta": {
     "ias": {
-      "score": -0.45,
-      "normalized": -0.0988,
+      "score": -0.4,
+      "normalized": -0.08725,
       "max_possible": 4.6,
       "weight_design_sum": 4.6,
       "weight_effective_sum": 4.0,
@@ -1439,7 +1804,53 @@
         "active_count": 6,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 0.833
+        "avg_alpha": 0.833,
+        "caliberNote": "",
+        "responsiveness": {
+          "slowest": "季",
+          "slowest_reference": null,
+          "detail": [
+            {
+              "key": "chinaGdp",
+              "label": "季",
+              "reference_only": false
+            },
+            {
+              "key": "chinaPmi",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "usGdp",
+              "label": "季",
+              "reference_only": false
+            },
+            {
+              "key": "servicePmi",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "electricity",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "usNonFarm",
+              "label": "月",
+              "reference_only": false
+            }
+          ]
+        },
+        "display_indicators": [
+          "chinaGdp",
+          "chinaPmi",
+          "usGdp",
+          "servicePmi",
+          "electricity",
+          "usNonFarm"
+        ],
+        "reference_indicators": []
       },
       "inflation": {
         "name": "通胀与政策",
@@ -1455,7 +1866,47 @@
         "active_count": 5,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 1.0
+        "avg_alpha": 1.0,
+        "caliberNote": "",
+        "responsiveness": {
+          "slowest": "月",
+          "slowest_reference": null,
+          "detail": [
+            {
+              "key": "cpi",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "ppi",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "usCpi",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "corePce",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "fedRate",
+              "label": "月",
+              "reference_only": false
+            }
+          ]
+        },
+        "display_indicators": [
+          "cpi",
+          "ppi",
+          "usCpi",
+          "corePce",
+          "fedRate"
+        ],
+        "reference_indicators": []
       },
       "liquidity": {
         "name": "流动性",
@@ -1464,14 +1915,72 @@
         "weight_design": 0.8,
         "weight_effective": 0.8,
         "weight_reason": "满额",
-        "score": -0.056,
+        "score": -0.046,
         "signal": "gray",
         "valid_count": 8,
         "required_count": 4,
         "active_count": 8,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 1.0
+        "avg_alpha": 1.0,
+        "caliberNote": "",
+        "responsiveness": {
+          "slowest": "月",
+          "slowest_reference": null,
+          "detail": [
+            {
+              "key": "lpr",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "dr007",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "m2",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "creditSpread",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "dollarIndex",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "usBond2Y",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "usBond5Y",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "usBond10Y",
+              "label": "T+0",
+              "reference_only": false
+            }
+          ]
+        },
+        "display_indicators": [
+          "lpr",
+          "dr007",
+          "m2",
+          "creditSpread",
+          "dollarIndex",
+          "usBond2Y",
+          "usBond5Y",
+          "usBond10Y"
+        ],
+        "reference_indicators": []
       },
       "sentiment": {
         "name": "市场情绪",
@@ -1479,15 +1988,66 @@
         "weight": 0.8,
         "weight_design": 0.8,
         "weight_effective": 0.4,
-        "weight_reason": "市场错配 ×0.5（2 项均为美股指标（CBOE VIX + CNN F&G），无 A 股情绪代理）",
-        "score": -0.721,
+        "weight_reason": "市场错配 ×0.5（2 项计分项均为美股指标（CBOE VIX + CNN F&G）；A股/港股 4 项代理已挂上但仅参考不打分）",
+        "score": -0.612,
         "signal": "red",
         "valid_count": 2,
         "required_count": 2,
         "active_count": 2,
-        "reference_only_count": 0,
+        "reference_only_count": 4,
         "insufficient_data": false,
-        "avg_alpha": 1.0
+        "avg_alpha": 1.0,
+        "caliberNote": "计分项仅美股 VIX + CNN F&G；A股/港股 4 项（成交额/两融/南向/恒生科技）当前为参考项，不参与打分",
+        "responsiveness": {
+          "slowest": "T+0",
+          "slowest_reference": "T+1",
+          "detail": [
+            {
+              "key": "vix",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "fearGreed",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "ashareTurnover",
+              "label": "T+0",
+              "reference_only": true
+            },
+            {
+              "key": "marginBalance",
+              "label": "T+1",
+              "reference_only": true
+            },
+            {
+              "key": "southboundNet",
+              "label": "T+0",
+              "reference_only": true
+            },
+            {
+              "key": "hstechMomentum",
+              "label": "T+0",
+              "reference_only": true
+            }
+          ]
+        },
+        "display_indicators": [
+          "vix",
+          "fearGreed",
+          "ashareTurnover",
+          "marginBalance",
+          "southboundNet",
+          "hstechMomentum"
+        ],
+        "reference_indicators": [
+          "ashareTurnover",
+          "marginBalance",
+          "southboundNet",
+          "hstechMomentum"
+        ]
       },
       "resource": {
         "name": "资源与供应链",
@@ -1496,14 +2056,54 @@
         "weight_design": 0.6,
         "weight_effective": 0.6,
         "weight_reason": "满额",
-        "score": -0.013,
+        "score": -0.016,
         "signal": "gray",
         "valid_count": 5,
         "required_count": 3,
         "active_count": 5,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 1.0
+        "avg_alpha": 1.0,
+        "caliberNote": "",
+        "responsiveness": {
+          "slowest": "T+0",
+          "slowest_reference": null,
+          "detail": [
+            {
+              "key": "oilPrice",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "naturalGas",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "carbonPrice",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "lmeIndex",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "shanghaiCopper",
+              "label": "T+0",
+              "reference_only": false
+            }
+          ]
+        },
+        "display_indicators": [
+          "oilPrice",
+          "naturalGas",
+          "carbonPrice",
+          "lmeIndex",
+          "shanghaiCopper"
+        ],
+        "reference_indicators": []
       },
       "techGreen": {
         "name": "科技与绿色",
@@ -1512,14 +2112,48 @@
         "weight_design": 0.4,
         "weight_effective": 0.2,
         "weight_reason": "有效性收缩 2/4",
-        "score": 0.414,
+        "score": 0.396,
         "signal": "lightgreen",
         "valid_count": 2,
         "required_count": 2,
         "active_count": 2,
         "reference_only_count": 2,
         "insufficient_data": false,
-        "avg_alpha": 1.0
+        "avg_alpha": 1.0,
+        "caliberNote": "",
+        "responsiveness": {
+          "slowest": "月",
+          "slowest_reference": "月",
+          "detail": [
+            {
+              "key": "aiGrowth",
+              "label": "月",
+              "reference_only": true
+            },
+            {
+              "key": "robotInstall",
+              "label": "月",
+              "reference_only": true
+            },
+            {
+              "key": "evPenetration",
+              "label": "月",
+              "reference_only": false
+            },
+            {
+              "key": "renewEnergyInvest",
+              "label": "T+0",
+              "reference_only": false
+            }
+          ]
+        },
+        "display_indicators": [
+          "aiGrowth",
+          "robotInstall",
+          "evPenetration",
+          "renewEnergyInvest"
+        ],
+        "reference_indicators": []
       }
     },
     "rules_snapshot": {
@@ -1558,8 +2192,12 @@
       },
       "reference_only": [
         "aiGrowth",
+        "ashareTurnover",
         "epu",
-        "robotInstall"
+        "hstechMomentum",
+        "marginBalance",
+        "robotInstall",
+        "southboundNet"
       ],
       "min_valid_rule": "n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母",
       "ias_scale": 4.6,
@@ -1589,37 +2227,29 @@
       "ias_partial_coverage": 0.8,
       "unknown_alpha": 0.5
     },
-    "rules_hash": "88cb8f040f89",
+    "rules_hash": "a306915b6fa9",
     "model": {
       "version": "v4.2",
       "reference_only": [
         "aiGrowth",
+        "ashareTurnover",
         "epu",
-        "robotInstall"
+        "hstechMomentum",
+        "marginBalance",
+        "robotInstall",
+        "southboundNet"
       ],
       "ias_formula": "normalized = Σ(score×w)/Σ(valid_w); score = normalized × Σ(w)",
       "min_coverage": 0.6
     }
   },
   "validity_report": {
-    "total": 31,
-    "valid": 30,
-    "invalid": 1,
+    "total": 35,
+    "valid": 35,
+    "invalid": 0,
     "degraded": [],
     "degraded_count": 0,
-    "failed": [
-      {
-        "key": "epu",
-        "displayName": "经济政策不确定性",
-        "source": "FRED API-EPU指数",
-        "reason": "not_found",
-        "reasonText": "数据源无有效记录",
-        "dataDate": null,
-        "days_stale": null,
-        "used_fallback": false,
-        "lastAttempt": "2026-11-24T12:32:23.420890"
-      }
-    ],
+    "failed": [],
     "source_degraded": [],
     "source_degraded_count": 0
   }

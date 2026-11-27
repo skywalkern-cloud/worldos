@@ -72,6 +72,25 @@ FRESHNESS_STATES = {
 # 进 validity_report.degraded 的状态 → reason 枚举码（其余状态不算降级）
 FRESHNESS_DEGRADED_REASON = {'unknown': 'no_date'}
 
+# ═══════════════════════════════════════════
+# 响应速度标注（WorldOS V1a，2026-11-27）
+# ═══════════════════════════════════════════
+# 目的：回答「这条数据多快能反映市场变化」。frequency 只说明更新周期，
+# **不等于可用延迟**——两融是日频，但 T+1 才披露（当日盘后只出到前一交易日）。
+# 因此：
+#   1) 默认按 frequency → 标签映射（日频=T+0，月频=月，季频=季）；
+#   2) 指标可用 `responsiveness` 显式覆盖（仅在实测披露节奏与频率不符时才允许）。
+# 维度卡片取该维度内「最慢」的那一项标注（最慢决定这一维最早何时能拐头），
+# 明细则进 tooltip。判定顺序见 RESPONSIVENESS_ORDER。
+RESPONSIVENESS_BY_FREQUENCY = {
+    'daily': 'T+0',
+    'monthly': '月',
+    'quarterly': '季',
+    'yearly': '年',
+    'other': '—',
+}
+RESPONSIVENESS_ORDER = ('T+0', 'T+1', '月', '季', '年', '—')
+
 # 前端 COUNTRY_ORDER 只认这三个值，新增国家需先扩前端映射（已与扣钉约定）
 ALLOWED_COUNTRIES = ('🇨🇳', '🇺🇸', '🌐')
 ALLOWED_FREQUENCIES = ('daily', 'monthly', 'quarterly', 'yearly', 'other')
@@ -165,6 +184,39 @@ INDICATORS = {
         'source': 'CNN Business-Fear&Greed', 'country': '🇺🇸', 'unit': '', 'frequency': 'daily',
         'caliberNote': '美股恐惧贪婪(CNN)，非A股情绪',
     },
+    # ── A股/港股情绪代理（WorldOS V1a，2026-11-27）────────────────────
+    # 动因：sentiment 维度原本只有 CBOE VIX + CNN F&G 两个美股指标，
+    # 11-27 A股上证 +3.73%/创业板 +11.61%/涨停 1487 家，却输出「减仓」——
+    # 因为「市场情绪」里一个 A股/港股指标都没有。
+    # V1a 阶段：只采集 + 只展示，**不打分**（reference_only=True），
+    # 待龙六给出字段级打分规则（V1b）后再转正；转正时撤掉 market_mismatch 折半。
+    'ashareTurnover': {
+        'name': '两市成交额', 'short': '两市成交额',
+        'source': '腾讯行情-沪深交易所', 'country': '🇨🇳', 'unit': '亿元', 'frequency': 'daily',
+        'caliberNote': '上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值',
+        'reference_only': True,
+    },
+    'marginBalance': {
+        'name': '两融余额', 'short': '两融余额',
+        'source': '东方财富-沪深交易所', 'country': '🇨🇳', 'unit': '亿元', 'frequency': 'daily',
+        # 日频但 T+1 披露（实测：11-27 晚间最新仅到 11-26），故显式覆盖默认映射。
+        'responsiveness': 'T+1',
+        'caliberNote': '**只打融资余额**（RPTA_RZRQ_LSHJ.RZYE，源为元、已÷1e8 换算亿元）。融资=杠杆做多意愿，融券=反向，两者性质不同、混在一起会互相稀释，故不合并；含融券的两融余额(marginTotal)仅放 extras 参考、不参与打分。T+1 披露',
+        'reference_only': True,
+    },
+    'southboundNet': {
+        'name': '南向净买入', 'short': '南向净买入',
+        'source': '东方财富-港交所', 'country': '🇨🇳', 'unit': '亿元', 'frequency': 'daily',
+        'caliberNote': '港股通(沪 MUTUAL_TYPE=004 + 深 MUTUAL_TYPE=006)两路净买入相加（源为百万元、已÷100 换算亿元）；正值=资金南下净买入。extras 分列 shNet/szNet/total',
+        'reference_only': True,
+    },
+    'hstechMomentum': {
+        'name': '恒生科技动量', 'short': '恒科动量',
+        'source': '东方财富-港交所', 'country': '🇨🇳', 'unit': '百分点', 'frequency': 'daily',
+        'caliberNote': '恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分',
+        'reference_only': True,
+    },
+
     'dollarIndex': {
         'name': '美元指数', 'short': '美元指数',
         'source': 'akshare-汇率加权计算', 'country': '🌐', 'unit': '', 'frequency': 'daily',
@@ -275,13 +327,20 @@ DIMENSIONS = [
     },
     {
         'id': 'sentiment', 'name': '市场情绪', 'icon': '🧠', 'weight': 0.8,
+        # V1a(2026-11-27)：4 个 A股/港股情绪代理挂在本维【展示】，全部 reference_only（只展示不打分）。
+        # 重要：它们放入 reference_indicators 而**不是** indicators——
+        # indicators 是「计分成员」，动它就会改有效权重（见下方 design_count 注释）。
         'indicators': ['vix', 'fearGreed'],
+        'reference_indicators': ['ashareTurnover', 'marginBalance', 'southboundNet', 'hstechMomentum'],
         # D(2026-11-09 龙五拍板)：该维度按「A股情绪齐备」设计权重 0.8。
         # 2026-11-24 变更：vix 已换为美股 CBOE VIX，本维度 2 项均为美股指标
         # （CBOE VIX + CNN F&G），A 股情绪代理为 0 项，与设计构成不符（错配更严重、非消失）
         # → 维持声明式折半到 0.4；P1 补齐 A 股情绪代理（如 50ETF QVIX）后方可移除本标记恢复满额。
+        # 2026-11-27 V1a：4 项 A股/港股代理已挂上但**尚未打分**，前置条件未满足，
+        # 故本次【不撤】折半；等 V1b 打分规则落地并转正后再撤（撤即 0.4→0.8）。
         'market_mismatch': 0.5,
-        'mismatch_reason': '2 项均为美股指标（CBOE VIX + CNN F&G），无 A 股情绪代理',
+        'mismatch_reason': '2 项计分项均为美股指标（CBOE VIX + CNN F&G）；A股/港股 4 项代理已挂上但仅参考不打分',
+        'caliberNote': '计分项仅美股 VIX + CNN F&G；A股/港股 4 项（成交额/两融/南向/恒生科技）当前为参考项，不参与打分',
     },
     {
         'id': 'resource', 'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.6,
@@ -325,7 +384,7 @@ REFERENCE_ONLY = {k for k, v in INDICATORS.items() if v.get('reference_only')}
 
 INDICATOR_DIMENSION = {}
 for _dim in DIMENSIONS:
-    for _key in _dim['indicators']:
+    for _key in list(_dim['indicators']) + list(_dim.get('reference_indicators', [])):
         INDICATOR_DIMENSION[_key] = _dim['id']
 
 # 兼容旧 import：scoring.DIMENSION_CONFIG
@@ -336,6 +395,11 @@ DIMENSION_CONFIG = [
         # 权重修正声明必须一起带过去，否则 scoring 拿不到 market_mismatch（曾漏过一次）
         'market_mismatch': d.get('market_mismatch', 1.0),
         'mismatch_reason': d.get('mismatch_reason', ''),
+        # V1a：维度级口径说明（前端卡片副标题/tooltip），指标级在 INDICATORS[*].caliberNote
+        'caliberNote': d.get('caliberNote', ''),
+        # V1a：只展示不打分的参考项（不进分母、不参平均），前端渲染用这个列表
+        'reference_indicators': list(d.get('reference_indicators', [])),
+        'display_indicators': list(d['indicators']) + list(d.get('reference_indicators', [])),
     }
     for d in DIMENSIONS
 ]
@@ -387,10 +451,21 @@ def dimension_weights(dim: dict) -> dict:
       2. 市场错配折半（声明式）：维度可声明 market_mismatch 系数（默认 1.0），
          仅 sentiment 有值 0.5，原因写进 mismatch_reason。
 
-    Returns: {design, effective, shrink, mismatch, reason, active_count, design_count}
+    2026-11-27 V1a 注记（**故意不改**本函数口径）：
+      V1a 要往 sentiment 挂 4 个 reference_only 展示项。若把它们塞进 dim['indicators']，
+      本函数会把它们算进分母 → shrink 1.0→0.333、有效权重 0.4→0.133，
+      等于「只加展示项却偷改权重」。故 V1a 采用 reference_indicators（独立展示列），
+      dim['indicators'] 一律保持「计分成员」语义不变，权重逐位零漂移。
+      ❗遗留不一致（已上报，V1b 再定）：techGreen 的 aiGrowth/robotInstall 是 reference_only
+      但仍在 indicators 里，shrink = 2/4 = 0.5（有效 0.2），与本文档「参考项不计入分母」不符。
+      这与 V1a 无关，且改动会直接影响 IAS，故本次不动。
+
+    Returns: {design, effective, shrink, mismatch, reason, active_count, design_count,
+              display_count}
     """
     design = dim['weight']
-    design_count = len(dim['indicators'])
+    display_count = len(dim['indicators']) + len(dim.get('reference_indicators', []))
+    design_count = len(dim['indicators'])                                       # 仅计分成员（保持原口径）
     active_count = sum(1 for k in dim['indicators'] if not is_reference_only(k))
     shrink = (active_count / design_count) if design_count else 1.0
     mismatch = float(dim.get('market_mismatch', 1.0) or 1.0)
@@ -409,8 +484,37 @@ def dimension_weights(dim: dict) -> dict:
         'mismatch': mismatch,
         'active_count': active_count,
         'design_count': design_count,
+        'display_count': display_count,
         'reason': '；'.join(reasons) if reasons else '满额',
     }
+
+
+def responsiveness_of(key: str) -> str:
+    """指标响应速度标签：显式覆盖 > frequency 映射。"""
+    m = INDICATORS.get(key, {})
+    override = m.get('responsiveness')
+    if override:
+        return override
+    return RESPONSIVENESS_BY_FREQUENCY.get(m.get('frequency', 'other'), '—')
+
+
+def dimension_responsiveness(dim: dict) -> dict:
+    """维度响应速度：取该维最慢的一项（最慢决定这维最早何时能拐头）+ 明细。
+
+    reference_only 的参考项**不参与**「最慢」判定（它不影响评分结论），
+    但明细里仍然列出来并标 ref，方便前端在 tooltip 里说明。
+    """
+    detail = [
+        {'key': k, 'label': responsiveness_of(k), 'reference_only': is_reference_only(k)}
+        for k in list(dim['indicators']) + list(dim.get('reference_indicators', []))
+    ]
+    scoring_labels = [d['label'] for d in detail if not d['reference_only']] or [d['label'] for d in detail]
+    known = [l for l in scoring_labels if l in RESPONSIVENESS_ORDER and l != '—']
+    slowest = max(known, key=RESPONSIVENESS_ORDER.index) if known else '—'
+    # 参考项里若有比计分项更慢的，单独提示（避免「标 T+0 却挂着月频参考项」被忽略）
+    ref_known = [d['label'] for d in detail if d['reference_only'] and d['label'] != '—']
+    slowest_ref = max(ref_known, key=RESPONSIVENESS_ORDER.index) if ref_known else None
+    return {'slowest': slowest, 'slowest_reference': slowest_ref, 'detail': detail}
 
 
 def q(x, n: int = 2):
@@ -774,3 +878,6 @@ if __name__ == '__main__':
         if ds is not None and ds < 0:
             ds = 0   # 未来日期（年度数据期末 12-31）按 0 处理，与 calc_timeliness 同口径
         print(f'  {s:<12} → {p["end"] if p else "解析失败"}  ({p["kind"] if p else "-"}, {ds}天前)')
+
+# V1a：指标级响应速度查表（放文件末尾，因 responsiveness_of 定义在 helper 区）
+INDICATOR_RESPONSIVENESS = {k: responsiveness_of(k) for k in INDICATORS}
