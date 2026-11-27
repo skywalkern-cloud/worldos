@@ -45,7 +45,7 @@ SERIES_META = {
 # 取数
 # ═══════════════════════════════════════════
 
-def em_kline(secid, lmt=160):
+def em_kline(secid, lmt=400):
     """东财日 K：返回 [(date, close, amount)] 升序。f57 = 成交额(元)。"""
     url = ('https://push2his.eastmoney.com/api/qt/stock/kline/get'
            f'?secid={secid}&fields1=f1,f2&fields2=f51,f52,f53,f54,f55,f56,f57'
@@ -68,7 +68,7 @@ def em_kline(secid, lmt=160):
     return out
 
 
-def em_datacenter(report_name, *, filter_expr=None, sort_column='DIM_DATE', page_size=160):
+def em_datacenter(report_name, *, filter_expr=None, sort_column='DIM_DATE', page_size=400):
     params = [f'reportName={report_name}', 'columns=ALL', 'source=WEB', 'client=WEB',
               f'sortColumns={sort_column}', 'sortTypes=-1',
               'pageNumber=1', f'pageSize={page_size}', 'pageNo=1']
@@ -98,7 +98,7 @@ def build_ashare_turnover():
 
 def build_margin_balance():
     """融资余额（亿元）= RZYE/1e8。排序列必须是 DIM_DATE（写 DATE 会报排序列不存在）。"""
-    rows = em_datacenter('RPTA_RZRQ_LSHJ', sort_column='DIM_DATE', page_size=180)
+    rows = em_datacenter('RPTA_RZRQ_LSHJ', sort_column='DIM_DATE', page_size=400)
     out = {}
     for r in rows:
         d = (r.get('DIM_DATE') or '')[:10]
@@ -120,7 +120,7 @@ def build_southbound_net():
     for mt in ('004', '006'):
         rows = em_datacenter('RPT_MUTUAL_DEAL_HISTORY',
                             filter_expr=f'(MUTUAL_TYPE="{mt}")',
-                            sort_column='TRADE_DATE', page_size=180)
+                            sort_column='TRADE_DATE', page_size=400)
         leg = {}
         for r in rows:
             d = (r.get('TRADE_DATE') or '')[:10]
@@ -145,8 +145,8 @@ def _close_on_or_before(bars, target):
 
 def build_hstech_momentum():
     """恒生科技 20 日相对强弱（百分点），以 A 股交易日为时间轴，HSTECH 用 as-of join。"""
-    hst = em_kline('124.HSTECH', lmt=200)
-    sh = em_kline('1.000001', lmt=200)
+    hst = em_kline('124.HSTECH', lmt=400)
+    sh = em_kline('1.000001', lmt=400)
     if len(hst) < 21:
         raise ValueError(f'HSTECH 日线不足（{len(hst)} 根）')
     out = {}
