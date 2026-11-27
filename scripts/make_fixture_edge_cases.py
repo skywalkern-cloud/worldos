@@ -82,6 +82,34 @@ SAMPLE_VALUES = {
 }
 
 
+# V1b-1：这 4 项现在走 pct_rank 打分，需要历史样本才能覆盖三条分支：
+#   ≥60 → 0.4*S20+0.6*S60 / 20~59 → 仅 S20 / <20 → warmup
+# 故意给不同长度，把三条都钉住（否则夹具只测到 warmup 一条）。
+# 值为合成正弦波 + 递增趋势，只求分位分布可用，不代表任何真实行情。
+PCT_HISTORY_LEN = {
+    'ashareTurnover': 65,     # raw：65 条 → 60 窗口
+    'marginBalance': 25,      # delta5：25 条 → 20 个 transform → 仅 S20
+    'southboundNet': 3,       # sum5：3 条 → 算不出 → warmup
+    'hstechMomentum': 65,     # raw：65 条 → 60 窗口
+}
+
+
+def _synthetic_history(key, n):
+    """生成 n 条历史（不含今日），日期从远到近。"""
+    import math
+    base = {'ashareTurnover': 15000.0, 'marginBalance': 20000.0,
+            'southboundNet': 20.0, 'hstechMomentum': 0.0}[key]
+    span = {'ashareTurnover': 6000.0, 'marginBalance': 1500.0,
+            'southboundNet': 60.0, 'hstechMomentum': 8.0}[key]
+    out = []
+    for i in range(n):
+        days_ago = n - i
+        val = base + span * math.sin(i / 6.0) + 0.2 * i
+        out.append({'date': (TODAY - timedelta(days=days_ago)).isoformat(),
+                    'value': round(val, 2)})
+    return out
+
+
 def build_raw_data():
     raw = {}
     for key, spec in INDICATORS.items():
@@ -102,6 +130,9 @@ def build_raw_data():
                            ({'reason': 'timeout', 'reasonText': '夹具：超时'}
                             if val is None else None)),
         }
+    # V1b-1：4 个 pct_rank 指标挂上历史样本（夹具里也要能重放打分，否则只测到 warmup）
+        if key in PCT_HISTORY_LEN:
+            raw[key]['history'] = _synthetic_history(key, PCT_HISTORY_LEN[key])
     # 模拟「新接入了指标但还没配评分参数」的真实场景 → no_score 分支
     raw['newIndicatorSample'] = {
         'value': 5,

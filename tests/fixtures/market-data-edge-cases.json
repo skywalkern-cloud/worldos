@@ -183,7 +183,269 @@
       "lastFetched": "2026-11-28T10:00:00",
       "realtime": false,
       "used_fallback": false,
-      "fetchError": null
+      "fetchError": null,
+      "history": [
+        {
+          "date": "2026-09-24",
+          "value": 15000.0
+        },
+        {
+          "date": "2026-09-25",
+          "value": 15995.58
+        },
+        {
+          "date": "2026-09-26",
+          "value": 16963.57
+        },
+        {
+          "date": "2026-09-27",
+          "value": 17877.15
+        },
+        {
+          "date": "2026-09-28",
+          "value": 18711.02
+        },
+        {
+          "date": "2026-09-29",
+          "value": 19442.06
+        },
+        {
+          "date": "2026-09-30",
+          "value": 20050.03
+        },
+        {
+          "date": "2026-10-01",
+          "value": 20518.07
+        },
+        {
+          "date": "2026-10-02",
+          "value": 20833.23
+        },
+        {
+          "date": "2026-10-03",
+          "value": 20986.77
+        },
+        {
+          "date": "2026-10-04",
+          "value": 20974.45
+        },
+        {
+          "date": "2026-10-05",
+          "value": 20796.61
+        },
+        {
+          "date": "2026-10-06",
+          "value": 20458.18
+        },
+        {
+          "date": "2026-10-07",
+          "value": 19968.56
+        },
+        {
+          "date": "2026-10-08",
+          "value": 19341.32
+        },
+        {
+          "date": "2026-10-09",
+          "value": 18593.83
+        },
+        {
+          "date": "2026-10-10",
+          "value": 17746.84
+        },
+        {
+          "date": "2026-10-11",
+          "value": 16823.8
+        },
+        {
+          "date": "2026-10-12",
+          "value": 15850.32
+        },
+        {
+          "date": "2026-10-13",
+          "value": 14853.37
+        },
+        {
+          "date": "2026-10-14",
+          "value": 13860.59
+        },
+        {
+          "date": "2026-10-15",
+          "value": 12899.5
+        },
+        {
+          "date": "2026-10-16",
+          "value": 11996.74
+        },
+        {
+          "date": "2026-10-17",
+          "value": 11177.33
+        },
+        {
+          "date": "2026-10-18",
+          "value": 10463.99
+        },
+        {
+          "date": "2026-10-19",
+          "value": 9876.48
+        },
+        {
+          "date": "2026-10-20",
+          "value": 9431.11
+        },
+        {
+          "date": "2026-10-21",
+          "value": 9140.22
+        },
+        {
+          "date": "2026-10-22",
+          "value": 9011.87
+        },
+        {
+          "date": "2026-10-23",
+          "value": 9049.63
+        },
+        {
+          "date": "2026-10-24",
+          "value": 9252.45
+        },
+        {
+          "date": "2026-10-25",
+          "value": 9614.73
+        },
+        {
+          "date": "2026-10-26",
+          "value": 10126.42
+        },
+        {
+          "date": "2026-10-27",
+          "value": 10773.36
+        },
+        {
+          "date": "2026-10-28",
+          "value": 11537.61
+        },
+        {
+          "date": "2026-10-29",
+          "value": 12398.01
+        },
+        {
+          "date": "2026-10-30",
+          "value": 13330.71
+        },
+        {
+          "date": "2026-10-31",
+          "value": 14309.87
+        },
+        {
+          "date": "2026-11-01",
+          "value": 15308.36
+        },
+        {
+          "date": "2026-11-02",
+          "value": 16298.52
+        },
+        {
+          "date": "2026-11-03",
+          "value": 17252.91
+        },
+        {
+          "date": "2026-11-04",
+          "value": 18145.08
+        },
+        {
+          "date": "2026-11-05",
+          "value": 18950.32
+        },
+        {
+          "date": "2026-11-06",
+          "value": 19646.31
+        },
+        {
+          "date": "2026-11-07",
+          "value": 20213.78
+        },
+        {
+          "date": "2026-11-08",
+          "value": 20637.0
+        },
+        {
+          "date": "2026-11-09",
+          "value": 20904.25
+        },
+        {
+          "date": "2026-11-10",
+          "value": 21008.12
+        },
+        {
+          "date": "2026-11-11",
+          "value": 20945.75
+        },
+        {
+          "date": "2026-11-12",
+          "value": 20718.87
+        },
+        {
+          "date": "2026-11-13",
+          "value": 20333.76
+        },
+        {
+          "date": "2026-11-14",
+          "value": 19801.12
+        },
+        {
+          "date": "2026-11-15",
+          "value": 19135.71
+        },
+        {
+          "date": "2026-11-16",
+          "value": 18355.97
+        },
+        {
+          "date": "2026-11-17",
+          "value": 17483.51
+        },
+        {
+          "date": "2026-11-18",
+          "value": 16542.53
+        },
+        {
+          "date": "2026-11-19",
+          "value": 15559.1
+        },
+        {
+          "date": "2026-11-20",
+          "value": 14560.49
+        },
+        {
+          "date": "2026-11-21",
+          "value": 13574.38
+        },
+        {
+          "date": "2026-11-22",
+          "value": 12628.1
+        },
+        {
+          "date": "2026-11-23",
+          "value": 11747.87
+        },
+        {
+          "date": "2026-11-24",
+          "value": 10958.11
+        },
+        {
+          "date": "2026-11-25",
+          "value": 10280.7
+        },
+        {
+          "date": "2026-11-26",
+          "value": 9734.43
+        },
+        {
+          "date": "2026-11-27",
+          "value": 9334.43
+        }
+      ]
     },
     "marginBalance": {
       "value": 21055.79,
@@ -194,7 +456,109 @@
       "lastFetched": "2026-11-28T10:00:00",
       "realtime": false,
       "used_fallback": false,
-      "fetchError": null
+      "fetchError": null,
+      "history": [
+        {
+          "date": "2026-11-03",
+          "value": 20000.0
+        },
+        {
+          "date": "2026-11-04",
+          "value": 20249.04
+        },
+        {
+          "date": "2026-11-05",
+          "value": 20491.19
+        },
+        {
+          "date": "2026-11-06",
+          "value": 20719.74
+        },
+        {
+          "date": "2026-11-07",
+          "value": 20928.35
+        },
+        {
+          "date": "2026-11-08",
+          "value": 21111.27
+        },
+        {
+          "date": "2026-11-09",
+          "value": 21263.41
+        },
+        {
+          "date": "2026-11-10",
+          "value": 21380.57
+        },
+        {
+          "date": "2026-11-11",
+          "value": 21459.51
+        },
+        {
+          "date": "2026-11-12",
+          "value": 21498.04
+        },
+        {
+          "date": "2026-11-13",
+          "value": 21495.11
+        },
+        {
+          "date": "2026-11-14",
+          "value": 21450.8
+        },
+        {
+          "date": "2026-11-15",
+          "value": 21366.35
+        },
+        {
+          "date": "2026-11-16",
+          "value": 21244.09
+        },
+        {
+          "date": "2026-11-17",
+          "value": 21087.43
+        },
+        {
+          "date": "2026-11-18",
+          "value": 20900.71
+        },
+        {
+          "date": "2026-11-19",
+          "value": 20689.11
+        },
+        {
+          "date": "2026-11-20",
+          "value": 20458.5
+        },
+        {
+          "date": "2026-11-21",
+          "value": 20215.28
+        },
+        {
+          "date": "2026-11-22",
+          "value": 19966.19
+        },
+        {
+          "date": "2026-11-23",
+          "value": 19718.15
+        },
+        {
+          "date": "2026-11-24",
+          "value": 19478.03
+        },
+        {
+          "date": "2026-11-25",
+          "value": 19252.48
+        },
+        {
+          "date": "2026-11-26",
+          "value": 19047.78
+        },
+        {
+          "date": "2026-11-27",
+          "value": 18869.6
+        }
+      ]
     },
     "southboundNet": {
       "value": 79.81,
@@ -205,7 +569,21 @@
       "lastFetched": "2026-11-28T10:00:00",
       "realtime": false,
       "used_fallback": false,
-      "fetchError": null
+      "fetchError": null,
+      "history": [
+        {
+          "date": "2026-11-25",
+          "value": 20.0
+        },
+        {
+          "date": "2026-11-26",
+          "value": 30.15
+        },
+        {
+          "date": "2026-11-27",
+          "value": 40.03
+        }
+      ]
     },
     "hstechMomentum": {
       "value": -3.3,
@@ -216,7 +594,269 @@
       "lastFetched": "2026-11-28T10:00:00",
       "realtime": false,
       "used_fallback": false,
-      "fetchError": null
+      "fetchError": null,
+      "history": [
+        {
+          "date": "2026-09-24",
+          "value": 0.0
+        },
+        {
+          "date": "2026-09-25",
+          "value": 1.53
+        },
+        {
+          "date": "2026-09-26",
+          "value": 3.02
+        },
+        {
+          "date": "2026-09-27",
+          "value": 4.44
+        },
+        {
+          "date": "2026-09-28",
+          "value": 5.75
+        },
+        {
+          "date": "2026-09-29",
+          "value": 6.92
+        },
+        {
+          "date": "2026-09-30",
+          "value": 7.93
+        },
+        {
+          "date": "2026-10-01",
+          "value": 8.76
+        },
+        {
+          "date": "2026-10-02",
+          "value": 9.38
+        },
+        {
+          "date": "2026-10-03",
+          "value": 9.78
+        },
+        {
+          "date": "2026-10-04",
+          "value": 9.96
+        },
+        {
+          "date": "2026-10-05",
+          "value": 9.93
+        },
+        {
+          "date": "2026-10-06",
+          "value": 9.67
+        },
+        {
+          "date": "2026-10-07",
+          "value": 9.22
+        },
+        {
+          "date": "2026-10-08",
+          "value": 8.58
+        },
+        {
+          "date": "2026-10-09",
+          "value": 7.79
+        },
+        {
+          "date": "2026-10-10",
+          "value": 6.86
+        },
+        {
+          "date": "2026-10-11",
+          "value": 5.83
+        },
+        {
+          "date": "2026-10-12",
+          "value": 4.73
+        },
+        {
+          "date": "2026-10-13",
+          "value": 3.6
+        },
+        {
+          "date": "2026-10-14",
+          "value": 2.48
+        },
+        {
+          "date": "2026-10-15",
+          "value": 1.39
+        },
+        {
+          "date": "2026-10-16",
+          "value": 0.39
+        },
+        {
+          "date": "2026-10-17",
+          "value": -0.5
+        },
+        {
+          "date": "2026-10-18",
+          "value": -1.25
+        },
+        {
+          "date": "2026-10-19",
+          "value": -1.84
+        },
+        {
+          "date": "2026-10-20",
+          "value": -2.23
+        },
+        {
+          "date": "2026-10-21",
+          "value": -2.42
+        },
+        {
+          "date": "2026-10-22",
+          "value": -2.39
+        },
+        {
+          "date": "2026-10-23",
+          "value": -2.14
+        },
+        {
+          "date": "2026-10-24",
+          "value": -1.67
+        },
+        {
+          "date": "2026-10-25",
+          "value": -0.99
+        },
+        {
+          "date": "2026-10-26",
+          "value": -0.11
+        },
+        {
+          "date": "2026-10-27",
+          "value": 0.96
+        },
+        {
+          "date": "2026-10-28",
+          "value": 2.17
+        },
+        {
+          "date": "2026-10-29",
+          "value": 3.52
+        },
+        {
+          "date": "2026-10-30",
+          "value": 4.96
+        },
+        {
+          "date": "2026-10-31",
+          "value": 6.47
+        },
+        {
+          "date": "2026-11-01",
+          "value": 8.0
+        },
+        {
+          "date": "2026-11-02",
+          "value": 9.52
+        },
+        {
+          "date": "2026-11-03",
+          "value": 10.99
+        },
+        {
+          "date": "2026-11-04",
+          "value": 12.38
+        },
+        {
+          "date": "2026-11-05",
+          "value": 13.66
+        },
+        {
+          "date": "2026-11-06",
+          "value": 14.78
+        },
+        {
+          "date": "2026-11-07",
+          "value": 15.74
+        },
+        {
+          "date": "2026-11-08",
+          "value": 16.5
+        },
+        {
+          "date": "2026-11-09",
+          "value": 17.06
+        },
+        {
+          "date": "2026-11-10",
+          "value": 17.4
+        },
+        {
+          "date": "2026-11-11",
+          "value": 17.51
+        },
+        {
+          "date": "2026-11-12",
+          "value": 17.41
+        },
+        {
+          "date": "2026-11-13",
+          "value": 17.1
+        },
+        {
+          "date": "2026-11-14",
+          "value": 16.59
+        },
+        {
+          "date": "2026-11-15",
+          "value": 15.9
+        },
+        {
+          "date": "2026-11-16",
+          "value": 15.06
+        },
+        {
+          "date": "2026-11-17",
+          "value": 14.1
+        },
+        {
+          "date": "2026-11-18",
+          "value": 13.04
+        },
+        {
+          "date": "2026-11-19",
+          "value": 11.93
+        },
+        {
+          "date": "2026-11-20",
+          "value": 10.8
+        },
+        {
+          "date": "2026-11-21",
+          "value": 9.68
+        },
+        {
+          "date": "2026-11-22",
+          "value": 8.62
+        },
+        {
+          "date": "2026-11-23",
+          "value": 7.65
+        },
+        {
+          "date": "2026-11-24",
+          "value": 6.79
+        },
+        {
+          "date": "2026-11-25",
+          "value": 6.09
+        },
+        {
+          "date": "2026-11-26",
+          "value": 5.56
+        },
+        {
+          "date": "2026-11-27",
+          "value": 5.23
+        }
+      ]
     },
     "dollarIndex": {
       "value": 96.9,
@@ -962,16 +1602,16 @@
     },
     "ashareTurnover": {
       "value": 19997.94,
-      "score": null,
+      "score": 0.48,
       "trend": "neutral",
-      "signal": "gray",
+      "signal": "lightgreen",
       "category": "sentiment",
       "country": "🇨🇳",
       "name": "两市成交额",
       "displayName": "两市成交额",
       "shortName": "两市成交额",
       "caliberNote": "上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值",
-      "reference_only": true,
+      "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+0",
       "dataDate": "2026-11-28",
@@ -993,21 +1633,32 @@
       "freshness": "🟢",
       "freshness_level": "fresh",
       "degraded_reasons": [],
-      "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "excluded_from_scoring": false,
+      "exclusion_reason": null,
+      "scoring_method": "pct_rank",
+      "transform": "raw",
+      "window": 60,
+      "history_days": 65,
+      "warmup": false,
+      "saturated": false,
+      "polarity": "risk_appetite",
+      "pct_20": 0.7,
+      "pct_60": 0.7667,
+      "raw_value": 19997.94,
+      "transform_value": 19997.94
     },
     "marginBalance": {
       "value": 21055.79,
-      "score": null,
+      "score": 1.0,
       "trend": "neutral",
-      "signal": "gray",
+      "signal": "green",
       "category": "sentiment",
       "country": "🇨🇳",
       "name": "两融余额",
       "displayName": "两融余额",
       "shortName": "两融余额",
       "caliberNote": "**只打融资余额**（RPTA_RZRQ_LSHJ.RZYE，源为元、已÷1e8 换算亿元）。融资=杠杆做多意愿，融券=反向，两者性质不同、混在一起会互相稀释，故不合并；含融券的两融余额(marginTotal)仅放 extras 参考、不参与打分。T+1 披露",
-      "reference_only": true,
+      "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+1",
       "dataDate": "2026-11-28",
@@ -1029,8 +1680,19 @@
       "freshness": "🟢",
       "freshness_level": "fresh",
       "degraded_reasons": [],
-      "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "excluded_from_scoring": false,
+      "exclusion_reason": null,
+      "scoring_method": "pct_rank",
+      "transform": "delta5",
+      "window": 20,
+      "history_days": 20,
+      "warmup": false,
+      "saturated": true,
+      "polarity": "risk_appetite",
+      "pct_20": 1.0,
+      "pct_60": null,
+      "raw_value": 21055.79,
+      "transform_value": 6.7838
     },
     "southboundNet": {
       "value": 79.81,
@@ -1043,7 +1705,7 @@
       "displayName": "南向净买入",
       "shortName": "南向净买入",
       "caliberNote": "港股通(沪 MUTUAL_TYPE=004 + 深 MUTUAL_TYPE=006)两路净买入相加（源为百万元、已÷100 换算亿元）；正值=资金南下净买入。extras 分列 shNet/szNet/total",
-      "reference_only": true,
+      "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+0",
       "dataDate": "2026-11-28",
@@ -1066,20 +1728,31 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "exclusion_reason": "no_score",
+      "scoring_method": "pct_rank",
+      "transform": "sum5",
+      "window": null,
+      "history_days": 0,
+      "warmup": true,
+      "saturated": false,
+      "polarity": "risk_appetite",
+      "pct_20": null,
+      "pct_60": null,
+      "raw_value": 79.81,
+      "transform_value": null
     },
     "hstechMomentum": {
       "value": -3.3,
-      "score": null,
+      "score": -1.0,
       "trend": "neutral",
-      "signal": "gray",
+      "signal": "red",
       "category": "sentiment",
       "country": "🇨🇳",
       "name": "恒生科技动量",
       "displayName": "恒生科技动量",
       "shortName": "恒科动量",
       "caliberNote": "恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分",
-      "reference_only": true,
+      "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+0",
       "dataDate": "2026-11-28",
@@ -1101,8 +1774,19 @@
       "freshness": "🟢",
       "freshness_level": "fresh",
       "degraded_reasons": [],
-      "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "excluded_from_scoring": false,
+      "exclusion_reason": null,
+      "scoring_method": "pct_rank",
+      "transform": "raw",
+      "window": 60,
+      "history_days": 65,
+      "warmup": false,
+      "saturated": true,
+      "polarity": "risk_appetite",
+      "pct_20": 0.0,
+      "pct_60": 0.0,
+      "raw_value": -3.3,
+      "transform_value": -3.3
     },
     "dollarIndex": {
       "value": 96.9,
@@ -1683,15 +2367,15 @@
   },
   "meta": {
     "ias": {
-      "score": -0.6,
-      "normalized": -0.1306,
+      "score": -0.38,
+      "normalized": -0.081706,
       "max_possible": 4.6,
       "weight_design_sum": 4.6,
-      "weight_effective_sum": 4.0,
-      "scale_coverage": 0.87,
+      "weight_effective_sum": 4.4,
+      "scale_coverage": 0.957,
       "ias_scale": 4.6,
-      "valid_weight": 3.0,
-      "data_coverage": 0.75,
+      "valid_weight": 3.4,
+      "data_coverage": 0.773,
       "counted_dimensions": [
         "economic",
         "inflation",
@@ -1702,9 +2386,9 @@
         "liquidity",
         "techGreen"
       ],
-      "signal": "减仓（部分维度缺失·参考）",
-      "position": "20-40%",
-      "signal_icon": "⚠️",
+      "signal": "持有（部分维度缺失·参考）",
+      "position": "40-60%",
+      "signal_icon": "➖",
       "is_actionable": true,
       "note": "未回测·非投资建议"
     },
@@ -1906,20 +2590,20 @@
         "icon": "🧠",
         "weight": 0.8,
         "weight_design": 0.8,
-        "weight_effective": 0.4,
-        "weight_reason": "市场错配 ×0.5（2 项计分项均为美股指标（CBOE VIX + CNN F&G）；A股/港股 4 项代理已挂上但仅参考不打分）",
-        "score": -0.465,
-        "signal": "yellow",
-        "valid_count": 2,
-        "required_count": 2,
-        "active_count": 2,
-        "reference_only_count": 4,
+        "weight_effective": 0.8,
+        "weight_reason": "满额",
+        "score": -0.09,
+        "signal": "gray",
+        "valid_count": 5,
+        "required_count": 3,
+        "active_count": 6,
+        "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 1.0,
-        "caliberNote": "计分项仅美股 VIX + CNN F&G；A股/港股 4 项（成交额/两融/南向/恒生科技）当前为参考项，不参与打分",
+        "avg_alpha": 0.833,
+        "caliberNote": "6 项：美股 VIX + CNN F&G + A股/港股 4 项（两市成交额/融资余额/南向净买入/恒科动量），均按 pct_rank 打分",
         "responsiveness": {
-          "slowest": "T+0",
-          "slowest_reference": "T+1",
+          "slowest": "T+1",
+          "slowest_reference": null,
           "detail": [
             {
               "key": "vix",
@@ -1934,22 +2618,22 @@
             {
               "key": "ashareTurnover",
               "label": "T+0",
-              "reference_only": true
+              "reference_only": false
             },
             {
               "key": "marginBalance",
               "label": "T+1",
-              "reference_only": true
+              "reference_only": false
             },
             {
               "key": "southboundNet",
               "label": "T+0",
-              "reference_only": true
+              "reference_only": false
             },
             {
               "key": "hstechMomentum",
               "label": "T+0",
-              "reference_only": true
+              "reference_only": false
             }
           ]
         },
@@ -1961,12 +2645,7 @@
           "southboundNet",
           "hstechMomentum"
         ],
-        "reference_indicators": [
-          "ashareTurnover",
-          "marginBalance",
-          "southboundNet",
-          "hstechMomentum"
-        ]
+        "reference_indicators": []
       },
       "resource": {
         "name": "资源与供应链",
@@ -2106,17 +2785,11 @@
         "resource": 0.6,
         "techGreen": 0.4
       },
-      "market_mismatch": {
-        "sentiment": 0.5
-      },
+      "market_mismatch": {},
       "reference_only": [
         "aiGrowth",
-        "ashareTurnover",
         "epu",
-        "hstechMomentum",
-        "marginBalance",
-        "robotInstall",
-        "southboundNet"
+        "robotInstall"
       ],
       "min_valid_rule": "n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母",
       "ias_scale": 4.6,
@@ -2146,17 +2819,13 @@
       "ias_partial_coverage": 0.8,
       "unknown_alpha": 0.5
     },
-    "rules_hash": "a306915b6fa9",
+    "rules_hash": "269592dd0bb6",
     "model": {
       "version": "v4.2",
       "reference_only": [
         "aiGrowth",
-        "ashareTurnover",
         "epu",
-        "hstechMomentum",
-        "marginBalance",
-        "robotInstall",
-        "southboundNet"
+        "robotInstall"
       ],
       "ias_formula": "normalized = Σ(score×w)/Σ(valid_w); score = normalized × Σ(w)",
       "min_coverage": 0.6

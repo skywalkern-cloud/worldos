@@ -30,6 +30,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from scoring import build_indicators_and_meta, build_degraded_items
 from indicator_meta import INDICATORS as INDICATOR_META, days_stale as _days_stale
+from indicator_meta import PCT_RANK_CONFIG, PCT_RANK_WINDOW_LONG
+import series_store
+
+# V1b-1：需要 pct_rank 历史窗口的指标（回填历史 / 每日追加 / 挂样本）
+PCT_SERIES_KEYS = {k: v for k, v in PCT_RANK_CONFIG.items()}
+PCT_TRANSFORM_LOOKBACK = 5      # delta5/sum5 需额外 5 个原始点才能算出当日 transform
+SERIES_META = {                 # 存储声明，与 indicator_meta 的 transform/unit 一致
+    'ashareTurnover': {'unit': '亿元', 'transform': 'raw'},
+    'marginBalance': {'unit': '亿元', 'transform': 'delta5'},
+    'southboundNet': {'unit': '亿元', 'transform': 'sum5'},
+    'hstechMomentum': {'unit': '百分点', 'transform': 'raw'},
+}
 
 # ========== 配置常量 ==========
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
@@ -1665,6 +1677,27 @@ def main():
         # V1a：参考项的附加展示字段（20日涨幅 / 3日变化 / 两市拆分）
         if extras:
             results[key]['extras'] = extras
+
+    # ── V1b-1：把今日值写回历史序列，并把「今日之前」的样本挂到 results[key]['history'] ──
+    # 两个动作必须成对：写回 → 序列才能日积月累；挂 history → 打分不需要读磁盘，产物可回放。
+    for key, cfg in PCT_SERIES_KEYS.items():
+        v = results.get(key, {})
+        val = v.get('value')
+        dd = v.get('dataDate')
+        if val is None or not dd:
+            continue
+        try:
+            series_store.upsert(key, dd, val,
+                                unit=SERIES_META[key]['unit'],
+                                transform=SERIES_META[key]['transform'])
+            # 只取「今日之前」的窗口样本；delta5/sum5 还要额外 5 个点才能算出当日 transform
+            lookback = PCT_RANK_WINDOW_LONG + PCT_TRANSFORM_LOOKBACK + 2
+            hist = series_store.history_before(key, dd, limit=lookback)
+            v['history'] = hist
+            print(f'  🧮 {key}: 历史样本 {len(hist)} 条（pct_rank 窗口 {PCT_RANK_WINDOW_LONG}）')
+        except Exception as e:
+            # 历史写失败不能把当日值弄丢：history 留空 → 打分侧自然走 warmup
+            print(f'  ⚠️ {key}: 历史序列处理失败（本轮按 warmup, score=null）：{type(e).__name__}: {e}')
 
     # 每次循环后尝试保存（防止超时导致数据丢失）
     valid, total = save_results(results, fetch_ts)

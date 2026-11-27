@@ -914,6 +914,83 @@ def test_s7(doc, text, label, live):
 # S8 夹具分支矩阵
 # ═══════════════════════════════════════════
 
+def test_s9(doc, label):
+    """S9：pct_rank 打分的自洽性（V1b-1）。
+
+    这些量全部由历史样本派生，所以断言只能验**关系**、不能写死数值：
+      1 字段齐全（11 个）；
+      2 warmup ⇔ score is None ⇔ history_days < 20；
+      3 window=60 ⇔ history_days ≥ 60；window=20 ⇔ 20 ≤ history_days < 60；
+      4 score 可由 pct_20/pct_60 重算（0.4/0.6 权重）；仅 S20 时直接用 pct_20；
+      5 saturated ⇔ 参与计算的 pct ∈ {0,1}；
+      6 reference_only 已转正的 4 项必须真的在计分（excluded 为 False）。
+    """
+    ind = doc['indicators']
+    keys = [k for k in ind if k in im.PCT_RANK_CONFIG]
+    check(f'S9-01[{label}]', len(keys) > 0, f'一项 pct_rank 指标都没有？keys={keys}')
+
+    need = ('scoring_method', 'transform', 'window', 'history_days', 'warmup', 'saturated',
+            'polarity', 'pct_20', 'pct_60', 'raw_value', 'transform_value')
+    bad = [f'{k}.{f}' for k in keys for f in need if f not in ind[k]]
+    check(f'S9-02[{label}]', not bad, '缺失: ' + ', '.join(bad[:8]))
+
+    bad = []
+    for k in keys:
+        v = ind[k]
+        hd, warm, win = v['history_days'], v['warmup'], v['window']
+        if warm is not (v['score'] is None):
+            bad.append(f'{k}.warmup={warm} 但 score={v["score"]}')
+        if warm is not (hd < im.PCT_RANK_MIN_SAMPLES):
+            bad.append(f'{k}.warmup={warm} 但 history_days={hd}')
+        if win == 60 and hd < im.PCT_RANK_WINDOW_LONG:
+            bad.append(f'{k}.window=60 但 history_days={hd}')
+        if win == 20 and not (im.PCT_RANK_MIN_SAMPLES <= hd < im.PCT_RANK_WINDOW_LONG):
+            bad.append(f'{k}.window=20 但 history_days={hd}')
+        for f in ('pct_20', 'pct_60'):
+            if v[f] is not None and not (0.0 <= v[f] <= 1.0):
+                bad.append(f'{k}.{f}={v[f]}')
+        if v['scoring_method'] != 'pct_rank' or v['transform'] not in im.PCT_TRANSFORMS:
+            bad.append(f'{k}.method/transform={v["scoring_method"]}/{v["transform"]}')
+        if v['polarity'] not in im.POLARITIES:
+            bad.append(f'{k}.polarity={v["polarity"]}')
+    check(f'S9-03[{label}]', not bad, '; '.join(bad[:6]))
+
+    # score 重算（只验关系：risk_appetite 下 score 由分位唯一决定）
+    bad = []
+    for k in keys:
+        v = ind[k]
+        if v['warmup']:
+            continue
+        if v['window'] == 60 and v['pct_20'] is not None and v['pct_60'] is not None:
+            want = im.PCT_RANK_W_SHORT * (2 * v['pct_20'] - 1) \
+                + im.PCT_RANK_W_LONG * (2 * v['pct_60'] - 1)
+            if abs(im.q(want, 3) - v['score']) > 1e-9:
+                bad.append(f'{k}: {im.q(want, 3)} != {v["score"]}')
+        elif v['window'] == 20 and v['pct_20'] is not None:
+            if abs(im.q(2 * v['pct_20'] - 1, 3) - v['score']) > 1e-9:
+                bad.append(f'{k}: {im.q(2 * v["pct_20"] - 1, 3)} != {v["score"]}')
+        else:
+            bad.append(f'{k}: window={v["window"]} 与分位/得分不匹配')
+    check(f'S9-04[{label}]', not bad, '; '.join(bad[:6]))
+
+    bad = []
+    for k in keys:
+        v = ind[k]
+        if v['warmup']:
+            continue
+        used = [v['pct_20']] + ([v['pct_60']] if v['window'] == 60 else [])
+        want_sat = any(p in (0.0, 1.0) for p in used if p is not None)
+        if v['saturated'] is not want_sat:
+            bad.append(f'{k}.saturated={v["saturated"]} 但 pct={used}')
+    check(f'S9-05[{label}]', not bad, '; '.join(bad[:6]))
+
+    # 已转正项必须真的进入计分（这是本次变更的核心语义）
+    bad = [k for k in keys if ind[k]['reference_only'] is not False
+           or (not ind[k]['warmup'] and ind[k]['excluded_from_scoring'] is not False)]
+    check(f'S9-06[{label}]', not bad, f'仍被当参考项/被排除: {bad}')
+
+
+
 def test_s8(fix):
     ind = fix['indicators']
 
@@ -973,9 +1050,21 @@ def test_s8(fix):
     check('S8[epu failed]', 'epu' not in ind
           and any(f['key'] == 'epu' and f['used_fallback'] is False
                   for f in fix['validity_report']['failed']))
-    check('S8[coverage]', fix['meta']['ias']['data_coverage'] == 0.75
-          and '（部分维度缺失·参考）' in fix['meta']['ias']['signal'],
-          json.dumps(fix['meta']['ias'], ensure_ascii=False))
+    # 覆盖面断言：不写死具体小数（那是「随规则变的量」，硬编码必然下次再红）。
+    # 改为从产物自身派生：coverage = Σ(非置灰维度有效权重) / Σ(全部有效权重)，
+    # 再钉两条语义：必须落在「部分维度缺失」档（< IAS_PARTIAL_COVERAGE），且信号文案带后缀。
+    ias_fix = fix['meta']['ias']
+    dims_fix = fix['meta']['dimensions']
+    total_w = sum(d['weight_effective'] for d in dims_fix.values())
+    valid_w = sum(d['weight_effective'] for d in dims_fix.values()
+                  if d['insufficient_data'] is not True and d['score'] is not None)
+    want_cov = round(valid_w / total_w, 3) if total_w else 0.0
+    check('S8[coverage]', ias_fix['data_coverage'] == want_cov
+          and ias_fix['data_coverage'] < im.IAS_PARTIAL_COVERAGE
+          and ias_fix['data_coverage'] >= im.IAS_MIN_COVERAGE
+          and '（部分维度缺失·参考）' in ias_fix['signal'],
+          f"coverage={ias_fix['data_coverage']} want={want_cov} "
+          + json.dumps(ias_fix, ensure_ascii=False))
 
 
 # ═══════════════════════════════════════════
@@ -1326,6 +1415,10 @@ def run_one(json_path, fixture_path=None, do_units=True):
         test_s8(fix)
         safe('T6b2', test_t6b2, fix, 'fixture')
         safe('T6b3', test_t6b3, fix, 'fixture', False)
+    # V1b-1：pct_rank 契约（live + fixture 两套都要验）
+    safe('S9', test_s9, doc, label)
+    if live and fixture_path and Path(fixture_path).exists():
+        safe('S9', test_s9, fix, 'fixture')
     return sha
 
 

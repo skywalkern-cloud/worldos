@@ -11,6 +11,8 @@ WorldOS v4.1 连续评分模块
 from datetime import datetime, date
 from typing import Optional
 
+import indicator_meta as im   # pct_rank 的配置/窗口常量取单一真源
+
 # ── 单一真源（P0/T1）：名称/来源/国家/口径/维度/频率 全部来自 indicator_meta ──
 from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 等为向后兼容再导出)
     DIMENSION_CONFIG,
@@ -102,6 +104,138 @@ BIDIRECTIONAL_PARAMS = {
 # 时间衰减 / 维度 / 国家 / 名称 —— 全部来自 indicator_meta（单一真源）
 # 本文件不再定义这些映射，避免出现第 2/3 份真源互相覆盖。
 # ═══════════════════════════════════════════
+
+
+# ═══════════════════════════════════════════
+# pct_rank 打分（V1b-1，2026-11-28）——本模块是唯一实现
+# ═══════════════════════════════════════════
+# 调用方（fetch / 回算脚本 / 测试）一律走 score_by_pct_rank()，
+# 不许再写第二份「(lt+0.5eq)/n」自己数，否则两套分位会漂。
+
+def transform_series(kind: str, rows: list) -> list:
+    """把 raw 序列变成 transform 序列。rows = [(date, raw)] 升序。
+
+    raw   : 原值
+    delta5: 较 5 个交易日前的变化率(%)  → 需要 6 个点
+    sum5  : 近 5 个交易日累计（含当日）  → 需要 5 个点
+    """
+    if kind not in im.PCT_TRANSFORMS:
+        raise ValueError(f'未知 transform: {kind!r}（合法值 {im.PCT_TRANSFORMS}）')
+    if kind == 'raw':
+        return [(d, v) for d, v in rows if v is not None]
+    out = []
+    if kind == 'delta5':
+        for i in range(5, len(rows)):
+            base, cur = rows[i - 5][1], rows[i][1]
+            if not base or cur is None:
+                continue
+            out.append((rows[i][0], (cur / base - 1) * 100))
+    elif kind == 'sum5':
+        for i in range(4, len(rows)):
+            window = [v for _d, v in rows[i - 4:i + 1]]
+            if any(v is None for v in window):
+                continue
+            out.append((rows[i][0], sum(window)))
+    return out
+
+
+def _pct_rank(sample: list, x: float) -> Optional[float]:
+    """pct_rank = (lt + 0.5*eq) / n。sample 必须不含被排名的今日值。"""
+    n = len(sample)
+    if n == 0 or x is None:
+        return None
+    lt = sum(1 for v in sample if v < x)
+    eq = sum(1 for v in sample if v == x)
+    return (lt + 0.5 * eq) / n
+
+
+def _apply_polarity(score: float, polarity: str, *, key: str) -> float:
+    """polarity：分位 → 方向。必须配置驱动，不许写死分支（PM 2026-11-28）。
+
+    risk_appetite：越高越好 → 直接用 2*pct−1。
+    growth_proxy ：越高越好但**过热转负** → 需要龙六的过热拐点公式，目前没有。
+                   故显式报错而不静默按线性算（静默算错比报错贵得多）。
+    """
+    if polarity == 'risk_appetite':
+        return score
+    if polarity == 'growth_proxy':
+        raise NotImplementedError(
+            f'{key}: polarity=growth_proxy 需要龙六的过热拐点公式（尚未提供）；'
+            '拿到后在 indicator_meta 里补配置即可启用')
+    raise ValueError(f'{key}: 未知 polarity={polarity!r}（合法值 {im.POLARITIES}）')
+
+
+def score_by_pct_rank(key: str, raw_value, history: list) -> dict:
+    """按 pct_rank 给一项打分。返回完整可审计结果（全部字段都进 JSON）。
+
+    history: [{'date','value'}]，**不含今日**，升序，raw 值（调用方负责截断到足够窗口）
+
+    返回:
+      score            最终分（None=warmup）
+      pct_20/pct_60    分位（不可算时为 None）
+      window_effective 60 / 20 / None
+      history_days     不含今日的可用历史观测数（transform 后的样本长度）
+      raw_value / transform_value
+      warmup / saturated / transform / polarity / scoring_method
+    """
+    cfg = im.PCT_RANK_CONFIG.get(key)
+    if not cfg:
+        raise ValueError(f'{key} 未配置 pct_rank 打分')
+    kind, polarity = cfg['transform'], cfg['polarity']
+
+    # 拼完整 raw 序列：历史 + 今日（今日只当被排名对象，不进样本池）
+    rows = []
+    for r in history or []:
+        d, v = r.get('date'), r.get('value')
+        if d and v is not None:
+            rows.append((d, float(v)))
+    if raw_value is not None:
+        rows.append(('__today__', float(raw_value)))
+    rows.sort(key=lambda x: (x[0] == '__today__', x[0]))
+
+    transformed = transform_series(kind, rows)
+    today_row = next((r for r in transformed if r[0] == '__today__'), None)
+    transform_value = today_row[1] if today_row else None
+    sample = [v for d, v in transformed if d != '__today__']
+    history_days = len(sample)
+
+    pct_short = pct_long = None
+    window_effective = None
+    score = None
+    warmup = False
+    saturated = False
+
+    if transform_value is None or history_days < im.PCT_RANK_MIN_SAMPLES:
+        warmup = True                     # <20 个观测：宁可不给分，不给瞎分
+    else:
+        pct_short = _pct_rank(sample[-im.PCT_RANK_WINDOW_SHORT:], transform_value)
+        if history_days >= im.PCT_RANK_WINDOW_LONG:
+            pct_long = _pct_rank(sample[-im.PCT_RANK_WINDOW_LONG:], transform_value)
+            s20 = 2 * pct_short - 1
+            s60 = 2 * pct_long - 1
+            blended = im.PCT_RANK_W_SHORT * s20 + im.PCT_RANK_W_LONG * s60
+            score = q(_apply_polarity(blended, polarity, key=key), 3)
+            window_effective = im.PCT_RANK_WINDOW_LONG
+            saturated = (pct_short in (0.0, 1.0)) or (pct_long in (0.0, 1.0))
+        else:
+            score = q(_apply_polarity(2 * pct_short - 1, polarity, key=key), 3)
+            window_effective = im.PCT_RANK_WINDOW_SHORT
+            saturated = pct_short in (0.0, 1.0)
+
+    return {
+        'score': score,
+        'pct_20': round(pct_short, 4) if pct_short is not None else None,
+        'pct_60': round(pct_long, 4) if pct_long is not None else None,
+        'window_effective': window_effective,
+        'history_days': history_days,
+        'raw_value': raw_value,
+        'transform_value': round(transform_value, 4) if transform_value is not None else None,
+        'transform': kind,
+        'polarity': polarity,
+        'scoring_method': 'pct_rank',
+        'warmup': warmup,
+        'saturated': saturated,
+    }
 
 
 # ═══════════════════════════════════════════
@@ -494,7 +628,15 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         freq = info.get('frequency', 'monthly')
         data_date = info.get('dataDate')
 
-        score = calc_score(key, value)
+        # V1b-1：pct_rank 打分（唯一实现在 scoring.score_by_pct_rank）
+        # 历史样本从 info['history'] 读（fetch 阶段就从 series 回填好并随产物落盘），
+        # 不在这里现读磁盘 —— 否则 data-only replay 会变成时间相关，回放不可复现。
+        pct_meta = None
+        if key in im.PCT_RANK_CONFIG:
+            pct_meta = score_by_pct_rank(key, value, info.get('history') or [])
+            score = pct_meta['score']
+        else:
+            score = calc_score(key, value)
 
         # 实时报价类（源不提供日期）：不伪造 dataDate，改为显式标注 dateNote。
         # T13：兜底值不享受 realtime 待遇（上一轮值必然比今天旧）。
@@ -604,6 +746,21 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         # V1a：参考项的附加展示字段（如 20 日涨幅 / 3 日变化 / 两市拆分）
         if isinstance(info.get('extras'), dict) and info['extras']:
             indicators[key]['extras'] = info['extras']
+        # V1b-1：pct_rank 打分明细（11 个字段全进产物，分数必须可复核到样本与分位）
+        if pct_meta:
+            indicators[key].update({
+                'scoring_method': pct_meta['scoring_method'],
+                'transform': pct_meta['transform'],
+                'window': pct_meta['window_effective'],
+                'history_days': pct_meta['history_days'],
+                'warmup': pct_meta['warmup'],
+                'saturated': pct_meta['saturated'],
+                'polarity': pct_meta['polarity'],
+                'pct_20': pct_meta['pct_20'],
+                'pct_60': pct_meta['pct_60'],
+                'raw_value': pct_meta['raw_value'],
+                'transform_value': pct_meta['transform_value'],
+            })
         data_values[key] = value
 
     # 维度评分

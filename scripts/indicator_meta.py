@@ -91,6 +91,35 @@ RESPONSIVENESS_BY_FREQUENCY = {
 }
 RESPONSIVENESS_ORDER = ('T+0', 'T+1', '月', '季', '年', '—')
 
+# ═══════════════════════════════════════════
+# pct_rank 打分（V1b-1，2026-11-28）
+# ═══════════════════════════════════════════
+# 为何用分位而不是三段线性：新指标没有历史标定过的 L/T/H 拐点，拍数字＝制造
+# 看起来精确的假结论。分位只回答「今天这项在自家历史上处于什么位置」，
+# 不声称知道绝对好坏 ---- 不知道就不装知道。
+#
+# 规则（龙六规格 / PM 2026-11-28 确认）：
+#   pct_rank = (lt + 0.5*eq) / n，样本**恒不含今日**
+#   score    = 2*pct_rank − 1（3 位小数，走 q()）
+#   ≥60 有效观测 → S = 0.4*S20 + 0.6*S60；20~59 → 仅 S20（window_effective=20）
+#   <20  → warmup=true, score=null（宁可不给分，不给瞎分）
+#   pct ∈ {0,1} → saturated=true（极值），值仍要给，但要显式标\\"已到历史极值\\"
+PCT_RANK_WINDOW_SHORT = 20
+PCT_RANK_WINDOW_LONG = 60
+PCT_RANK_MIN_SAMPLES = 20
+PCT_RANK_W_SHORT = 0.4
+PCT_RANK_W_LONG = 0.6
+
+# 可用 transform（在打分时才应用；历史序列里恒存 raw）
+PCT_TRANSFORMS = ('raw', 'delta5', 'sum5')
+
+# polarity 枚举：决定「分位→方向」怎么映射。必须是配置字段，不许硬编码分支，
+# 否则龙六改判时得改代码（PM 2026-11-28 明确要求）。
+#   risk_appetite : 越高越好（线性分位）——本批 4 项取此值
+#   growth_proxy  : 越高越好但**过热转负**——需要龙六给过热拐点公式，
+#                   公式未到前不允许默默按线性算（静默算错比报错更贵）。
+POLARITIES = ('risk_appetite', 'growth_proxy')
+
 # 前端 COUNTRY_ORDER 只认这三个值，新增国家需先扩前端映射（已与扣钉约定）
 ALLOWED_COUNTRIES = ('🇨🇳', '🇺🇸', '🌐')
 ALLOWED_FREQUENCIES = ('daily', 'monthly', 'quarterly', 'yearly', 'other')
@@ -194,7 +223,11 @@ INDICATORS = {
         'name': '两市成交额', 'short': '两市成交额',
         'source': '腾讯行情-沪深交易所', 'country': '🇨🇳', 'unit': '亿元', 'frequency': 'daily',
         'caliberNote': '上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值',
-        'reference_only': True,
+        # ── V1b-1 转正（2026-11-28）：pct_rank 打分 ──
+        'scoring_method': 'pct_rank',
+        'transform': 'raw',
+        'polarity': 'risk_appetite',
+        'reference_only': False,
     },
     'marginBalance': {
         'name': '两融余额', 'short': '两融余额',
@@ -202,19 +235,28 @@ INDICATORS = {
         # 日频但 T+1 披露（实测：11-27 晚间最新仅到 11-26），故显式覆盖默认映射。
         'responsiveness': 'T+1',
         'caliberNote': '**只打融资余额**（RPTA_RZRQ_LSHJ.RZYE，源为元、已÷1e8 换算亿元）。融资=杠杆做多意愿，融券=反向，两者性质不同、混在一起会互相稀释，故不合并；含融券的两融余额(marginTotal)仅放 extras 参考、不参与打分。T+1 披露',
-        'reference_only': True,
+        'scoring_method': 'pct_rank',
+        'transform': 'delta5',            # 5 日变化率(%)，不是余额本身
+        'polarity': 'risk_appetite',
+        'reference_only': False,
     },
     'southboundNet': {
         'name': '南向净买入', 'short': '南向净买入',
         'source': '东方财富-港交所', 'country': '🇨🇳', 'unit': '亿元', 'frequency': 'daily',
         'caliberNote': '港股通(沪 MUTUAL_TYPE=004 + 深 MUTUAL_TYPE=006)两路净买入相加（源为百万元、已÷100 换算亿元）；正值=资金南下净买入。extras 分列 shNet/szNet/total',
-        'reference_only': True,
+        'scoring_method': 'pct_rank',
+        'transform': 'sum5',              # 5 日累计净买入(亿元)
+        'polarity': 'risk_appetite',
+        'reference_only': False,
     },
     'hstechMomentum': {
         'name': '恒生科技动量', 'short': '恒科动量',
         'source': '东方财富-港交所', 'country': '🇨🇳', 'unit': '百分点', 'frequency': 'daily',
         'caliberNote': '恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分',
-        'reference_only': True,
+        'scoring_method': 'pct_rank',
+        'transform': 'raw',
+        'polarity': 'risk_appetite',
+        'reference_only': False,
     },
 
     'dollarIndex': {
@@ -327,20 +369,19 @@ DIMENSIONS = [
     },
     {
         'id': 'sentiment', 'name': '市场情绪', 'icon': '🧠', 'weight': 0.8,
-        # V1a(2026-11-27)：4 个 A股/港股情绪代理挂在本维【展示】，全部 reference_only（只展示不打分）。
-        # 重要：它们放入 reference_indicators 而**不是** indicators——
-        # indicators 是「计分成员」，动它就会改有效权重（见下方 design_count 注释）。
-        'indicators': ['vix', 'fearGreed'],
-        'reference_indicators': ['ashareTurnover', 'marginBalance', 'southboundNet', 'hstechMomentum'],
+        # V1a(2026-11-27)：4 个 A股/港股情绪代理先在 sentiment 挂"只展示"；
+        # V1b-1(2026-11-28) 转正：4 项已 reference_only=False，从 reference_indicators
+        # 正式移入 indicators（计分成员），参与维度平均。
+        'indicators': ['vix', 'fearGreed', 'ashareTurnover', 'marginBalance',
+                       'southboundNet', 'hstechMomentum'],
+        'reference_indicators': [],
         # D(2026-11-09 龙五拍板)：该维度按「A股情绪齐备」设计权重 0.8。
-        # 2026-11-24 变更：vix 已换为美股 CBOE VIX，本维度 2 项均为美股指标
-        # （CBOE VIX + CNN F&G），A 股情绪代理为 0 项，与设计构成不符（错配更严重、非消失）
-        # → 维持声明式折半到 0.4；P1 补齐 A 股情绪代理（如 50ETF QVIX）后方可移除本标记恢复满额。
-        # 2026-11-27 V1a：4 项 A股/港股代理已挂上但**尚未打分**，前置条件未满足，
-        # 故本次【不撤】折半；等 V1b 打分规则落地并转正后再撤（撤即 0.4→0.8）。
-        'market_mismatch': 0.5,
-        'mismatch_reason': '2 项计分项均为美股指标（CBOE VIX + CNN F&G）；A股/港股 4 项代理已挂上但仅参考不打分',
-        'caliberNote': '计分项仅美股 VIX + CNN F&G；A股/港股 4 项（成交额/两融/南向/恒生科技）当前为参考项，不参与打分',
+        # 2026-11-24：vix 换 CBOE、2 项均为美股，A股代理 0 项 → 声明式折半到 0.4。
+        # 2026-11-28 V1b-1：补齐 ≥3 项 A股/港股情绪代理且均已出分（见 CHANGELOG.md），
+        #   撤 market_mismatch 折半 → 恢复设计权重 0.8。mismatch_reason 同步置 None。
+        'market_mismatch': 1.0,
+        'mismatch_reason': None,
+        'caliberNote': '6 项：美股 VIX + CNN F&G + A股/港股 4 项（两市成交额/融资余额/南向净买入/恒科动量），均按 pct_rank 打分',
     },
     {
         'id': 'resource', 'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.6,
@@ -381,6 +422,16 @@ INDICATOR_FREQUENCY = {k: v['frequency'] for k, v in INDICATORS.items()}
 INDICATOR_UNIT = {k: v['unit'] for k, v in INDICATORS.items()}
 INDICATOR_CALIBER = {k: v.get('caliberNote', '') for k, v in INDICATORS.items()}
 REFERENCE_ONLY = {k for k, v in INDICATORS.items() if v.get('reference_only')}
+# pct_rank 打分配置（单一真源；scoring 只读这份，不许在 scoring 里再写一份）
+PCT_RANK_CONFIG = {
+    k: {
+        'method': v.get('scoring_method', 'breakpoint'),
+        'transform': v.get('transform', 'raw'),
+        'polarity': v.get('polarity', 'risk_appetite'),
+    }
+    for k, v in INDICATORS.items()
+    if v.get('scoring_method') == 'pct_rank'
+}
 
 INDICATOR_DIMENSION = {}
 for _dim in DIMENSIONS:
@@ -394,7 +445,8 @@ DIMENSION_CONFIG = [
         'weight': d['weight'], 'indicators': list(d['indicators']),
         # 权重修正声明必须一起带过去，否则 scoring 拿不到 market_mismatch（曾漏过一次）
         'market_mismatch': d.get('market_mismatch', 1.0),
-        'mismatch_reason': d.get('mismatch_reason', ''),
+        # V1b-1：mismatch 已撤时这里是 None（不是空字符串）——「没有限制」与「限制为空」必须可区分
+        'mismatch_reason': d.get('mismatch_reason'),
         # V1a：维度级口径说明（前端卡片副标题/tooltip），指标级在 INDICATORS[*].caliberNote
         'caliberNote': d.get('caliberNote', ''),
         # V1a：只展示不打分的参考项（不进分母、不参平均），前端渲染用这个列表
