@@ -193,7 +193,7 @@ EXPECTED_SOURCE = {
     'ashareTurnover': ('腾讯行情-沪深交易所', '🇨🇳', 'daily'),
     'marginBalance': ('东方财富-沪深交易所', '🇨🇳', 'daily'),
     'southboundNet': ('东方财富-港交所', '🇨🇳', 'daily'),
-    'hstechMomentum': ('东方财富-港交所', '🇨🇳', 'daily'),
+    'hstechMomentum': ('东方财富-恒生指数公司', '🇨🇳', 'daily'),
 }
 
 SIGNALS = {'red', 'yellow', 'gray', 'lightgreen', 'green', 'reference'}
@@ -314,6 +314,32 @@ def test_s1(doc, label, ref, live):
         if v['score'] is not None and v['exclusion_reason'] == 'no_score':
             bad.append(f'{k}.score={v["score"]!r} reason={v["exclusion_reason"]!r}')
     check(f'S1-10[{label}]', not bad, '; '.join(bad[:6]))
+
+    # S1-10b：真·双向不变式（V1b-1b 龙六要求：不许只做单向蕴含）
+    # 「有分数却标 no_score」与「无分数却标 expired_alpha0」两句都必须咬住：
+    #   方向 A：score is None ⇒ reason ∈ {no_score, reference_only}
+    #   方向 B：reason == 'no_score' ⇒ score is None
+    # 为什么右集合必须包含 reference_only：epu / aiGrowth / robotInstall 是参考项，
+    # 它们**照常算出展示用的 score**（不进 IAS 而已）。若写死 score is None ⇔ reason∈{...}，
+    # 这 3 项会被判错——那是契约写错了，不是实现错（已向 PM/龙六报备）。
+    bi = []
+    for k, v in ind.items():
+        s_none = v['score'] is None
+        r = v['exclusion_reason']
+        if s_none and r not in ('no_score', 'reference_only'):
+            bi.append(f'{k}: score=None 但 reason={r!r}')
+        if r == 'no_score' and not s_none:
+            bi.append(f'{k}: reason=no_score 但 score={v["score"]!r}')
+    check(f'S1-10b[{label}]', not bi, '; '.join(bi[:6]))
+
+    # 变异自证：把「参考项有分数」改成「no_score 但有分数」必须被抓到 —— 证明上面不是假绿
+    probe = {k: dict(v) for k, v in list(ind.items())[:1]}
+    if probe:
+        pk = next(iter(probe))
+        probe[pk].update({'score': 0.5, 'exclusion_reason': 'no_score'})
+        caught = any(x['score'] is not None and x['exclusion_reason'] == 'no_score'
+                     for x in probe.values())
+        check(f'S1-10c[{label}]', caught, '变异探针未触发（断言是假绿）')
 
     bad = []
     for k, v in ind.items():
@@ -616,6 +642,12 @@ def test_s5(doc, label):
     bad = []
     for d in im.DIMENSIONS:
         x = dims[d['id']]
+        # V1b-1b（龙六）：先断言两个列表交集为空，再计数。
+        # 否则同一项会被计两次、active+ref 总数对不上 validity_report.total，
+        # 而「总数对得上」正是这条断言存在的意义。
+        overlap = set(d['indicators']) & set(d.get('reference_indicators', []))
+        if overlap:
+            bad.append(f'{d["id"]}.indicators ∩ reference_indicators = {sorted(overlap)}')
         active = [k for k in d['indicators'] if not im.is_reference_only(k)]
         # V1a：参考项数 = 计分列表里的参考项 + 单独的 reference_indicators（只展示不打分）
         refs = [k for k in list(d['indicators']) + list(d.get('reference_indicators', []))
@@ -915,27 +947,31 @@ def test_s7(doc, text, label, live):
 # ═══════════════════════════════════════════
 
 def test_s9(doc, label):
-    """S9：pct_rank 打分的自洽性（V1b-1）。
+    """S9：pct_rank / ratio_band 打分自洽性（V1b-1 / V1b-1b）。
 
-    这些量全部由历史样本派生，所以断言只能验**关系**、不能写死数值：
-      1 字段齐全（11 个）；
-      2 warmup ⇔ score is None ⇔ history_days < 20；
-      3 window=60 ⇔ history_days ≥ 60；window=20 ⇔ 20 ≤ history_days < 60；
-      4 score 可由 pct_20/pct_60 重算（0.4/0.6 权重）；仅 S20 时直接用 pct_20；
-      5 saturated ⇔ 参与计算的 pct ∈ {0,1}；
-      6 reference_only 已转正的 4 项必须真的在计分（excluded 为 False）。
+    这些量全部由历史样本派生，所以断言只验**关系**，不写死数值：
+      pct_rank：warmup ⇔ score is None ⇔ hist<20；window 与 hist 自洽；score 可由 pct 重算；
+      ratio_band：r_value 与 ma120_base 必须都在，且 score == f(r_value) 可复算。
     """
     ind = doc['indicators']
-    keys = [k for k in ind if k in im.PCT_RANK_CONFIG]
-    check(f'S9-01[{label}]', len(keys) > 0, f'一项 pct_rank 指标都没有？keys={keys}')
+    pct_keys = [k for k in ind if k in im.PCT_RANK_CONFIG]
+    ratio_keys = [k for k in ind if k in im.RATIO_BAND_CONFIG]
 
-    need = ('scoring_method', 'transform', 'window', 'history_days', 'warmup', 'saturated',
-            'polarity', 'pct_20', 'pct_60', 'raw_value', 'transform_value')
-    bad = [f'{k}.{f}' for k in keys for f in need if f not in ind[k]]
+    check(f'S9-01[{label}]', bool(pct_keys) and bool(ratio_keys),
+          f'pct={pct_keys} ratio={ratio_keys}')
+
+    # ── 字段齐全 ──
+    common = ('scoring_method', 'transform', 'window', 'history_days', 'warmup',
+              'saturated', 'polarity', 'raw_value', 'transform_value')
+    bad = [f'{k}.{f}' for k in pct_keys for f in common + ('pct_20', 'pct_60')
+           if f not in ind[k]]
+    bad += [f'{k}.{f}' for k in ratio_keys for f in common + ('r_value', 'ma120_base')
+            if f not in ind[k]]
     check(f'S9-02[{label}]', not bad, '缺失: ' + ', '.join(bad[:8]))
 
+    # ── 分位法不变式 ──
     bad = []
-    for k in keys:
+    for k in pct_keys:
         v = ind[k]
         hd, warm, win = v['history_days'], v['warmup'], v['window']
         if warm is not (v['score'] is None):
@@ -949,32 +985,61 @@ def test_s9(doc, label):
         for f in ('pct_20', 'pct_60'):
             if v[f] is not None and not (0.0 <= v[f] <= 1.0):
                 bad.append(f'{k}.{f}={v[f]}')
+    # ── 相对量法不变式 ──
+    for k in ratio_keys:
+        v = ind[k]
+        hd, warm = v['history_days'], v['warmup']
+        if warm is not (hd < v['window']):
+            bad.append(f'{k}.warmup={warm} 但 history_days={hd} < window={v["window"]}')
+        if warm and v['score'] is not None:
+            bad.append(f'{k} warmup 但有分数 {v["score"]}')
+        r_val, ma_base = v.get('r_value'), v.get('ma120_base')
+        if not warm and (r_val is None or ma_base is None):
+            bad.append(f'{k} 非 warmup 但 r_value/ma120_base 缺失')
+        if r_val is not None and v['transform_value'] != r_val:
+            bad.append(f'{k}.transform_value={v["transform_value"]} != r_value={r_val}')
+        if v['polarity'] != 'growth_proxy' or v['scoring_method'] != 'ratio_band':
+            bad.append(f'{k}.polarity/method={v["polarity"]}/{v["scoring_method"]}')
+    for k in pct_keys:
+        v = ind[k]
         if v['scoring_method'] != 'pct_rank' or v['transform'] not in im.PCT_TRANSFORMS:
             bad.append(f'{k}.method/transform={v["scoring_method"]}/{v["transform"]}')
         if v['polarity'] not in im.POLARITIES:
             bad.append(f'{k}.polarity={v["polarity"]}')
     check(f'S9-03[{label}]', not bad, '; '.join(bad[:6]))
 
-    # score 重算（只验关系：risk_appetite 下 score 由分位唯一决定）
+    # ── score 可复算（分位法与相对量法各一条）──
     bad = []
-    for k in keys:
+    for k in pct_keys:
         v = ind[k]
         if v['warmup']:
             continue
         if v['window'] == 60 and v['pct_20'] is not None and v['pct_60'] is not None:
-            want = im.PCT_RANK_W_SHORT * (2 * v['pct_20'] - 1) \
-                + im.PCT_RANK_W_LONG * (2 * v['pct_60'] - 1)
-            if abs(im.q(want, 3) - v['score']) > 1e-9:
-                bad.append(f'{k}: {im.q(want, 3)} != {v["score"]}')
+            want = (im.PCT_RANK_W_SHORT * (2 * v['pct_20'] - 1)
+                    + im.PCT_RANK_W_LONG * (2 * v['pct_60'] - 1))
         elif v['window'] == 20 and v['pct_20'] is not None:
-            if abs(im.q(2 * v['pct_20'] - 1, 3) - v['score']) > 1e-9:
-                bad.append(f'{k}: {im.q(2 * v["pct_20"] - 1, 3)} != {v["score"]}')
+            want = 2 * v['pct_20'] - 1
         else:
-            bad.append(f'{k}: window={v["window"]} 与分位/得分不匹配')
+            bad.append(f'{k}: window={v["window"]} 与分位不匹配')
+            continue
+        if abs(im.q(want, 3) - v['score']) > 1e-9:
+            bad.append(f'{k}: {im.q(want, 3)} != {v["score"]}')
+    for k in ratio_keys:
+        v = ind[k]
+        if v['warmup']:
+            continue
+        r_val = v.get('r_value')
+        if r_val is None:
+            bad.append(f'{k}: 非 warmup 但 r_value 缺失')
+            continue
+        want = im.q(scoring.ratio_band_score(r_val), 3)
+        if abs(want - v['score']) > 1e-9:
+            bad.append(f'{k}: f(r={r_val})={want} != {v["score"]}')
     check(f'S9-04[{label}]', not bad, '; '.join(bad[:6]))
 
+    # ── saturated 语义 ──
     bad = []
-    for k in keys:
+    for k in pct_keys:
         v = ind[k]
         if v['warmup']:
             continue
@@ -982,13 +1047,37 @@ def test_s9(doc, label):
         want_sat = any(p in (0.0, 1.0) for p in used if p is not None)
         if v['saturated'] is not want_sat:
             bad.append(f'{k}.saturated={v["saturated"]} 但 pct={used}')
+    for k in ratio_keys:
+        v = ind[k]
+        if v['warmup']:
+            continue
+        r = v.get('r_value')
+        if r is None:
+            continue
+        want_sat = r <= im.RATIO_BAND_KNOTS[0][0] or (
+            im.q(scoring.ratio_band_score(r), 3) <= im.RATIO_BAND_POST_FLOOR
+            and r > im.RATIO_BAND_KNOTS[-1][0])
+        if v['saturated'] is not want_sat:
+            bad.append(f'{k}.saturated={v["saturated"]} 但 r={r}')
     check(f'S9-05[{label}]', not bad, '; '.join(bad[:6]))
 
-    # 已转正项必须真的进入计分（这是本次变更的核心语义）
-    bad = [k for k in keys if ind[k]['reference_only'] is not False
-           or (not ind[k]['warmup'] and ind[k]['excluded_from_scoring'] is not False)]
+    # ── 已转正项必须真的在计分 ──
+    bad = [k for k in ind if k in im.QUANTILE_CONFIG
+           and (ind[k]['reference_only'] is not False
+                or (not ind[k]['warmup'] and ind[k]['excluded_from_scoring'] is not False))]
     check(f'S9-06[{label}]', not bad, f'仍被当参考项/被排除: {bad}')
 
+    # ── S9-07：ratio_band 测试向量逐点（龙六给的 14 点，字面量输入，不依赖任何产物）──
+    vectors = [(0.40, -1.000), (0.60, -1.000), (0.70, -0.600), (0.80, -0.200),
+               (0.908, 0.232), (1.00, 0.600), (1.20, 0.667), (1.40, 0.733),
+               (1.60, 0.800), (1.70, 0.600), (1.80, 0.400), (1.90, 0.200),
+               (2.00, 0.000), (2.50, 0.000)]
+    bad = []
+    for r, want in vectors:
+        got = im.q(scoring.ratio_band_score(r), 3)
+        if abs(got - want) > 1e-9:
+            bad.append(f'r={r} want={want} got={got}')
+    check(f'S9-07[vector]', not bad, f'{len(vectors)} 点中失败: ' + '; '.join(bad[:4]))
 
 
 def test_s8(fix):

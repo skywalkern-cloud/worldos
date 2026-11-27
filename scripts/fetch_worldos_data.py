@@ -30,11 +30,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from scoring import build_indicators_and_meta, build_degraded_items
 from indicator_meta import INDICATORS as INDICATOR_META, days_stale as _days_stale
-from indicator_meta import PCT_RANK_CONFIG, PCT_RANK_WINDOW_LONG
+from indicator_meta import PCT_RANK_CONFIG, PCT_RANK_WINDOW_LONG, QUANTILE_CONFIG
 import series_store
 
-# V1b-1：需要 pct_rank 历史窗口的指标（回填历史 / 每日追加 / 挂样本）
-PCT_SERIES_KEYS = {k: v for k, v in PCT_RANK_CONFIG.items()}
+# V1b-1：需要历史窗口的指标（回填历史 / 每日追加 / 挂样本）
+# pct_rank 与 ratio_band 都要历史，统一从 indicator_meta.QUANTILE_CONFIG 派生（单一真源）
+PCT_SERIES_KEYS = dict(QUANTILE_CONFIG)
 PCT_TRANSFORM_LOOKBACK = 5      # delta5/sum5 需额外 5 个原始点才能算出当日 transform
 SERIES_META = {                 # 存储声明，与 indicator_meta 的 transform/unit 一致
     'ashareTurnover': {'unit': '亿元', 'transform': 'raw'},
@@ -1126,18 +1127,44 @@ def _tencent_trade_date(fields):
     return f'{y}-{m}-{d}'
 
 
+def _em_kline_amount(secid, lmt=10):
+    """东财日 K 的成交额（元）：返回 {date: amount}。只给双源互证用。"""
+    import requests
+    url = ('https://push2his.eastmoney.com/api/qt/stock/kline/get'
+           f'?secid={secid}&fields1=f1,f2&fields2=f51,f52,f53,f54,f55,f56,f57'
+           f'&klt=101&fqt=1&end=20500101&lmt={lmt}')
+    r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0',
+                                   'Referer': 'https://quote.eastmoney.com/'}, timeout=15)
+    r.raise_for_status()
+    out = {}
+    for line in (r.json().get('data') or {}).get('klines') or []:
+        p = line.split(',')
+        if len(p) < 7:
+            continue
+        try:
+            out[p[0]] = float(p[6])
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def get_ashare_turnover():
     """两市成交额（亿元）= 上证(000001) + 深证(399001) 的 [37] 成交额(万元) 相加 ÷ 1e4。
 
     单位核实（11-27 19:40 实测）：上证 [37]=92977724 万元 = 9297.77 亿；
-    深证 [37]=107001721 万元 = 10700.17 亿；合计 ≈ 19997.94 亿 ≈ 2.0 万亿，
-    与当日大涨行情（涨停 1487 家）量级吸合。
+    深证 [37]=107001721 万元 = 10700.17 亿；合计 ≈ 19997.94 亿 ≈ 2.0 万亿。
+
+    双源互证（V1b-1b，龙六建议）：腾讯 [37] 与东财 kline f57 逐日比对，偏差 >0.5% 告警。
+    不做成硬失败（两源采样时点略有差异），但必须能看见 —— 同名不同义字段这类错，
+    单点验收永远拓不到，两条独立路径互证才行。
     """
     quote = _tencent_quote('sh000001', 'sz399001')
     total_wan = 0.0
     per_market = {}
     dates = []
-    for code, label in (('sh000001', '沪'), ('sz399001', '深')):
+    tx_yi = {}
+    for code, label, secid in (('sh000001', '沪', '1.000001'),
+                               ('sz399001', '深', '0.399001')):
         f = quote.get(code)
         if not f or len(f) <= 37:
             raise ValueError(f'腾讯行情缺 {code} 或字段不足（len={len(f) if f else 0}）')
@@ -1149,15 +1176,44 @@ def get_ashare_turnover():
             raise ValueError(f'{code} 成交额非正数: {amt_wan}')
         total_wan += amt_wan
         per_market[label] = round(amt_wan / 1e4, 2)     # 万元 → 亿元
+        tx_yi[label] = amt_wan / 1e8                    # 万元 → 亿元（未舍入，供比对）
         d = _tencent_trade_date(f)
         if d:
             dates.append(d)
-    return (round(total_wan / 1e4, 2),            # 亿元
-            min(dates) if dates else None,       # 两市必须同一交易日，取较早（更保守）
-            'daily',
-            None,
-            {'unit': '亿元', 'sh': per_market.get('沪'), 'sz': per_market.get('深'),
-             'rawUnit': '万元'})
+
+    trade_date = min(dates) if dates else None
+    value_yi = round(total_wan / 1e4, 2)
+
+    # ── 双源互证：同一交易日的腾讯合计 vs 东财 f57 合计 ──
+    cross = {'checked': False}
+    degraded = None
+    try:
+        em_total = 0.0
+        em_dates = []
+        for secid, label in (('1.000001', '沪'), ('0.399001', '深')):
+            bars = _em_kline_amount(secid, lmt=10)
+            if trade_date and trade_date in bars:
+                em_total += bars[trade_date]
+                em_dates.append(trade_date)
+        if len(em_dates) == 2 and em_total > 0:
+            em_yi = em_total / 1e8
+            diff_pct = (value_yi - em_yi) / em_yi * 100
+            cross = {'checked': True, 'tencent': round(value_yi, 2),
+                     'eastmoney': round(em_yi, 2), 'diff_pct': round(diff_pct, 4)}
+            if abs(diff_pct) > 0.5:
+                degraded = {
+                    'source': '腾讯行情-沪深交易所',
+                    'primarySource': '腾讯行情-沪深交易所',
+                    'reason': 'cross_check_deviation',
+                    'reasonText': (f'双源互证偏差 {diff_pct:+.3f}% > 0.5%：'
+                                   f'腾讯 {value_yi:.2f} 亿 vs 东财 {em_yi:.2f} 亿（{trade_date}）'),
+                }
+    except Exception as e:
+        cross = {'checked': False, 'error': f'{type(e).__name__}: {e}'}
+
+    extras = {'unit': '亿元', 'sh': per_market.get('沪'), 'sz': per_market.get('深'),
+              'rawUnit': '万元', 'crossCheck': cross}
+    return (value_yi, trade_date, 'daily', degraded, extras)
 
 
 def _em_datacenter(report_name, *, filter_expr=None, sort_column='DIM_DATE',
@@ -1690,11 +1746,12 @@ def main():
             series_store.upsert(key, dd, val,
                                 unit=SERIES_META[key]['unit'],
                                 transform=SERIES_META[key]['transform'])
-            # 只取「今日之前」的窗口样本；delta5/sum5 还要额外 5 个点才能算出当日 transform
-            lookback = PCT_RANK_WINDOW_LONG + PCT_TRANSFORM_LOOKBACK + 2
+            # 每个指标的回看窗口不同（ratio_band 要 120，pct_rank 要 60），从配置派生
+            window = cfg.get('window') or PCT_RANK_WINDOW_LONG
+            lookback = window + PCT_TRANSFORM_LOOKBACK + 2
             hist = series_store.history_before(key, dd, limit=lookback)
             v['history'] = hist
-            print(f'  🧮 {key}: 历史样本 {len(hist)} 条（pct_rank 窗口 {PCT_RANK_WINDOW_LONG}）')
+            print(f'  🧮 {key}: 历史样本 {len(hist)} 条（{cfg["method"]}, 窗口 {window}）')
         except Exception as e:
             # 历史写失败不能把当日值弄丢：history 留空 → 打分侧自然走 warmup
             print(f'  ⚠️ {key}: 历史序列处理失败（本轮按 warmup, score=null）：{type(e).__name__}: {e}')

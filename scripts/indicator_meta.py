@@ -113,12 +113,24 @@ PCT_RANK_W_LONG = 0.6
 # 可用 transform（在打分时才应用；历史序列里恒存 raw）
 PCT_TRANSFORMS = ('raw', 'delta5', 'sum5')
 
-# polarity 枚举：决定「分位→方向」怎么映射。必须是配置字段，不许硬编码分支，
+# polarity 枚举：决定「分位/相对量 → 方向」怎么映射。必须是配置字段，不许硬编码分支，
 # 否则龙六改判时得改代码（PM 2026-11-28 明确要求）。
-#   risk_appetite : 越高越好（线性分位）——本批 4 项取此值
-#   growth_proxy  : 越高越好但**过热转负**——需要龙六给过热拐点公式，
-#                   公式未到前不允许默默按线性算（静默算错比报错更贵）。
+#   risk_appetite : 越高越好（线性分位）——marginBalance / southboundNet / hstechMomentum
+#   growth_proxy  : 越高越好但**过热转负/钝化**——ashareTurnover 走该档（配 ratio_band）
 POLARITIES = ('risk_appetite', 'growth_proxy')
+
+# ── ratio_band（相对量分段打分，V1b-1b 龙六规格）──
+# r = 今日值 / mean(前 N 个交易日)（不含今日）。分段线性 + 过热段线性衰减：
+#   r ≤ 0.60        → -1.000（地量冰点）
+#   0.60 < r ≤ 1.00 → -1.0 → +0.6（线性）
+#   1.00 < r ≤ 1.60 → +0.6 → +0.8（线性）
+#   r > 1.60        → +0.8 - 2.0×(r-1.60)，地板 0（过热只钝化，**不转负**）
+# 龙六原话：“过热只钝化，不转负”——所以尾段斜率虽然为负，但有 0 底。
+RATIO_MA_WINDOW = 120
+RATIO_BAND_KNOTS = ((0.60, -1.0), (1.00, 0.6), (1.60, 0.8))
+RATIO_BAND_LOW_VALUE = -1.0        # r ≤ 第一拐点
+RATIO_BAND_POST_SLOPE = -2.0       # 过热段斜率
+RATIO_BAND_POST_FLOOR = 0.0        # 过热段地板（不转负）
 
 # 前端 COUNTRY_ORDER 只认这三个值，新增国家需先扩前端映射（已与扣钉约定）
 ALLOWED_COUNTRIES = ('🇨🇳', '🇺🇸', '🌐')
@@ -222,11 +234,15 @@ INDICATORS = {
     'ashareTurnover': {
         'name': '两市成交额', 'short': '两市成交额',
         'source': '腾讯行情-沪深交易所', 'country': '🇨🇳', 'unit': '亿元', 'frequency': 'daily',
-        'caliberNote': '上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值',
+        'caliberNote': '上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值。打分用相对量 r=今日/前120日均值（见 r_value/ma120_base）',
         # ── V1b-1 转正（2026-11-28）：pct_rank 打分 ──
-        'scoring_method': 'pct_rank',
-        'transform': 'raw',
-        'polarity': 'risk_appetite',
+        # V1b-1b（2026-11-28 龙六改裁）：成交额不分位，改**相对量** r
+        #   r = 今日成交额 / mean(前 120 个交易日成交额)（不含今日）
+        #   注：同一规则 MA60 给 +0.658 / MA120 给 +0.234 / MA250 给 +0.047
+        #       —— 换窗口等于换规则，断点必须重标，不允许"随便换个均值"。
+        'scoring_method': 'ratio_band',
+        'transform': 'ratio_ma120',
+        'polarity': 'growth_proxy',
         'reference_only': False,
     },
     'marginBalance': {
@@ -251,8 +267,8 @@ INDICATORS = {
     },
     'hstechMomentum': {
         'name': '恒生科技动量', 'short': '恒科动量',
-        'source': '东方财富-港交所', 'country': '🇨🇳', 'unit': '百分点', 'frequency': 'daily',
-        'caliberNote': '恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分',
+        'source': '东方财富-恒生指数公司', 'country': '🇨🇳', 'unit': '百分点', 'frequency': 'daily',
+        'caliberNote': '恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分。编制方为恒生指数公司（港交所仅交易场所）',
         'scoring_method': 'pct_rank',
         'transform': 'raw',
         'polarity': 'risk_appetite',
@@ -432,6 +448,19 @@ PCT_RANK_CONFIG = {
     for k, v in INDICATORS.items()
     if v.get('scoring_method') == 'pct_rank'
 }
+# ratio_band 打分配置（目前只有 ashareTurnover）
+RATIO_BAND_CONFIG = {
+    k: {
+        'method': 'ratio_band',
+        'transform': v.get('transform', 'ratio_ma120'),
+        'polarity': v.get('polarity', 'growth_proxy'),
+        'window': RATIO_MA_WINDOW,
+    }
+    for k, v in INDICATORS.items()
+    if v.get('scoring_method') == 'ratio_band'
+}
+# 所有非 breakpoint 指标的配置汇总（scoring / fetch 都从这份派生）
+QUANTILE_CONFIG = {**PCT_RANK_CONFIG, **RATIO_BAND_CONFIG}
 
 INDICATOR_DIMENSION = {}
 for _dim in DIMENSIONS:

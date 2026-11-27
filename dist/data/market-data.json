@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-28T00:13:40.120117",
+  "timestamp": "2026-11-28T00:18:11.577614",
   "data": {
     "chinaGdp": {
       "value": 4.6,
@@ -7,7 +7,7 @@
       "frequency": "quarterly",
       "source": "国家统计局",
       "dataDate": "2026-Q1-Q3",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -18,7 +18,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -29,7 +29,7 @@
       "frequency": "quarterly",
       "source": "东方财富-美国商务部",
       "dataDate": "2026-Q1",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -40,7 +40,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -51,7 +51,7 @@
       "frequency": "monthly",
       "source": "美国劳工统计局",
       "dataDate": "2026-09",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -62,7 +62,7 @@
       "frequency": "monthly",
       "source": "FRED API-美国商务部",
       "dataDate": "2026-09",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -73,29 +73,29 @@
       "frequency": "daily",
       "source": "CBOE波动率指数(官方日线)",
       "dataDate": "2026-11-26",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "oilPrice": {
-      "value": 83.44,
+      "value": 83.4,
       "unit": "$/桶",
       "frequency": "daily",
       "source": "NYMEX期货",
       "dataDate": null,
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": true,
       "used_fallback": false,
       "fetchError": null
     },
     "naturalGas": {
-      "value": 3.503,
+      "value": 3.515,
       "unit": "$/MMBtu",
       "frequency": "daily",
       "source": "NYMEX期货",
       "dataDate": null,
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": true,
       "used_fallback": false,
       "fetchError": null
@@ -106,7 +106,7 @@
       "frequency": "monthly",
       "source": "FOMC会议记录",
       "dataDate": "2026-10-01",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -117,7 +117,7 @@
       "frequency": "daily",
       "source": "akshare-中美债券",
       "dataDate": "2026-11-25",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -128,7 +128,7 @@
       "frequency": "daily",
       "source": "akshare-中美债券",
       "dataDate": "2026-11-25",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -139,7 +139,7 @@
       "frequency": "daily",
       "source": "akshare-中美债券",
       "dataDate": "2026-11-25",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -150,18 +150,18 @@
       "frequency": "monthly",
       "source": "东方财富-美国劳工部",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "fearGreed": {
-      "value": 24.4,
+      "value": 24.3,
       "unit": "",
       "frequency": "daily",
       "source": "CNN Business-Fear&Greed",
       "dataDate": "2026-11-27",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -172,7 +172,7 @@
       "frequency": "daily",
       "source": "akshare-汇率加权计算",
       "dataDate": "2026-11-27",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -183,7 +183,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -194,7 +194,7 @@
       "frequency": "monthly",
       "source": "东方财富-国家统计局",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -205,7 +205,7 @@
       "frequency": "monthly",
       "source": "中国人民银行",
       "dataDate": "2026-11-20",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -216,7 +216,7 @@
       "frequency": "daily",
       "source": "全国银行间同业拆借中心",
       "dataDate": "2026-11-27",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -227,7 +227,7 @@
       "frequency": "monthly",
       "source": "东方财富-中国人民银行",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -238,7 +238,7 @@
       "frequency": "daily",
       "source": "akshare-中美国债利差",
       "dataDate": "2026-11-25",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -249,7 +249,7 @@
       "frequency": "monthly",
       "source": "policyuncertainty.com-BakerBloomDavis",
       "dataDate": "2026-10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -260,7 +260,7 @@
       "frequency": "daily",
       "source": "北京碳市场",
       "dataDate": "2026-11-26",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -271,7 +271,7 @@
       "frequency": "monthly",
       "source": "国家能源局",
       "dataDate": "2026.9",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -282,7 +282,7 @@
       "frequency": "daily",
       "source": "中证新能源指数",
       "dataDate": "2026-11-27",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -293,7 +293,7 @@
       "frequency": "monthly",
       "source": "国家能源局-第二产业",
       "dataDate": "2026.9",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -304,7 +304,7 @@
       "frequency": "monthly",
       "source": "东方财富-规模以上工业增加值",
       "dataDate": "2026年10",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -315,29 +315,29 @@
       "frequency": "monthly",
       "source": "乘联会-CPCA",
       "dataDate": "2026-10月",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
     },
     "lmeIndex": {
-      "value": 12211.0,
+      "value": 12222.0,
       "unit": "$/吨",
       "frequency": "daily",
       "source": "LME-综合铜03",
       "dataDate": null,
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": true,
       "used_fallback": false,
       "fetchError": null
     },
     "shanghaiCopper": {
-      "value": 92130.0,
+      "value": 92150.0,
       "unit": "¥/吨",
       "frequency": "daily",
       "source": "上期所-新浪财经",
       "dataDate": "2026-11-28",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null
@@ -348,7 +348,7 @@
       "frequency": "daily",
       "source": "腾讯行情-沪深交易所",
       "dataDate": "2026-11-27",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null,
@@ -356,9 +356,255 @@
         "unit": "亿元",
         "sh": 9297.77,
         "sz": 10700.17,
-        "rawUnit": "万元"
+        "rawUnit": "万元",
+        "crossCheck": {
+          "checked": true,
+          "tencent": 19997.94,
+          "eastmoney": 19997.94,
+          "diff_pct": -0.0
+        }
       },
       "history": [
+        {
+          "date": "2026-05-25",
+          "value": 32057.3
+        },
+        {
+          "date": "2026-05-26",
+          "value": 32436.92
+        },
+        {
+          "date": "2026-05-27",
+          "value": 32385.62
+        },
+        {
+          "date": "2026-05-28",
+          "value": 29681.51
+        },
+        {
+          "date": "2026-05-29",
+          "value": 33190.32
+        },
+        {
+          "date": "2026-06-01",
+          "value": 28774.88
+        },
+        {
+          "date": "2026-06-02",
+          "value": 27929.92
+        },
+        {
+          "date": "2026-06-03",
+          "value": 31302.79
+        },
+        {
+          "date": "2026-06-04",
+          "value": 27576.69
+        },
+        {
+          "date": "2026-06-05",
+          "value": 30691.92
+        },
+        {
+          "date": "2026-06-08",
+          "value": 27927.38
+        },
+        {
+          "date": "2026-06-09",
+          "value": 26402.96
+        },
+        {
+          "date": "2026-06-10",
+          "value": 26192.43
+        },
+        {
+          "date": "2026-06-11",
+          "value": 25520.22
+        },
+        {
+          "date": "2026-06-12",
+          "value": 32149.5
+        },
+        {
+          "date": "2026-06-15",
+          "value": 30311.99
+        },
+        {
+          "date": "2026-06-16",
+          "value": 30646.96
+        },
+        {
+          "date": "2026-06-17",
+          "value": 30917.64
+        },
+        {
+          "date": "2026-06-18",
+          "value": 33101.07
+        },
+        {
+          "date": "2026-06-22",
+          "value": 37371.99
+        },
+        {
+          "date": "2026-06-23",
+          "value": 34407.64
+        },
+        {
+          "date": "2026-06-24",
+          "value": 32843.28
+        },
+        {
+          "date": "2026-06-25",
+          "value": 35942.88
+        },
+        {
+          "date": "2026-06-26",
+          "value": 35524.1
+        },
+        {
+          "date": "2026-06-29",
+          "value": 35177.54
+        },
+        {
+          "date": "2026-06-30",
+          "value": 32737.58
+        },
+        {
+          "date": "2026-07-01",
+          "value": 36600.04
+        },
+        {
+          "date": "2026-07-02",
+          "value": 34505.51
+        },
+        {
+          "date": "2026-07-03",
+          "value": 31824.54
+        },
+        {
+          "date": "2026-07-06",
+          "value": 30911.24
+        },
+        {
+          "date": "2026-07-07",
+          "value": 25811.57
+        },
+        {
+          "date": "2026-07-08",
+          "value": 25635.23
+        },
+        {
+          "date": "2026-07-09",
+          "value": 29137.29
+        },
+        {
+          "date": "2026-07-10",
+          "value": 33885.5
+        },
+        {
+          "date": "2026-07-13",
+          "value": 28177.61
+        },
+        {
+          "date": "2026-07-14",
+          "value": 27039.68
+        },
+        {
+          "date": "2026-07-15",
+          "value": 25711.54
+        },
+        {
+          "date": "2026-07-16",
+          "value": 24035.65
+        },
+        {
+          "date": "2026-07-17",
+          "value": 26549.59
+        },
+        {
+          "date": "2026-07-20",
+          "value": 27021.27
+        },
+        {
+          "date": "2026-07-21",
+          "value": 29570.93
+        },
+        {
+          "date": "2026-07-22",
+          "value": 26533.45
+        },
+        {
+          "date": "2026-07-23",
+          "value": 21953.01
+        },
+        {
+          "date": "2026-07-24",
+          "value": 19311.4
+        },
+        {
+          "date": "2026-07-27",
+          "value": 20766.2
+        },
+        {
+          "date": "2026-07-28",
+          "value": 20257.81
+        },
+        {
+          "date": "2026-07-29",
+          "value": 22965.79
+        },
+        {
+          "date": "2026-07-30",
+          "value": 23428.09
+        },
+        {
+          "date": "2026-07-31",
+          "value": 25419.48
+        },
+        {
+          "date": "2026-08-03",
+          "value": 19973.86
+        },
+        {
+          "date": "2026-08-04",
+          "value": 22135.92
+        },
+        {
+          "date": "2026-08-05",
+          "value": 26596.35
+        },
+        {
+          "date": "2026-08-06",
+          "value": 25287.81
+        },
+        {
+          "date": "2026-08-07",
+          "value": 26644.2
+        },
+        {
+          "date": "2026-08-10",
+          "value": 25231.03
+        },
+        {
+          "date": "2026-08-11",
+          "value": 23209.86
+        },
+        {
+          "date": "2026-08-12",
+          "value": 21524.23
+        },
+        {
+          "date": "2026-08-13",
+          "value": 25509.17
+        },
+        {
+          "date": "2026-08-14",
+          "value": 21428.43
+        },
+        {
+          "date": "2026-08-17",
+          "value": 23874.57
+        },
         {
           "date": "2026-08-18",
           "value": 24007.75
@@ -635,7 +881,7 @@
       "frequency": "daily",
       "source": "东方财富-沪深交易所",
       "dataDate": "2026-11-26",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null,
@@ -927,7 +1173,7 @@
       "frequency": "daily",
       "source": "东方财富-港交所",
       "dataDate": "2026-11-27",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null,
@@ -1231,9 +1477,9 @@
       "value": -3.3,
       "unit": "百分点",
       "frequency": "daily",
-      "source": "东方财富-港交所",
+      "source": "东方财富-恒生指数公司",
       "dataDate": "2026-11-27",
-      "lastFetched": "2026-11-28T00:13:40.120117",
+      "lastFetched": "2026-11-28T00:18:11.577614",
       "realtime": false,
       "used_fallback": false,
       "fetchError": null,
@@ -1778,7 +2024,7 @@
       "exclusion_reason": null
     },
     "oilPrice": {
-      "value": 83.44,
+      "value": 83.4,
       "score": 0.0,
       "trend": "down",
       "signal": "gray",
@@ -1814,9 +2060,9 @@
       "exclusion_reason": null
     },
     "naturalGas": {
-      "value": 3.503,
+      "value": 3.515,
       "score": 0.0,
-      "trend": "neutral",
+      "trend": "up",
       "signal": "gray",
       "category": "resource",
       "country": "🌐",
@@ -2030,8 +2276,8 @@
       "exclusion_reason": null
     },
     "fearGreed": {
-      "value": 24.4,
-      "score": -0.78,
+      "value": 24.3,
+      "score": -0.785,
       "trend": "down",
       "signal": "red",
       "category": "sentiment",
@@ -2570,9 +2816,9 @@
       "exclusion_reason": null
     },
     "lmeIndex": {
-      "value": 12211.0,
-      "score": -0.07,
-      "trend": "down",
+      "value": 12222.0,
+      "score": -0.074,
+      "trend": "up",
       "signal": "gray",
       "category": "resource",
       "country": "🌐",
@@ -2606,9 +2852,9 @@
       "exclusion_reason": null
     },
     "shanghaiCopper": {
-      "value": 92130.0,
+      "value": 92150.0,
       "score": -1.0,
-      "trend": "down",
+      "trend": "up",
       "signal": "red",
       "category": "resource",
       "country": "🇨🇳",
@@ -2643,15 +2889,15 @@
     },
     "ashareTurnover": {
       "value": 19997.94,
-      "score": 0.72,
+      "score": 0.234,
       "trend": "neutral",
-      "signal": "green",
+      "signal": "lightgreen",
       "category": "sentiment",
       "country": "🇨🇳",
       "name": "两市成交额",
       "displayName": "两市成交额",
       "shortName": "两市成交额",
-      "caliberNote": "上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值",
+      "caliberNote": "上证(000001)+深证(399001)成交额之和；源字段单位为万元，此处已÷1e4 换算成亿元。盘中为当时点快照，收盘后为全日值。打分用相对量 r=今日/前120日均值（见 r_value/ma120_base）",
       "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+0",
@@ -2680,19 +2926,27 @@
         "unit": "亿元",
         "sh": 9297.77,
         "sz": 10700.17,
-        "rawUnit": "万元"
+        "rawUnit": "万元",
+        "crossCheck": {
+          "checked": true,
+          "tencent": 19997.94,
+          "eastmoney": 19997.94,
+          "diff_pct": -0.0
+        }
       },
-      "scoring_method": "pct_rank",
-      "transform": "raw",
-      "window": 60,
-      "history_days": 67,
+      "scoring_method": "ratio_band",
+      "transform": "ratio_ma120",
+      "window": 120,
+      "history_days": 127,
       "warmup": false,
       "saturated": false,
-      "polarity": "risk_appetite",
-      "pct_20": 0.9,
-      "pct_60": 0.8333,
+      "polarity": "growth_proxy",
+      "pct_20": null,
+      "pct_60": null,
       "raw_value": 19997.94,
-      "transform_value": 19997.94
+      "transform_value": 0.9085,
+      "r_value": 0.9085,
+      "ma120_base": 22012.21
     },
     "marginBalance": {
       "value": 21055.79,
@@ -2834,7 +3088,7 @@
       "name": "恒生科技动量",
       "displayName": "恒生科技动量",
       "shortName": "恒科动量",
-      "caliberNote": "恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分",
+      "caliberNote": "恒生科技相对上证的 20 日相对强弱(百分点) = (HSTECH_t/HSTECH_t-20−1)×100 − (SH000001_t/SH000001_t-20−1)×100，两边均取东财日线同日期收盘；指数点位放 extras.indexLevel(点)，不参与打分。编制方为恒生指数公司（港交所仅交易场所）",
       "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+0",
@@ -2851,7 +3105,7 @@
       },
       "realtime": false,
       "dateNote": null,
-      "source": "东方财富-港交所",
+      "source": "东方财富-恒生指数公司",
       "unit": "百分点",
       "timeliness": 1.0,
       "freshness": "🟢",
@@ -2889,8 +3143,8 @@
   },
   "meta": {
     "ias": {
-      "score": -0.38,
-      "normalized": -0.0825,
+      "score": -0.45,
+      "normalized": -0.097545,
       "max_possible": 4.6,
       "weight_design_sum": 4.6,
       "weight_effective_sum": 4.4,
@@ -3113,7 +3367,7 @@
         "weight_design": 0.8,
         "weight_effective": 0.8,
         "weight_reason": "满额",
-        "score": -0.325,
+        "score": -0.407,
         "signal": "yellow",
         "valid_count": 6,
         "required_count": 3,
@@ -3175,7 +3429,7 @@
         "weight_design": 0.6,
         "weight_effective": 0.6,
         "weight_reason": "满额",
-        "score": -0.014,
+        "score": -0.015,
         "signal": "gray",
         "valid_count": 5,
         "required_count": 3,

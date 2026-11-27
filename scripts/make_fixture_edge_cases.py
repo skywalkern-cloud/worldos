@@ -87,7 +87,7 @@ SAMPLE_VALUES = {
 # 故意给不同长度，把三条都钉住（否则夹具只测到 warmup 一条）。
 # 值为合成正弦波 + 递增趋势，只求分位分布可用，不代表任何真实行情。
 PCT_HISTORY_LEN = {
-    'ashareTurnover': 65,     # raw：65 条 → 60 窗口
+    'ashareTurnover': 125,    # ratio_band：需 ≥120 → 覆盖 r 分段（不是分位）
     'marginBalance': 25,      # delta5：25 条 → 20 个 transform → 仅 S20
     'southboundNet': 3,       # sum5：3 条 → 算不出 → warmup
     'hstechMomentum': 65,     # raw：65 条 → 60 窗口

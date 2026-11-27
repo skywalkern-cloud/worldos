@@ -28,7 +28,7 @@ import indicator_meta as im          # noqa: E402
 import scoring                        # noqa: E402
 import series_store                    # noqa: E402
 
-PCT_KEYS = list(im.PCT_RANK_CONFIG)
+PCT_KEYS = list(im.QUANTILE_CONFIG)   # pct_rank + ratio_band 两类都算
 # 没有逐日历史、只能冻结为当日值的 sentiment 成员
 FROZEN_KEYS = [k for k in ['vix', 'fearGreed']
                if k in [d['indicators'] for d in im.DIMENSIONS if d['id'] == 'sentiment'][0]]
@@ -51,8 +51,11 @@ def sentiment_dim_scores_for(date_str, live_doc):
         series = series_store.load(key)
         if date_str not in series:
             continue
-        hist = series_store.history_before(key, date_str, limit=im.PCT_RANK_WINDOW_LONG + 7)
-        r = scoring.score_by_pct_rank(key, series[date_str], hist)
+        hist = series_store.history_before(key, date_str, limit=max(im.PCT_RANK_WINDOW_LONG, im.RATIO_MA_WINDOW) + 7)
+        if key in im.RATIO_BAND_CONFIG:
+            r = scoring.score_by_ratio_band(key, series[date_str], hist)
+        else:
+            r = scoring.score_by_pct_rank(key, series[date_str], hist)
         ind[key] = {'score': r['score'], 'timeliness': 1.0}
     # 冻结项：用线上当日值（没有逐日历史，这是本次回算的已知边界）
     for key in FROZEN_KEYS:

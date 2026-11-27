@@ -239,6 +239,79 @@ def score_by_pct_rank(key: str, raw_value, history: list) -> dict:
 
 
 # ═══════════════════════════════════════════
+# ratio_band 打分（V1b-1b，2026-11-28 龙六规格）——本模块是唯一实现
+# ═══════════════════════════════════════════
+# 为什么成交额不用分位：分位只回答「在自家历史什么位置」，而成交额的「好」不是单调的
+# —— 地量（冰点）和天量（顶部过热）都不好。相对量 r 配分段断点才表达得了这个形状。
+# 断点是龙六标的，改窗口必须重标：同一规则 MA60 → +0.658 / MA120 → +0.234 / MA250 → +0.047。
+
+def ratio_band_score(r: float, *, knots=None, low_value=None, post_slope=None,
+                     post_floor=None) -> float:
+    """把 r 映射成 [-1, 1]。纯函数：给定 r 必得唯一分，便于测试向量逐点校。
+
+    r ≤ k0            → low_value（-1）
+    k0 < r ≤ k1       → k0.value → k1.value 线性
+    k1 < r ≤ k2       → k1.value → k2.value 线性
+    r > k2            → k2.value + post_slope×(r-k2)，不低于 post_floor
+    """
+    knots = knots if knots is not None else im.RATIO_BAND_KNOTS
+    low_value = im.RATIO_BAND_LOW_VALUE if low_value is None else low_value
+    post_slope = im.RATIO_BAND_POST_SLOPE if post_slope is None else post_slope
+    post_floor = im.RATIO_BAND_POST_FLOOR if post_floor is None else post_floor
+
+    if r <= knots[0][0]:
+        return low_value
+    for (x0, y0), (x1, y1) in zip(knots, knots[1:]):
+        if r <= x1:
+            return y0 + (y1 - y0) * (r - x0) / (x1 - x0)
+    x_last, y_last = knots[-1]
+    return max(post_floor, y_last + post_slope * (r - x_last))
+
+
+def score_by_ratio_band(key: str, raw_value, history: list) -> dict:
+    """按相对量分段给一项打分。history = [{'date','value'}]（不含今日，升序，raw）。"""
+    cfg = im.RATIO_BAND_CONFIG.get(key)
+    if not cfg:
+        raise ValueError(f'{key} 未配置 ratio_band 打分')
+    window = cfg['window']
+    hist_values = [float(r['value']) for r in (history or [])
+                   if r.get('date') and r.get('value') is not None]
+    history_days = len(hist_values)
+    base = None
+    r_value = None
+    score = None
+    warmup = history_days < window
+    saturated = False
+
+    if not warmup and raw_value is not None:
+        base_values = hist_values[-window:]
+        base = sum(base_values) / len(base_values)
+        if base:
+            r_value = float(raw_value) / base
+            score = q(ratio_band_score(r_value), 3)
+            # 饱和 = 撞上下两端的地板（r ≤ 首拐点 或 过热段已压到 0 底）
+            saturated = (r_value <= im.RATIO_BAND_KNOTS[0][0]) or (
+                score <= im.RATIO_BAND_POST_FLOOR and r_value > im.RATIO_BAND_KNOTS[-1][0])
+
+    return {
+        'score': score,
+        'pct_20': None,
+        'pct_60': None,
+        'window_effective': window,
+        'history_days': history_days,
+        'raw_value': raw_value,
+        'transform_value': round(r_value, 4) if r_value is not None else None,
+        'transform': cfg['transform'],
+        'polarity': cfg['polarity'],
+        'scoring_method': cfg['method'],
+        'warmup': warmup,
+        'saturated': saturated,
+        'r_value': round(r_value, 4) if r_value is not None else None,
+        'ma120_base': round(base, 2) if base is not None else None,
+    }
+
+
+# ═══════════════════════════════════════════
 # 评分函数
 # ═══════════════════════════════════════════
 
@@ -632,7 +705,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         # 历史样本从 info['history'] 读（fetch 阶段就从 series 回填好并随产物落盘），
         # 不在这里现读磁盘 —— 否则 data-only replay 会变成时间相关，回放不可复现。
         pct_meta = None
-        if key in im.PCT_RANK_CONFIG:
+        if key in im.RATIO_BAND_CONFIG:
+            pct_meta = score_by_ratio_band(key, value, info.get('history') or [])
+            score = pct_meta['score']
+        elif key in im.PCT_RANK_CONFIG:
             pct_meta = score_by_pct_rank(key, value, info.get('history') or [])
             score = pct_meta['score']
         else:
@@ -761,6 +837,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
                 'raw_value': pct_meta['raw_value'],
                 'transform_value': pct_meta['transform_value'],
             })
+            # ratio_band 额外存 r 与基准均值，保证任何人都能拿原始数据复算（V1b-16 锚点）
+            if pct_meta.get('r_value') is not None or 'r_value' in pct_meta:
+                indicators[key]['r_value'] = pct_meta.get('r_value')
+                indicators[key]['ma120_base'] = pct_meta.get('ma120_base')
         data_values[key] = value
 
     # 维度评分
