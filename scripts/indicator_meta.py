@@ -280,21 +280,25 @@ INDICATORS = {
     },
 
     # ── 新增（P1-8DIM，2026-11-28）：USDCNH ─────────────────────────
-    # 取数优先级：akshare 离岸现货(东财 USDCNH) → exchangerate-api 在岸 CNY（回退时
-    # caliberNote 追加「在岸参考价」）→ None（不许造数/不许上一交易日硬填）。
-    # 打分：breakpoint_steps 四段阶跃（龙五工单 §2）。不要求历史回填 → 可当日进维度。
+    # A2（2026-11-28）重标：数据源改 akshare 东财**日线** forex_hist_em（带真实交易日），
+    # 打分从「固定水位 7.05/7.20/7.35」改为「相对 120 个交易日移动均值的偏离」。
+    # 旧水位是 7.2 时代遗物：现价 6.65 恒 <7.05 → 永久 +0.5 常数，等于给 fxExternal
+    # 灌了一个永远看多人民币的偏置（与 11-27 认定要修的「越阈值后永久 +1」同病）。
+    # 取数优先级：akshare 日线 → exchangerate-api 在岸 CNY（回退时 caliberNote 标注）→ None。
     'usdcnh': {
         'name': '美元兑离岸人民币', 'short': 'USDCNH',
-        'source': 'akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）',
+        'source': 'akshare-东财离岸人民币日线（forex_hist_em USDCNH）',
         'country': '🌐', 'unit': '', 'frequency': 'daily',
-        # 东财离岸现货不提供交易日期：按现有约定标 realtime（不伪造当天），
-        # 回退到 exchangerate-api 时带日期 → 不再当实时报价展示（见 main() realtime 判定）。
-        'dateSource': 'realtime',
-        'caliberNote': '离岸人民币汇率；取不到离岸价时回退在岸中间价并在 caliberNote 标注',
-        'scoring_method': 'breakpoint_steps',
-        # 分段阶跃：数值越高 = 人民币越弱 = 越差（龙五工单 §2 建议值）
-        'breakpoint_steps': (7.05, 7.20, 7.35),
-        'breakpoint_values': (0.5, 0.0, -0.5, -1.0),
+        # 日线带真实交易日：不再标 realtime（前端按交易日 + 时效计算新鲜度）。
+        'dateSource': 'daily',
+        'caliberNote': ('离岸人民币日线收盘；ratio = USDCNH / MA120（120 个交易日收盘均值，含当日），'
+                        '人民币越弱（ratio 越高）分越低；历史不足 120 日不出分'),
+        'scoring_method': 'ratio_ma_steps',
+        # 5 档对称阶跃（零值区 ±0.5%，满档 ±1.5%）；边界一律「≤ 上界归本档」：
+        #   ratio ≤0.985 → +1.0；≤0.995 → +0.5；≤1.005 → 0；≤1.015 → −0.5；>1.015 → −1.0
+        'ratio_ma_window': 120,
+        'ratio_steps': (0.985, 0.995, 1.005, 1.015),
+        'ratio_values': (1.0, 0.5, 0.0, -0.5, -1.0),
     },
 
     'dollarIndex': {
@@ -416,7 +420,7 @@ DIMENSIONS = [
         # usdcnh 取不到时维度仍可出分）。
         'id': 'fxExternal', 'name': '汇率与外部', 'icon': '💱', 'weight': 0.7,
         'indicators': ['usdcnh', 'dollarIndex', 'creditSpread', 'usBond10Y'],
-        'caliberNote': 'USDCNH（离岸优先，缺失回退在岸）+ 美元指数（三货币加权代理）+ 中美10Y利差 + 美债10Y；4 项需 ≥2 有效',
+        'caliberNote': 'USDCNH（离岸日线，按相对 120 日均值打分；缺失按 3/4 有效出分）+ 美元指数（三货币加权代理）+ 中美10Y利差 + 美债10Y；4 项需 ≥2 有效',
     },
     {
         # 原 sentiment 拆分：4 个 A股/港股代理独立成 sentimentA（0.9），
@@ -504,11 +508,10 @@ RATIO_BAND_CONFIG = {
     for k, v in INDICATORS.items()
     if v.get('scoring_method') == 'ratio_band'
 }
-# breakpoint_steps（四段阶跃）：目前只有 usdcnh。
-# steps=(x1,x2,x3)，values=(v0,v1,v2,v3)，语义：
-#   x < x1 → v0；x1 ≤ x < x2 → v1；x2 ≤ x < x3 → v2；x ≥ x3 → v3
-# 与三段线性 breakpoint 的区别：这里是要龙五拍的四段阶梯（不是线性插值），
-# 故单列一份配置，**不许**为了省事把它塞进 NEGATIVE_PARAMS 改变语义。
+# breakpoint_steps（四段阶跃）：A2 后 usdcnh 已改 ratio_ma_steps，本配置目前为空。
+# 保留派生逻辑（而非删除）：将来若又有“固定水位阶梯”类指标可复用；
+# 但 usdcnh **不得**再回到固定水位——旧水位 7.05/7.20/7.35 在 6.65 报价下恒为 +0.5。
+# 语义：steps=(x1,x2,x3)，values=(v0,v1,v2,v3)，x < x1 → v0；…；x ≥ x3 → v3
 BREAKPOINT_STEPS_CONFIG = {
     k: {
         'method': 'breakpoint_steps',
@@ -519,11 +522,24 @@ BREAKPOINT_STEPS_CONFIG = {
     if v.get('scoring_method') == 'breakpoint_steps'
 }
 
-# 所有「需要历史样本」的量化指标配置汇总（pct_rank + ratio_band）。
-# ⚠️ breakpoint_steps（usdcnh）**故意不在里面**：它不需要历史回填，
-# 而 fetch 用 QUANTILE_CONFIG 决定「哪些指标要写 series / 挂 history」，
-# 把它混进来会多写一份无用的历史序列。
-QUANTILE_CONFIG = {**PCT_RANK_CONFIG, **RATIO_BAND_CONFIG}
+# ratio_ma_steps（相对 120 日均值的 5 档阶跃，A2 2026-11-28）：目前只有 usdcnh。
+# ratio = 最新收盘 / MA(window)；MA 窗口取**含当日**的最近 window 个有效交易日收盘。
+# 边界语义：ratio ≤ steps[0] → values[0]；…；ratio > steps[-1] → values[-1]。
+# 方向：ratio 越高 = 人民币越弱 = 越差（values 递减）。
+RATIO_MA_STEPS_CONFIG = {
+    k: {
+        'method': 'ratio_ma_steps',
+        'window': int(v['ratio_ma_window']),
+        'steps': tuple(v['ratio_steps']),
+        'values': tuple(v['ratio_values']),
+    }
+    for k, v in INDICATORS.items()
+    if v.get('scoring_method') == 'ratio_ma_steps'
+}
+
+# 所有「需要历史样本」的量化指标配置汇总（pct_rank + ratio_band + ratio_ma_steps）。
+# fetch 用 QUANTILE_CONFIG 决定「哪些指标要写 series / 挂 history」。
+QUANTILE_CONFIG = {**PCT_RANK_CONFIG, **RATIO_BAND_CONFIG, **RATIO_MA_STEPS_CONFIG}
 
 INDICATOR_DIMENSION = {}
 for _dim in DIMENSIONS:

@@ -3,6 +3,29 @@
 > 只记「会改变结论」的变更（权重、阈值、打分口径、指标归属）。
 > 每条必须能回答：谁改的 / 何时 / 依据什么证据 / 怎么回滚。
 
+## 2026-11-28 · A2：usdcnh 打分重标（固定水位 → 相对 120 日均值 5 档）
+
+- **谁**：龙五（PM）派单 A2，扣钉实现
+- **何时**：2026-11-28（同日晚于 P1-8DIM 批次 A）
+- **为何**：旧 `breakpoint_steps=(7.05,7.20,7.35)` 是 7.2 时代水位，现价 6.6551 恒 `<7.05`
+  → 永久 `+0.5`，等于给 fxExternal 灌了一个多头常数（与 11-27 认定要修的「越阈值后永久 +1」同病）。
+- **变更**：
+  - 数据源：`akshare.forex_spot_em` 离岸现货（无日期）→ `akshare.forex_hist_em('USDCNH')` **日线**（带交易日，4232 行）。
+    回填最近 **250 个交易日**到 `data/history/series/usdcnh.json`（2025-12-15 → 2026-11-27）。
+  - 打分：`scoring_method='ratio_ma_steps'`；`ratio = USDCNH / MA120`（120 个交易日收盘均值，含当日），
+    五档阶跃：`≤0.985 +1.0 / ≤0.995 +0.5 / ≤1.005 0 / ≤1.015 −0.5 / >1.015 −1.0`。
+  - 方向：**人民币越弱（ratio 越高）= 越差**（写进注释与 caliberNote）。
+  - 历史不足 120 点 → `score=null`（不硬填/不插值），维度按 3/4 有效照常出分。
+  - `caliberNote` 显式展示「当前值 vs 120 日均值 ±x.x%（ratio→档位）」。
+- **当日影响（11-28 同数据）**：usdcnh +0.5 → +0.5（ratio 0.9898 恰落同一档）；
+  fxExternal +0.026 → +0.026；IAS −0.57/−0.102/持有 → **不变**。
+  **数值零位移不等于规则没变**：一档位移（+0.5→0）就会把 IAS 从持有翻到减仓（见 REPORT §6.5 探针表）。
+- **回算**：19 日重跑，usdcnh 按 `date < 快照日` as-of 注入，无未来函数（脚本+测试双断言）；
+  翻转 6 天 → 3 天（11-24/26/28 因 usdcnh 真实 +0.5 回到持有）。
+- **证据**：`docs/P1-8DIM-REPORT.md` §6；`scripts/test_schema_fields.py` S10-04b/c、S11-01~06、S12-01~03。
+- **回滚**：恢复 `usdcnh.scoring_method='breakpoint_steps'` 与旧水位、`get_usdcnh` 旧源；
+  `series/usdcnh.json` 可保留（不影响旧打分）。无 schema 破坏。
+
 ## 2026-11-28 · P1-8DIM：综合评分 6 维 → 8 维（IAS_SCALE 4.6 → 5.6）+ 阈值改 normalized 量纲
 
 - **谁**：龙五（PM）派单 `docs/P1-8DIM-WORKORDER.md`，扣钉实现（批次 A：骨架搬家）
@@ -15,8 +38,8 @@
 - **指标搬家**：`dollarIndex/creditSpread/usBond10Y` → fxExternal；`usBond2Y/5Y` → riskAppetite **只展示**；
   `lmeIndex` → resource **只展示**（与沪铜共线）；`carbonPrice` → techGreen（**改为计分**）；
   `aiGrowth/robotInstall` 维持 reference_only 但**移出计分分母**（techGreen shrink 0.5 → 1.0）。
-- **新增指标**：`usdcnh`（USDCNH，离岸优先 akshare 东财现货，回退 exchangerate-api 在岸中间价并标 caliberNote；
-  取不到 = `null`，不硬填不插值），四段阶跃 `breakpoint_steps`：<7.05→+0.5 / 7.05~7.20→0 / 7.20~7.35→−0.5 / ≥7.35→−1.0。
+- **新增指标**：`usdcnh`（USDCNH）——**统计口径已于同日 A2 重标，见上方 A2 条目**（旧固定水位 7.05/7.20/7.35 已废弃）。
+  旧描述存档：离岸优先 akshare 东财现货，回退 exchangerate-api 在岸中间价；四段阶跃 `<7.05→+0.5 / 7.05~7.20→0 / 7.20~7.35→−0.5 / ≥7.35→−1.0`。
 - **修复的 bug**：① 旧代码内部拿 `score`（量纲 4.6）比 −0.5 却对外发 `normalized`，真实分界漂到 −0.109；
   ② `_ias_signal_desc`/`_strategy_advice` 里同一类 score 量纲阈值比较（改为只读后端 `ias.signal`）。
 - **当日影响（11-28，同数据）**：old −0.43/−0.093636/持有 → new **−0.57/−0.102/持有**（含 usdcnh 实时 6.6551）；

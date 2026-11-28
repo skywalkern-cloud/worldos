@@ -34,6 +34,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import indicator_meta as im  # noqa: E402
 import scoring  # noqa: E402
+import series_store  # noqa: E402
 
 HISTORY_DIR = WS / 'data' / 'history'
 OUT = HISTORY_DIR / 'recompute-8dim-2026-11-28.json'
@@ -154,15 +155,76 @@ def _band_new(norm: float) -> str:
     return '清仓/防御'
 
 
+def _cnh_series():
+    """读取 usdcnh 日线序列（{date: close}）。无回填 → 空 dict（不造数）。"""
+    return series_store.load('usdcnh')
+
+
+def _cnh_asof(series: dict, ref_date: str):
+    """as-of 取 ref_date **之前**最近的收盘，并返回该日前的历史。
+
+    关键：绝不允许用 ref_date 当天或之后的观测。回算时这条是“无未来函数”的唯一入口：
+      value/dataDate  = 最后一个 d < ref_date 的收盘
+      history         = 该日之前的观测（MA120 含当日，所以需再往前 119 条）
+    """
+    ds = sorted(d for d in series if d < ref_date)
+    if not ds:
+        return None
+    last = ds[-1]
+    hist = [{'date': d, 'value': series[d]} for d in ds[:-1]]
+    return {'value': series[last], 'dataDate': last, 'history': hist,
+            'max_used_date': last,
+            'history_days': len(hist)}
+
+
+def _usdcnh_audit(indicators: dict, cnh: dict) -> dict:
+    """回算行里的 usdcnh 审计信息（可复算 MA120 / ratio / 档位）。"""
+    v = indicators.get('usdcnh') or {}
+    return {
+        'value': cnh['value'],
+        'data_date': cnh['dataDate'],
+        'history_days': cnh['history_days'],
+        'max_used_date': cnh['max_used_date'],
+        'ma_base': v.get('ma_base'),
+        'ratio_value': v.get('ratio_value'),
+        'deviation_pct': v.get('deviation_pct'),
+        'score': v.get('score'),
+    }
+
+
+def _usdcnh_entry(cnh: dict) -> dict:
+    """把 as-of 结果包装成 build_indicators_and_meta 期望的 raw_data 条目。"""
+    u = im.INDICATORS['usdcnh']
+    return {
+        'value': cnh['value'], 'unit': u['unit'], 'frequency': u['frequency'],
+        'source': u['source'], 'dataDate': cnh['dataDate'],
+        'lastFetched': datetime.now().isoformat(),
+        'realtime': False, 'used_fallback': False, 'fetchError': None,
+        'history': cnh['history'],
+    }
+
+
 def compare(days: int, quiet: bool = False) -> dict:
     snaps = load_snapshots(days)
+    cnh_series = _cnh_series()
     rows = []
     flips = []
+    lookahead_violations = []
     prev_data = None
     for ds, doc in snaps:
-        indicators, meta = scoring.build_indicators_and_meta(doc.get('data') or {}, prev_data)
+        data = {k: dict(v) for k, v in (doc.get('data') or {}).items() if isinstance(v, dict)}
+        # A2：把 usdcnh 日线以 as-of 方式注入（历史上快照里本来没有这一项）。
+        cnh = _cnh_asof(cnh_series, ds)
+        if cnh:
+            data['usdcnh'] = _usdcnh_entry(cnh)
+            # 无未来函数强断言：本日用到的所有 usdcnh 观测必须严格早于快照日。
+            used_dates = [r['date'] for r in cnh['history']] + [cnh['dataDate']]
+            if max(used_dates) >= ds:
+                lookahead_violations.append({'date': ds, 'max_used': max(used_dates)})
+
+        indicators, meta = scoring.build_indicators_and_meta(data, prev_data)
         prev_data = {k: {'value': v.get('value'), 'dataDate': v.get('dataDate')}
-                     for k, v in (doc.get('data') or {}).items() if isinstance(v, dict)}
+                     for k, v in data.items() if isinstance(v, dict)}
         new_ias = meta['ias']
         old_dims = legacy_dim_scores(indicators)
         old_ias = legacy_ias(old_dims)
@@ -196,6 +258,7 @@ def compare(days: int, quiet: bool = False) -> dict:
                             'threshold_flip': threshold_only != old_ias['signal'],
                             'structure_flip': struct_only != threshold_only},
             'snapshot_rules_hash': (doc.get('meta') or {}).get('rules_hash'),
+            'usdcnh': (_usdcnh_audit(indicators, cnh) if cnh else None),
         }
         rows.append(row)
         if row['old']['signal'] != row['new']['signal']:
@@ -225,28 +288,36 @@ def compare(days: int, quiet: bool = False) -> dict:
         for f in flips:
             print(f"  ★ {f['date']}: {f['old_signal']} → {f['new_signal']}（{f['cause']}；"
                   f"归一 {f['old_norm']} → {f['new_norm']}；覆盖 {f['old_coverage']} → {f['new_coverage']}）")
+        if lookahead_violations:
+            print(f'  ❌ usdcnh 未来函数违规 {len(lookahead_violations)} 处: {lookahead_violations[:5]}')
+        else:
+            print('  ✅ usdcnh 无未来函数：每个快照日只使用 date < 当日 的观测')
 
-    return {'rows': rows, 'flips': flips}
+    return {'rows': rows, 'flips': flips,
+            'lookahead_violations': lookahead_violations}
 
 
 def _usdcnh_live():
-    """尝试取一次实时 usdcnh（as-live 重建用）。取不到返回 None。"""
-    try:
-        import fetch_worldos_data as fw
-        res = fw.get_usdcnh()
-        val, dd, freq = res[:3]
-        degraded = res[3] if len(res) > 3 else None
-        return val, dd, degraded
-    except Exception as e:  # noqa: BLE001
-        print(f'⚠️ usdcnh 实时取数失败: {type(e).__name__}: {e}')
-        return None, None, None
+    """A2：不再实时拉取，改从回填日线序列取 as-of 值（无未来函数）。
+
+    返回 (value, dataDate, history, max_used_date)；无序列 → None。
+    """
+    series = _cnh_series()
+    if not series:
+        return None
+    last = max(series)
+    ds = sorted(series)
+    hist = [{'date': d, 'value': series[d]} for d in ds[:-1]]
+    return series[last], last, hist, last
 
 
 def rebuild_live():
-    """用最新快照重建 public/data/market-data.json（8 维）。
+    """用最新快照 + usdcnh 回填序列重建 public/data/market-data.json（8 维）。
 
     注意：这不是部署。只改本地构建输入；线上由 cron 下次抓取时按新代码自然产出。
     除 usdcnh 外所有值都来自最新快照，不重抓、不造数。
+    usdcnh 的价值/日期/MA120 均来自 data/history/series/usdcnh.json，
+    且只取 date < 快照日 的观测（因为 11-28 快照日市场尚未有 11-28 收盘）。
     """
     import fetch_worldos_data as fw
 
@@ -255,23 +326,22 @@ def rebuild_live():
     prev_ds, prev_doc = snaps[-2] if len(snaps) > 1 else (None, None)
     results = {k: dict(v) for k, v in (doc.get('data') or {}).items() if isinstance(v, dict)}
 
-    # usdcnh：快照里没有 → 现取一次；取不到就 None（不硬填）
-    val, dd, degraded = _usdcnh_live()
+    # usdcnh：从日线序列 as-of 取（11-28 快照 → 用 11-27 收盘 6.6551）
     meta_u = im.INDICATORS['usdcnh']
-    entry = {
-        'value': val, 'unit': meta_u['unit'], 'frequency': meta_u['frequency'],
-        'source': meta_u['source'], 'dataDate': dd,
-        'lastFetched': datetime.now().isoformat(),
-        'realtime': bool(val is not None and dd is None),
-        'used_fallback': False,
-        'fetchError': None if val is not None else
-        {'reason': 'not_found', 'reasonText': '离岸/在岸源均不可得（不造数）'},
-    }
-    if degraded:
-        entry['actualSource'] = degraded.get('source')
-        entry['sourceDegraded'] = degraded
-        if degraded.get('caliberNoteSuffix'):
-            entry['caliberNoteSuffix'] = degraded['caliberNoteSuffix']
+    cnh = _cnh_asof(_cnh_series(), ds)
+    if cnh:
+        entry = _usdcnh_entry(cnh)
+        if cnh['max_used_date'] >= ds:
+            raise RuntimeError(f'usdcnh 未来函数：用到 {cnh["max_used_date"]} ≥ 快照日 {ds}')
+    else:
+        entry = {
+            'value': None, 'unit': meta_u['unit'], 'frequency': meta_u['frequency'],
+            'source': meta_u['source'], 'dataDate': None,
+            'lastFetched': datetime.now().isoformat(),
+            'realtime': False, 'used_fallback': False,
+            'fetchError': {'reason': 'not_found',
+                           'reasonText': '无 usdcnh 日线序列（不造数）'},
+        }
     results['usdcnh'] = entry
 
     prev_data = None
@@ -313,10 +383,14 @@ def rebuild_live():
     output = {
         'timestamp': datetime.now().isoformat(),
         'recompute': {
-            'note': 'P1-8DIM 批次 A：除 usdcnh 为重建时实时取数外，其余全部取自 '
-                    f'{ds} 快照（不重抓、不造数）',
+            'note': 'P1-8DIM 批次 A + A2：usdcnh 取自回填日线序列（as-of，严格早于快照日），'
+                    f'其余全部取自 {ds} 快照（不重抓、不造数）',
             'sourceSnapshot': ds,
             'generatedBy': 'scripts/replay_8dim_30d.py --rebuild-live',
+            'usdcnh': {'value': entry.get('value'), 'dataDate': entry.get('dataDate'),
+                       'ma_base': (indicators.get('usdcnh') or {}).get('ma_base'),
+                       'ratio_value': (indicators.get('usdcnh') or {}).get('ratio_value'),
+                       'score': (indicators.get('usdcnh') or {}).get('score')},
         },
         'data': results,
         'indicators': indicators,
@@ -337,7 +411,11 @@ def rebuild_live():
     print(f"   IAS score={meta['ias']['score']} normalized={meta['ias']['normalized']} "
           f"signal={meta['ias']['signal']} ias_scale={meta['ias']['ias_scale']} "
           f"rules_hash={meta['rules_hash']}")
-    print(f"   usdcnh={val} ({'在岸回退' if degraded else '离岸' if val else '缺失'})")
+    u = (meta['dimensions'].get('fxExternal') or {}).get('score')
+    ui = indicators.get('usdcnh') or {}
+    print(f"   usdcnh={entry.get('value')} @{entry.get('dataDate')} "
+          f"MA120={ui.get('ma_base')} ratio={ui.get('ratio_value')} "
+          f"score={ui.get('score')} | fxExternal={u}")
 
 
 def main():
@@ -370,6 +448,11 @@ def main():
         'rows': res['rows'],
         'flips': res['flips'],
         'flip_count': len(res['flips']),
+        'usdcnh_no_lookahead': {
+            'violations': res['lookahead_violations'],
+            'passed': not res['lookahead_violations'],
+            'rule': '每个快照日只允许使用 date < 快照日 的 usdcnh 观测（MA120 含当日=该日之前最近收盘）',
+        },
     }
     Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.json_out).write_text(json.dumps(payload, ensure_ascii=False, indent=2,

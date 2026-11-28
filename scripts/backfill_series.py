@@ -38,6 +38,7 @@ SERIES_META = {
     'marginBalance': {'unit': '亿元', 'transform': 'delta5'},
     'southboundNet': {'unit': '亿元', 'transform': 'sum5'},
     'hstechMomentum': {'unit': '百分点', 'transform': 'raw'},
+    'usdcnh': {'unit': '', 'transform': 'raw'},      # A2：离岸人民币日线（MA120 分母序列）
 }
 
 
@@ -163,11 +164,35 @@ def build_hstech_momentum():
     return out
 
 
+def build_usdcnh():
+    """美元兑离岸人民币日线收盘（A2，2026-11-28）。
+
+    源：akshare.forex_hist_em('USDCNH')——实测 4232 行、带交易日、最新 2026-11-27=6.6551。
+    只回填**最近 250 个交易日**（足够 MA120 + 19 日回算窗口，又不至于把十年数据塞进仓库）。
+    序列存 raw 收盘，MA120 在打分时按窗口均值现算，**不落任何均值常数**。
+    """
+    import akshare as ak
+    df = ak.forex_hist_em(symbol='USDCNH')
+    if df is None or df.empty:
+        raise ValueError('forex_hist_em(USDCNH) 返回空')
+    df = df.sort_values('日期')
+    out = {}
+    for _, row in df.tail(250).iterrows():
+        d = str(row.get('日期'))[:10]
+        v = row.get('最新价')
+        if d and v is not None and v == v:      # v==v 排 NaN（不依赖 numpy）
+            out[d] = round(float(v), 4)
+    if not out:
+        raise ValueError('forex_hist_em(USDCNH) 无有效收盘')
+    return out
+
+
 BUILDERS = {
     'ashareTurnover': build_ashare_turnover,
     'marginBalance': build_margin_balance,
     'southboundNet': build_southbound_net,
     'hstechMomentum': build_hstech_momentum,
+    'usdcnh': build_usdcnh,
 }
 
 

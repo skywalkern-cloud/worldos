@@ -42,6 +42,7 @@ SERIES_META = {                 # 存储声明，与 indicator_meta 的 transfor
     'marginBalance': {'unit': '亿元', 'transform': 'delta5'},
     'southboundNet': {'unit': '亿元', 'transform': 'sum5'},
     'hstechMomentum': {'unit': '百分点', 'transform': 'raw'},
+    'usdcnh': {'unit': '', 'transform': 'raw'},   # A2：日线收盘，ratio_ma_steps 的 MA120 来源
 }
 
 # ========== 配置常量 ==========
@@ -784,32 +785,37 @@ def get_dollar_index():
 
 @with_timeout(20)
 def get_usdcnh():
-    """美元兑离岸人民币 USDCNH（P1-8DIM，2026-11-28）
+    """美元兑离岸人民币 USDCNH（P1-8DIM 新增；A2 2026-11-28 改日线源）
 
     取数优先级（必须 log 用了哪个源）：
-      1) akshare forex_spot_em 的 USDCNH（东财离岸现货，无交易日期 → 标 realtime）
+      1) akshare forex_hist_em('USDCNH') **日线**（东财，带真实交易日；取最新一根收盘）
       2) exchangerate-api /v4/latest/USD 的 rates.CNY（**在岸**中间价；回退时
          用 source_degraded + caliberNoteSuffix 把「在岸参考价」写上页面）
       3) 都取不到 → None。**不许造数、不许用上一交易日硬填、不许插值补齐。**
+
+    为何改日线（A2）：旧源 forex_spot_em 不带交易日，只能标 realtime；且旧打分用
+    固定水位 7.05/7.20/7.35，现价 6.65 恒为 +0.5 —— 要算「相对 120 日均值」就必须有日期序列。
 
     Returns: (value, dataDate, 'daily', source_degraded_or_None, extras_or_None)
     """
     import pandas as pd
 
-    # ── 源 1：akshare 离岸现货 ──
+    # ── 源 1：akshare 离岸日线（带交易日）──
     try:
         import akshare as ak
-        df = ak.forex_spot_em()
-        row = df[df['代码'] == 'USDCNH']
-        if not row.empty:
-            price = row.iloc[0]['最新价']
-            if price is not None and not pd.isna(price):
+        df = ak.forex_hist_em(symbol='USDCNH')
+        if df is not None and not df.empty:
+            df = df.sort_values('日期')
+            row = df.iloc[-1]
+            price = row.get('最新价')
+            d = str(row.get('日期'))[:10]
+            if price is not None and not pd.isna(price) and d:
                 v = round(float(price), 4)
-                print(f" [源=akshare-forex_spot_em 离岸USDCNH {v}（源无日期→realtime）]", end='')
-                return v, None, 'daily', None, None
-        print(" [源1 akshare离岸: 无 USDCNH 行]", end='')
+                print(f" [源=akshare-forex_hist_em 离岸USDCNH日线 {v} @{d}]", end='')
+                return v, d, 'daily', None, None
+        print(" [源1 akshare日线: 无有效行]", end='')
     except Exception as e:  # noqa: BLE001
-        print(f" [源1 akshare离岸失败: {type(e).__name__}]", end='')
+        print(f" [源1 akshare日线失败: {type(e).__name__}]", end='')
 
     # ── 源 2：exchangerate-api（在岸 CNY，必须标降级）──
     try:
@@ -824,9 +830,9 @@ def get_usdcnh():
             print(f" [源=exchangerate-api 在岸CNY {v}（降级：非离岸价）]", end='')
             return v, d, 'daily', {
                 'source': 'exchangerate-api 在岸中间价',
-                'primarySource': 'akshare 离岸 USDCNH 现货',
+                'primarySource': 'akshare 离岸 USDCNH 日线（forex_hist_em）',
                 'reason': 'primary_source_missing',
-                'reasonText': '离岸价暂不可得，已回退在岸参考价（口径见 caliberNote）',
+                'reasonText': '离岸日线暂不可得，已回退在岸参考价（口径见 caliberNote）',
                 'caliberNoteSuffix': '（本条为在岸参考价，非离岸价）',
             }, None
         print(" [源2 exchangerate-api: 无 CNY]", end='')

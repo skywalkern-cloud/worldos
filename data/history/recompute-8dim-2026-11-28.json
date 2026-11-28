@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-28T17:36:47",
+  "generatedAt": "2026-11-28T17:42:02",
   "purpose": "P1-8DIM 历史回算：旧 6 维（冻结字面量）vs 新 8 维，逐日对照 + 信号翻转清单",
   "legacy": {
     "dims": [
@@ -238,7 +238,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6738,
+        "data_date": "2026-11-06",
+        "history_days": 234,
+        "max_used_date": "2026-11-06",
+        "ma_base": 6.737042,
+        "ratio_value": 0.990613,
+        "deviation_pct": -0.939,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-10",
@@ -294,7 +304,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6693,
+        "data_date": "2026-11-09",
+        "history_days": 235,
+        "max_used_date": "2026-11-09",
+        "ma_base": 6.73608,
+        "ratio_value": 0.990086,
+        "deviation_pct": -0.991,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-11",
@@ -350,7 +370,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6765,
+        "data_date": "2026-11-10",
+        "history_days": 236,
+        "max_used_date": "2026-11-10",
+        "ma_base": 6.735176,
+        "ratio_value": 0.991288,
+        "deviation_pct": -0.871,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-12",
@@ -406,7 +436,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6738,
+        "data_date": "2026-11-11",
+        "history_days": 237,
+        "max_used_date": "2026-11-11",
+        "ma_base": 6.734302,
+        "ratio_value": 0.991016,
+        "deviation_pct": -0.898,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-13",
@@ -462,7 +502,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6734,
+        "data_date": "2026-11-12",
+        "history_days": 238,
+        "max_used_date": "2026-11-12",
+        "ma_base": 6.733468,
+        "ratio_value": 0.991079,
+        "deviation_pct": -0.892,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-14",
@@ -518,7 +568,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6747,
+        "data_date": "2026-11-13",
+        "history_days": 239,
+        "max_used_date": "2026-11-13",
+        "ma_base": 6.732723,
+        "ratio_value": 0.991382,
+        "deviation_pct": -0.862,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-16",
@@ -574,7 +634,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6747,
+        "data_date": "2026-11-13",
+        "history_days": 239,
+        "max_used_date": "2026-11-13",
+        "ma_base": 6.732723,
+        "ratio_value": 0.991382,
+        "deviation_pct": -0.862,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-17",
@@ -630,7 +700,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6647,
+        "data_date": "2026-11-16",
+        "history_days": 240,
+        "max_used_date": "2026-11-16",
+        "ma_base": 6.731888,
+        "ratio_value": 0.99002,
+        "deviation_pct": -0.998,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-18",
@@ -682,7 +762,17 @@
         "threshold_flip": false,
         "structure_flip": true
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.667,
+        "data_date": "2026-11-17",
+        "history_days": 241,
+        "max_used_date": "2026-11-17",
+        "ma_base": 6.731089,
+        "ratio_value": 0.990479,
+        "deviation_pct": -0.952,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-19",
@@ -705,8 +795,8 @@
         }
       },
       "new": {
-        "score": -0.78,
-        "normalized": -0.138568,
+        "score": -0.63,
+        "normalized": -0.112,
         "signal": "减仓（部分维度缺失·参考）",
         "coverage": 0.786,
         "weight_effective_sum": 5.6,
@@ -718,7 +808,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.112,
-          "fxExternal": -0.167,
+          "fxExternal": -0.0,
           "sentimentA": null,
           "riskAppetite": -0.353,
           "resource": -0.25,
@@ -731,7 +821,17 @@
         "threshold_flip": false,
         "structure_flip": true
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6692,
+        "data_date": "2026-11-18",
+        "history_days": 242,
+        "max_used_date": "2026-11-18",
+        "ma_base": 6.730164,
+        "ratio_value": 0.990942,
+        "deviation_pct": -0.906,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-20",
@@ -754,8 +854,8 @@
         }
       },
       "new": {
-        "score": -0.85,
-        "normalized": -0.152432,
+        "score": -0.71,
+        "normalized": -0.126023,
         "signal": "减仓（部分维度缺失·参考）",
         "coverage": 0.786,
         "weight_effective_sum": 5.6,
@@ -767,7 +867,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.112,
-          "fxExternal": -0.161,
+          "fxExternal": 0.005,
           "sentimentA": null,
           "riskAppetite": -0.516,
           "resource": -0.25,
@@ -780,7 +880,17 @@
         "threshold_flip": false,
         "structure_flip": true
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6924,
+        "data_date": "2026-11-19",
+        "history_days": 243,
+        "max_used_date": "2026-11-19",
+        "ma_base": 6.729461,
+        "ratio_value": 0.994493,
+        "deviation_pct": -0.551,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-21",
@@ -803,8 +913,8 @@
         }
       },
       "new": {
-        "score": -0.52,
-        "normalized": -0.092936,
+        "score": -0.39,
+        "normalized": -0.069404,
         "signal": "持有",
         "coverage": 0.839,
         "weight_effective_sum": 5.6,
@@ -815,7 +925,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.112,
-          "fxExternal": -0.132,
+          "fxExternal": 0.026,
           "sentimentA": null,
           "riskAppetite": -0.516,
           "resource": -0.25,
@@ -828,7 +938,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6752,
+        "data_date": "2026-11-20",
+        "history_days": 244,
+        "max_used_date": "2026-11-20",
+        "ma_base": 6.728496,
+        "ratio_value": 0.992079,
+        "deviation_pct": -0.792,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-22",
@@ -851,8 +971,8 @@
         }
       },
       "new": {
-        "score": -0.52,
-        "normalized": -0.09234,
+        "score": -0.39,
+        "normalized": -0.068957,
         "signal": "持有",
         "coverage": 0.839,
         "weight_effective_sum": 5.6,
@@ -863,7 +983,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.112,
-          "fxExternal": -0.128,
+          "fxExternal": 0.029,
           "sentimentA": null,
           "riskAppetite": -0.516,
           "resource": -0.25,
@@ -876,7 +996,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6752,
+        "data_date": "2026-11-20",
+        "history_days": 244,
+        "max_used_date": "2026-11-20",
+        "ma_base": 6.728496,
+        "ratio_value": 0.992079,
+        "deviation_pct": -0.792,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-23",
@@ -899,8 +1029,8 @@
         }
       },
       "new": {
-        "score": -0.47,
-        "normalized": -0.083489,
+        "score": -0.38,
+        "normalized": -0.068,
         "signal": "持有",
         "coverage": 0.839,
         "weight_effective_sum": 5.6,
@@ -911,7 +1041,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": 0.018,
-          "fxExternal": -0.018,
+          "fxExternal": 0.086,
           "sentimentA": null,
           "riskAppetite": -0.677,
           "resource": -0.4,
@@ -924,7 +1054,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6752,
+        "data_date": "2026-11-20",
+        "history_days": 244,
+        "max_used_date": "2026-11-20",
+        "ma_base": 6.728496,
+        "ratio_value": 0.992079,
+        "deviation_pct": -0.792,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-24",
@@ -947,9 +1087,9 @@
         }
       },
       "new": {
-        "score": -0.62,
-        "normalized": -0.109979,
-        "signal": "减仓",
+        "score": -0.48,
+        "normalized": -0.086447,
+        "signal": "持有",
         "coverage": 0.839,
         "weight_effective_sum": 5.6,
         "grayed": [
@@ -959,7 +1099,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": 0.013,
-          "fxExternal": -0.134,
+          "fxExternal": 0.024,
           "sentimentA": null,
           "riskAppetite": -0.721,
           "resource": -0.333,
@@ -968,11 +1108,21 @@
       },
       "attribution": {
         "threshold_only_signal": "持有",
-        "structure_only_signal": "减仓",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6663,
+        "data_date": "2026-11-23",
+        "history_days": 245,
+        "max_used_date": "2026-11-23",
+        "ma_base": 6.727508,
+        "ratio_value": 0.990902,
+        "deviation_pct": -0.91,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-25",
@@ -995,8 +1145,8 @@
         }
       },
       "new": {
-        "score": -0.57,
-        "normalized": -0.102596,
+        "score": -0.44,
+        "normalized": -0.079362,
         "signal": "持有",
         "coverage": 0.839,
         "weight_effective_sum": 5.6,
@@ -1007,7 +1157,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": 0.015,
-          "fxExternal": -0.124,
+          "fxExternal": 0.032,
           "sentimentA": null,
           "riskAppetite": -0.712,
           "resource": -0.288,
@@ -1020,7 +1170,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6649,
+        "data_date": "2026-11-24",
+        "history_days": 246,
+        "max_used_date": "2026-11-24",
+        "ma_base": 6.726563,
+        "ratio_value": 0.990833,
+        "deviation_pct": -0.917,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-26",
@@ -1043,9 +1203,9 @@
         }
       },
       "new": {
-        "score": -0.62,
-        "normalized": -0.110511,
-        "signal": "减仓",
+        "score": -0.49,
+        "normalized": -0.087723,
+        "signal": "持有",
         "coverage": 0.839,
         "weight_effective_sum": 5.6,
         "grayed": [
@@ -1055,7 +1215,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": 0.014,
-          "fxExternal": -0.114,
+          "fxExternal": 0.039,
           "sentimentA": null,
           "riskAppetite": -0.777,
           "resource": -0.318,
@@ -1064,11 +1224,21 @@
       },
       "attribution": {
         "threshold_only_signal": "持有",
-        "structure_only_signal": "减仓",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
-      "snapshot_rules_hash": "88cb8f040f89"
+      "snapshot_rules_hash": "88cb8f040f89",
+      "usdcnh": {
+        "value": 6.6675,
+        "data_date": "2026-11-25",
+        "history_days": 247,
+        "max_used_date": "2026-11-25",
+        "ma_base": 6.725604,
+        "ratio_value": 0.991361,
+        "deviation_pct": -0.864,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-27",
@@ -1091,8 +1261,8 @@
         }
       },
       "new": {
-        "score": -0.6,
-        "normalized": -0.107106,
+        "score": -0.47,
+        "normalized": -0.084319,
         "signal": "持有",
         "coverage": 0.839,
         "weight_effective_sum": 5.6,
@@ -1103,7 +1273,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": 0.011,
-          "fxExternal": -0.11,
+          "fxExternal": 0.043,
           "sentimentA": null,
           "riskAppetite": -0.777,
           "resource": -0.333,
@@ -1116,7 +1286,17 @@
         "threshold_flip": false,
         "structure_flip": false
       },
-      "snapshot_rules_hash": "a306915b6fa9"
+      "snapshot_rules_hash": "a306915b6fa9",
+      "usdcnh": {
+        "value": 6.6613,
+        "data_date": "2026-11-26",
+        "history_days": 248,
+        "max_used_date": "2026-11-26",
+        "ma_base": 6.724754,
+        "ratio_value": 0.990564,
+        "deviation_pct": -0.944,
+        "score": 0.5
+      }
     },
     {
       "date": "2026-11-28",
@@ -1137,9 +1317,9 @@
         }
       },
       "new": {
-        "score": -0.68,
-        "normalized": -0.12175,
-        "signal": "减仓",
+        "score": -0.57,
+        "normalized": -0.102,
+        "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
         "grayed": [],
@@ -1147,7 +1327,7 @@
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": 0.011,
-          "fxExternal": -0.132,
+          "fxExternal": 0.026,
           "sentimentA": -0.302,
           "riskAppetite": -0.505,
           "resource": -0.333,
@@ -1156,11 +1336,21 @@
       },
       "attribution": {
         "threshold_only_signal": "持有",
-        "structure_only_signal": "减仓",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
-      "snapshot_rules_hash": "269592dd0bb6"
+      "snapshot_rules_hash": "269592dd0bb6",
+      "usdcnh": {
+        "value": 6.6551,
+        "data_date": "2026-11-27",
+        "history_days": 249,
+        "max_used_date": "2026-11-27",
+        "ma_base": 6.723853,
+        "ratio_value": 0.989775,
+        "deviation_pct": -1.023,
+        "score": 0.5
+      }
     }
   ],
   "flips": [
@@ -1185,7 +1375,7 @@
       "old_signal": "持有",
       "new_signal": "减仓（部分维度缺失·参考）",
       "old_norm": -0.073833,
-      "new_norm": -0.138568,
+      "new_norm": -0.112,
       "cause": "结构/权重",
       "old_coverage": 0.818,
       "new_coverage": 0.786,
@@ -1199,7 +1389,7 @@
       "old_signal": "持有",
       "new_signal": "减仓（部分维度缺失·参考）",
       "old_norm": -0.064889,
-      "new_norm": -0.152432,
+      "new_norm": -0.126023,
       "cause": "结构/权重",
       "old_coverage": 0.818,
       "new_coverage": 0.786,
@@ -1207,44 +1397,12 @@
         "sentimentA",
         "techGreen"
       ]
-    },
-    {
-      "date": "2026-11-24",
-      "old_signal": "持有",
-      "new_signal": "减仓",
-      "old_norm": -0.046222,
-      "new_norm": -0.109979,
-      "cause": "结构/权重",
-      "old_coverage": 0.818,
-      "new_coverage": 0.839,
-      "new_grayed": [
-        "sentimentA"
-      ]
-    },
-    {
-      "date": "2026-11-26",
-      "old_signal": "持有",
-      "new_signal": "减仓",
-      "old_norm": -0.043111,
-      "new_norm": -0.110511,
-      "cause": "结构/权重",
-      "old_coverage": 0.818,
-      "new_coverage": 0.839,
-      "new_grayed": [
-        "sentimentA"
-      ]
-    },
-    {
-      "date": "2026-11-28",
-      "old_signal": "持有",
-      "new_signal": "减仓",
-      "old_norm": -0.093636,
-      "new_norm": -0.12175,
-      "cause": "结构/权重",
-      "old_coverage": 1.0,
-      "new_coverage": 1.0,
-      "new_grayed": []
     }
   ],
-  "flip_count": 6
+  "flip_count": 3,
+  "usdcnh_no_lookahead": {
+    "violations": [],
+    "passed": true,
+    "rule": "每个快照日只允许使用 date < 快照日 的 usdcnh 观测（MA120 含当日=该日之前最近收盘）"
+  }
 }

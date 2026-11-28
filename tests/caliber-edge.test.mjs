@@ -454,15 +454,21 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
 
   // 2026-11-24 龙五批准重定基线：WTI 主源改 OilPrice.com 现货后，oilPrice 也回到 realtime（无日期），
   // realtime 名额 2 → 3（oilPrice/naturalGas/lmeIndex）。
-  // P1-8DIM（2026-11-28）：usdcnh 主源（东财离岸现货）同样不提供交易日期 → 名额 3 → 4。
+  // A2（2026-11-28）：usdcnh 改东财**日线**（forex_hist_em，带真实交易日）→ 退出 realtime，名额 4 → 3。
   // 名额是当日事实，但「每个 realtime 项必须 days=null」是契约（无日期项永不 fresh）。
   const rt = all.filter(([, v]) => resolveFreshnessState(v) === 'realtime')
   check(
-    'realtime 4 个 = {oilPrice, naturalGas, lmeIndex, usdcnh}',
-    rt.map(([k]) => k).sort().join(',') === 'lmeIndex,naturalGas,oilPrice,usdcnh',
+    'realtime 3 个 = {oilPrice, naturalGas, lmeIndex}',
+    rt.map(([k]) => k).sort().join(',') === 'lmeIndex,naturalGas,oilPrice',
     rt.map(([k]) => k).join(',')
   )
-  check('每个 realtime 项 days=null（强断言，不是只看个数）', rt.length === 4 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
+  check('每个 realtime 项 days=null（强断言，不是只看个数）', rt.length === 3 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
+  // usdcnh 现在是带日期的日线：必须按日期判新鲜（🟢 fresh / 1 天前收盘），不得再挂 realtime
+  check(
+    'usdcnh 日线带日期 → 不是 realtime',
+    resolveFreshnessState(real.indicators.usdcnh) !== 'realtime' && daysOf(real.indicators.usdcnh) !== null,
+    JSON.stringify({ state: resolveFreshnessState(real.indicators.usdcnh), days: daysOf(real.indicators.usdcnh) })
+  )
 
   // ── 超期字段：期望值由 max(0, days_stale − 红线) 推导，不写死 13
   const usGdp = real.indicators.usGdp

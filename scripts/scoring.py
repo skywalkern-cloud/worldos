@@ -349,6 +349,74 @@ def score_bidirectional(value: float, L_low: float, T_low: float, T_high: float,
         return -1.0
 
 
+def ratio_ma_steps_score(ratio: float, steps: tuple, values: tuple) -> float:
+    """相对 120 日均值的 5 档阶跃（A2，usdcnh）。纯函数，不插值。
+
+    steps=(x1,x2,x3,x4), values=(v0..v4)：
+      ratio ≤ x1 → v0；x1 < ratio ≤ x2 → v1；…；ratio > x4 → v4
+    边界一律「≤ 上界归本档」——与工单文字的区间语义逐字对应，避免 0.985 到底
+    是 +1.0 还是 +0.5 这种歧义。
+
+    方向：ratio 越高（USDCNH 高于 120 日均值）= 人民币越弱 = 越差，故 values 递减。
+    """
+    x = float(ratio)
+    for i, upper in enumerate(steps):
+        if x <= upper:
+            return values[i]
+    return values[-1]
+
+
+def score_by_ratio_ma(key: str, raw_value, history: list) -> dict:
+    """按「最新值 / MA(window)」的 5 档阶跃给一项打分（A2，usdcnh）。
+
+    history: [{'date','value'}]，**严格早于 raw_value 所属交易日**，升序，raw 值。
+    MA 窗口**含当日**：base = mean(trailing window 个收盘，末尾是当日值)。
+      即 history 至少要有 window-1 条，加上当日才凑满 window 个点。
+      为什么含当日：上游锚点 MA120≈6.7239 / ratio≈0.9898 即按此定义复算一致；
+      且回算时「当日」= 该日之前最近的收盘，仍严格无未来函数。
+    历史不足 window 个点时 warmup=true、score=null —— 不硬填、不插值、不外推。
+    """
+    cfg = im.RATIO_MA_STEPS_CONFIG.get(key)
+    if not cfg:
+        raise ValueError(f'{key} 未配置 ratio_ma_steps 打分')
+    window = cfg['window']
+
+    rows = [(r['date'], float(r['value'])) for r in (history or [])
+            if r.get('date') and r.get('value') is not None]
+    rows.sort(key=lambda x: x[0])
+    history_days = len(rows)          # 不含当日的历史观测数
+    today = float(raw_value) if raw_value is not None else None
+    total_points = history_days + (1 if today is not None else 0)
+
+    warmup = total_points < window or today is None
+    ma_base = None
+    ratio = None
+    score = None
+    saturated = False
+
+    if not warmup:
+        window_values = [v for _d, v in rows[-(window - 1):]] + [today]
+        ma_base = sum(window_values) / len(window_values)
+        if ma_base:
+            ratio = today / ma_base
+            score = q(ratio_ma_steps_score(ratio, cfg['steps'], cfg['values']), 3)
+            saturated = score in (cfg['values'][0], cfg['values'][-1])
+
+    return {
+        'score': score,
+        'window_effective': window,
+        'history_days': history_days,
+        'total_points': total_points,
+        'warmup': warmup,
+        'saturated': saturated,
+        'scoring_method': 'ratio_ma_steps',
+        'raw_value': raw_value,
+        'ratio_value': round(ratio, 6) if ratio is not None else None,
+        'ma_base': round(ma_base, 6) if ma_base is not None else None,
+        'deviation_pct': round((ratio - 1) * 100, 3) if ratio is not None else None,
+    }
+
+
 def score_breakpoint_steps(value: float, steps: tuple, values: tuple) -> float:
     """四段阶跃（P1-8DIM，usdcnh）：纯函数，阶跃不插值。
 
@@ -725,12 +793,16 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         freq = info.get('frequency', 'monthly')
         data_date = info.get('dataDate')
 
-        # V1b-1：pct_rank / ratio_band / breakpoint_steps 打分（实现在本模块）
+        # V1b-1：pct_rank / ratio_band / breakpoint_steps / ratio_ma_steps 打分（实现在本模块）
         pct_meta = None
         step_meta = None
-        if key in im.BREAKPOINT_STEPS_CONFIG:
-            # P1-8DIM：usdcnh 四段阶跃（不要求历史回填 → 当日可入维度）
-            # 打分本身只走 calc_score（唯一实现），这里只额外挂审计字段。
+        ratio_ma_meta = None
+        if key in im.RATIO_MA_STEPS_CONFIG:
+            # A2：usdcnh = 最新收盘 / MA120 的 5 档阶跃。需要历史序列（fetch 已回填并挂到 history）
+            ratio_ma_meta = score_by_ratio_ma(key, value, info.get('history') or [])
+            score = ratio_ma_meta['score']
+        elif key in im.BREAKPOINT_STEPS_CONFIG:
+            # 通用四段阶跃（A2 后 usdcnh 已改 ratio_ma_steps，本分支目前无指标命中，保留供复用）
             step_meta = im.BREAKPOINT_STEPS_CONFIG[key]
             score = calc_score(key, value)
         elif key in im.RATIO_BAND_CONFIG:
@@ -779,6 +851,16 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         # 口径降级（如 usdcnh 回退在岸价）：fetch 层给 suffix，这里拼到 caliberNote 上，
         # 保证「用了哪个口径」在页面上可见（工单 §2 要求）。
         caliber_text = caliber_of(key) + (info.get('caliberNoteSuffix') or '')
+        # A2：ratio_ma_steps 必须把「vs 120 日均值 ±x.x%」直接写进 caliberNote，
+        # 否则用户只看到 6.6551，猜不到分数从哪来。
+        if ratio_ma_meta:
+            if ratio_ma_meta['ratio_value'] is not None:
+                caliber_text += (f"；当前 {value} vs {ratio_ma_meta['window_effective']} 日均值 "
+                                 f"{ratio_ma_meta['ma_base']:.4f} = {ratio_ma_meta['deviation_pct']:+.2f}%"
+                                 f"（ratio {ratio_ma_meta['ratio_value']:.4f}→{ratio_ma_meta['score']:+.1f}）")
+            else:
+                caliber_text += (f"；历史 {ratio_ma_meta['history_days']} 日，"
+                                 f"不足 {ratio_ma_meta['window_effective']} 日均值窗口，暂不出分")
 
         # 是否进评分：参考项 / 无评分 / 过期(α=0) 三种都不进
         if ref_only:
@@ -861,6 +943,21 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
                 'scoring_method': 'breakpoint_steps',
                 'breakpoint_steps': list(step_meta['steps']),
                 'breakpoint_values': list(step_meta['values']),
+            })
+        if ratio_ma_meta:
+            indicators[key].update({
+                'scoring_method': 'ratio_ma_steps',
+                'window': ratio_ma_meta['window_effective'],
+                'history_days': ratio_ma_meta['history_days'],
+                'total_points': ratio_ma_meta['total_points'],
+                'warmup': ratio_ma_meta['warmup'],
+                'saturated': ratio_ma_meta['saturated'],
+                'raw_value': ratio_ma_meta['raw_value'],
+                'ratio_value': ratio_ma_meta['ratio_value'],
+                'ma_base': ratio_ma_meta['ma_base'],
+                'deviation_pct': ratio_ma_meta['deviation_pct'],
+                'ratio_steps': list(im.RATIO_MA_STEPS_CONFIG[key]['steps']),
+                'ratio_values': list(im.RATIO_MA_STEPS_CONFIG[key]['values']),
             })
         if pct_meta:
             indicators[key].update({

@@ -35,6 +35,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import indicator_meta as im  # noqa: E402
 import scoring  # noqa: E402  (仅 S4-U*/S5-U* 白盒夹具)
+import series_store  # noqa: E402  (S12：回算产物与日线序列互证)
 
 RESULTS = []
 FAILED = []
@@ -194,8 +195,8 @@ EXPECTED_SOURCE = {
     'marginBalance': ('东方财富-沪深交易所', '🇨🇳', 'daily'),
     'southboundNet': ('东方财富-港交所', '🇨🇳', 'daily'),
     'hstechMomentum': ('东方财富-恒生指数公司', '🇨🇳', 'daily'),
-    # P1-8DIM（2026-11-28）：USDCNH 新增（离岸优先，回退在岸中间价）
-    'usdcnh': ('akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）', '🌐', 'daily'),
+    # P1-8DIM（2026-11-28）：USDCNH 新增；A2 改东财**日线**源（带交易日）
+    'usdcnh': ('akshare-东财离岸人民币日线（forex_hist_em USDCNH）', '🌐', 'daily'),
 }
 
 SIGNALS = {'red', 'yellow', 'gray', 'lightgreen', 'green', 'reference'}
@@ -1463,14 +1464,160 @@ def test_s10_8dim(doc, label):
               or doc['indicators']['usdcnh']['score'] is None,
               'usdcnh 无值时不得出分')
     else:
-        # 有值时：分数必须能由四段阶跃复算（防止硬编码/手填）
-        cfg = im.BREAKPOINT_STEPS_CONFIG['usdcnh']
-        want = scoring.score_breakpoint_steps(cnh_val, cfg['steps'], cfg['values'])
-        got = (doc['indicators'].get('usdcnh') or {}).get('score')
-        check(f'S10-04[{label}]', got is not None and abs(got - want) < 1e-9,
-              f'usdcnh={cnh_val} score={got} 期望 {want}')
+        # A2（2026-11-28）：usdcnh 已改 ratio_ma_steps；分数必须能用
+        # 「历史 + 当日」独立重算 MA120/ratio 后复现，不得硬编码/手填。
+        ind_cnh = doc['indicators'].get('usdcnh') or {}
+        meta_cnh = im.RATIO_MA_STEPS_CONFIG['usdcnh']
+        want_meta = scoring.score_by_ratio_ma(
+            'usdcnh', cnh_val, raw_cnh.get('history') or [])
+        got = ind_cnh.get('score')
+        check(f'S10-04[{label}]',
+              got == want_meta['score']
+              and ind_cnh.get('ma_base') is not None
+              and ind_cnh.get('ratio_value') is not None,
+              f'usdcnh={cnh_val} score={got} 期望 {want_meta["score"]} '
+              f'(MA120={want_meta["ma_base"]} ratio={want_meta["ratio_value"]})')
+        # 边界语义：分数必须与 ratio 5 档表逐档一致（防手填/旧水位复活）
+        want = scoring.ratio_ma_steps_score(
+            ind_cnh['ratio_value'], meta_cnh['steps'], meta_cnh['values'])
+        check(f'S10-04b[{label}]', got == want,
+              f'ratio={ind_cnh.get("ratio_value")} → {want}, got {got}')
+        # 口径可读：「vs 120 日均值 ±x.x%」必须出现在 caliberNote
+        note = ind_cnh.get('caliberNote') or ''
+        check(f'S10-04c[{label}]',
+              '120 日均值' in note and f"{ind_cnh.get('deviation_pct'):+.2f}%" in note,
+              f'caliberNote 缺均值偏差: {note}')
         check(f'S10-05[{label}]', fx['valid_count'] >= 1 and fx['score'] is not None,
               f"fxExternal valid={fx['valid_count']} score={fx['score']}")
+
+
+# ═══════════════════════════════════════════
+# S11：usdcnh ratio_ma_steps 边界与 warmup（A2，2026-11-28）
+# ═══════════════════════════════════════════
+
+def test_s11_usdcnh_ratio():
+    """A2 强制断言（不依赖任何产物）：
+
+    ① ratio 5 档逐档命中：0.98/0.99/1.0/1.01/1.02 → +1.0/+0.5/0/−0.5/−1.0
+    ② 边界归属：=0.985→+1.0、=0.995→+0.5、=1.005→0、=1.015→−0.5、>…1.015→−1.0
+    ③ MA120 历史不足 120 日 → score=null（不硬填/不插值）
+    ④ 即使 usdcnh warmup，fxExternal 仍能出分（3/4 有效 ≥ 2）
+    """
+    cfg = im.RATIO_MA_STEPS_CONFIG.get('usdcnh') or {}
+    check('S11-00[usdcnh]',
+          bool(cfg) and cfg['window'] == 120
+          and cfg['steps'] == (0.985, 0.995, 1.005, 1.015)
+          and cfg['values'] == (1.0, 0.5, 0.0, -0.5, -1.0),
+          f'ratio_ma_steps 配置异常: {cfg}')
+
+    probes = [(0.98, 1.0), (0.99, 0.5), (1.0, 0.0), (1.01, -0.5), (1.02, -1.0)]
+    bad = []
+    for r, want in probes:
+        got = scoring.ratio_ma_steps_score(r, cfg['steps'], cfg['values'])
+        if got != want:
+            bad.append(f'{r}→{got}≠{want}')
+    check('S11-01[ratio 5 档探针]', not bad, '; '.join(bad))
+
+    edges = [(0.9849, 1.0), (0.985, 1.0), (0.9851, 0.5),
+             (0.995, 0.5), (0.9951, 0.0),
+             (1.005, 0.0), (1.0051, -0.5),
+             (1.015, -0.5), (1.0151, -1.0)]
+    bad = []
+    for r, want in edges:
+        got = scoring.ratio_ma_steps_score(r, cfg['steps'], cfg['values'])
+        if got != want:
+            bad.append(f'{r}→{got}≠{want}')
+    check('S11-02[边界归属 ≤上界]', not bad, '; '.join(bad))
+
+    # 方向：ratio 越高分越低（不得反向）
+    seq = [scoring.ratio_ma_steps_score(r, cfg['steps'], cfg['values'])
+           for r in (0.97, 0.99, 1.0, 1.01, 1.03)]
+    check('S11-03[方向: 人民币越弱分越低]',
+          all(a >= b for a, b in zip(seq, seq[1:])), f'{seq}')
+
+    # warmup：118/119 条历史 + 当日 = 119/120 个点（MA120 含当日）
+    from datetime import date as _date, timedelta as _td
+    end = _date.today()
+    def _hist(n):
+        return [{'date': (end - _td(days=n - i)).isoformat(), 'value': 6.7}
+                for i in range(n)]
+    short = scoring.score_by_ratio_ma('usdcnh', 6.65, _hist(118))
+    exact = scoring.score_by_ratio_ma('usdcnh', 6.65, _hist(119))
+    check('S11-04[<120 点 warmup=null]',
+          short['warmup'] is True and short['score'] is None
+          and short['ma_base'] is None and short['ratio_value'] is None,
+          f"{short}")
+    check('S11-05[=120 点即可出分]',
+          exact['warmup'] is False and exact['score'] is not None
+          and exact['total_points'] == 120,
+          f"{exact}")
+
+    # 不破维度：usdcnh warmup 时 fxExternal 3/4 有效仍出分
+    raw = {
+        'usdcnh': {'value': 6.65, 'unit': '', 'frequency': 'daily',
+                   'source': 'test', 'dataDate': end.isoformat(),
+                   'realtime': False, 'used_fallback': False,
+                   'history': _hist(50)},
+        'dollarIndex': {'value': 100.0, 'unit': '', 'frequency': 'daily',
+                        'source': 'test', 'dataDate': end.isoformat()},
+        'creditSpread': {'value': 200.0, 'unit': 'bp', 'frequency': 'daily',
+                         'source': 'test', 'dataDate': end.isoformat()},
+        'usBond10Y': {'value': 4.0, 'unit': '%', 'frequency': 'daily',
+                      'source': 'test', 'dataDate': end.isoformat()},
+    }
+    ind, meta2 = scoring.build_indicators_and_meta(raw)
+    fx = meta2['dimensions']['fxExternal']
+    check('S11-06[warmup 不破维度]',
+          ind['usdcnh']['score'] is None
+          and fx['valid_count'] == 3 and fx['required_count'] == 2
+          and fx['insufficient_data'] is False and fx['score'] is not None,
+          f"usdcnh={ind['usdcnh']['score']} fx={fx}")
+
+
+# ═══════════════════════════════════════════
+# S12：回算产物无未来函数（A2）
+# ═══════════════════════════════════════════
+
+def test_s12_replay_no_lookahead():
+    """回算的 usdcnh 必须只用「当日之前」的观测算 MA120。
+
+    双重校验：
+      ① 产物自述 max_used_date < 行日期；
+      ② 用 series_store 独立重算 ma_base/ratio/score，必须与产物逐项一致。
+    """
+    p = WS / 'data' / 'history' / 'recompute-8dim-2026-11-28.json'
+    if not p.exists():
+        check('S12-00[skip]', True, '无回算产物，跳过（不视为通过）', warn=True)
+        return
+    doc = json.loads(p.read_text())
+    series = series_store.load('usdcnh')
+    bad, recompute_bad = [], []
+    for row in doc.get('rows') or []:
+        ds = row['date']
+        u = row.get('usdcnh') or {}
+        if u.get('value') is None:
+            continue
+        mud = u.get('max_used_date')
+        if not mud or mud >= ds:
+            bad.append(f'{ds}: max_used={mud} ≥ 当日')
+            continue
+        ds_list = sorted(d for d in series if d < ds)
+        if not ds_list:
+            recompute_bad.append(f'{ds}: 序列无可用点')
+            continue
+        last = ds_list[-1]
+        hist = [{'date': d, 'value': series[d]} for d in ds_list[:-1]]
+        want = scoring.score_by_ratio_ma('usdcnh', series[last], hist)
+        for f in ('ma_base', 'ratio_value', 'score'):
+            if u.get(f) != want[f]:
+                recompute_bad.append(f'{ds}.{f}: {u.get(f)} != {want[f]}')
+        if last != u.get('data_date'):
+            recompute_bad.append(f'{ds}.data_date: {u.get("data_date")} != {last}')
+    check('S12-01[无未来函数]', not bad, '; '.join(bad[:6]))
+    check('S12-02[MA120 可由序列复算]', not recompute_bad,
+          '; '.join(recompute_bad[:6]))
+    lo = doc.get('usdcnh_no_lookahead') or {}
+    check('S12-03[产物声明]', lo.get('passed') is True, f'{lo}')
 
 
 # ═══════════════════════════════════════════
@@ -1628,6 +1775,13 @@ def main():
     ap.add_argument('--json-out')
     ap.add_argument('--no-units', action='store_true')
     args = ap.parse_args()
+
+    # A2：usdcnh ratio_ma_steps 契约（不依赖产物）+ 回算无未来函数
+    try:
+        test_s11_usdcnh_ratio()
+        test_s12_replay_no_lookahead()
+    except Exception as e:  # noqa: BLE001
+        check('S11/S12[crash]', False, f'{type(e).__name__}: {e}')
 
     try:
         before = hashlib.sha256(Path(args.json).read_bytes()).hexdigest()
