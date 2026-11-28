@@ -181,6 +181,8 @@ EXPECTED_SOURCE = {
     'dr007': ('全国银行间同业拆借中心', '🇨🇳', 'daily'),
     'm2': ('东方财富-中国人民银行', '🇨🇳', 'monthly'),
     'creditSpread': ('akshare-中美国债利差', '🌐', 'daily'),
+    # A4：中债10Y（liquidity 第 4 项），与中美利差同一次 akshare 请求
+    'chinaBond10Y': ('akshare-中美债券（bond_zh_us_rate）', '🇨🇳', 'daily'),
     'epu': ('policyuncertainty.com-BakerBloomDavis', '🌐', 'monthly'),
     'carbonPrice': ('北京碳市场', '🇨🇳', 'daily'),
     'electricity': ('国家能源局', '🇨🇳', 'monthly'),
@@ -661,8 +663,10 @@ def test_s5(doc, label):
         # V1a：参考项数 = 计分列表里的参考项 + 单独的 reference_indicators（只展示不打分）
         refs = [k for k in list(d['indicators']) + list(d.get('reference_indicators', []))
                 if im.is_reference_only(k)]
-        if x['required_count'] != expected_required(len(active)):
-            bad.append(f'{d["id"]}.required {x["required_count"]} != {expected_required(len(active))}')
+        # A4：required 可由维度显式覆盖（fxExternal 3 项但允许 usdcnh 降级 → 2），
+        # 单一真源在 im.required_valid_count，不在测试里复写一份规则。
+        if x['required_count'] != im.required_valid_count(d):
+            bad.append(f'{d["id"]}.required {x["required_count"]} != {im.required_valid_count(d)}')
         if x['active_count'] != len(active):
             bad.append(f'{d["id"]}.active {x["active_count"]} != {len(active)}')
         if x['reference_only_count'] != len(refs):
@@ -1104,11 +1108,13 @@ def test_s8(fix):
 
     branch('chinaGdp', 'expired', 'expired_alpha0')
     for k in ('usBond10Y', 'dollarIndex', 'lpr',
-              'dr007', 'm2', 'creditSpread', 'renewEnergyInvest', 'evPenetration'):
+              'dr007', 'm2', 'chinaBond10Y', 'renewEnergyInvest', 'evPenetration'):
         branch(k, 'expired', 'expired_alpha0')
     # P1-8DIM：美债 2Y/5Y 已降为 riskAppetite 的只展示参考项；即使 α=0 也先按参考项剔除
     branch('usBond2Y', 'expired', 'reference_only')
     branch('usBond5Y', 'expired', 'reference_only')
+    # A4：creditSpread 降为 fxExternal 参考项（只展示、不计分）
+    branch('creditSpread', 'expired', 'reference_only')
     branch('aiGrowth', 'fresh', 'reference_only')
     branch('robotInstall', 'fresh', 'reference_only')
     branch('newIndicatorSample', 'fresh', 'no_score')
@@ -1552,7 +1558,7 @@ def test_s11_usdcnh_ratio():
           and exact['total_points'] == 120,
           f"{exact}")
 
-    # 不破维度：usdcnh warmup 时 fxExternal 3/4 有效仍出分
+    # 不破维度：A4 后 fxExternal 计分 3 项，usdcnh warmup 时 2/3 有效仍出分
     raw = {
         'usdcnh': {'value': 6.65, 'unit': '', 'frequency': 'daily',
                    'source': 'test', 'dataDate': end.isoformat(),
@@ -1569,7 +1575,7 @@ def test_s11_usdcnh_ratio():
     fx = meta2['dimensions']['fxExternal']
     check('S11-06[warmup 不破维度]',
           ind['usdcnh']['score'] is None
-          and fx['valid_count'] == 3 and fx['required_count'] == 2
+          and fx['valid_count'] == 2 and fx['required_count'] == 2
           and fx['insufficient_data'] is False and fx['score'] is not None,
           f"usdcnh={ind['usdcnh']['score']} fx={fx}")
 
@@ -1618,6 +1624,135 @@ def test_s12_replay_no_lookahead():
           '; '.join(recompute_bad[:6]))
     lo = doc.get('usdcnh_no_lookahead') or {}
     check('S12-03[产物声明]', lo.get('passed') is True, f'{lo}')
+
+
+# ══════════════════════════════════════════
+# S14：饱和披露（A4 / 龙六 P0-1）
+# ══════════════════════════════════════════
+
+def test_s14_saturation():
+    """撞 ±1.0 的指标必须 saturated=true，并接到维度级计数。"""
+    from datetime import date as _date
+    today = _date.today().isoformat()
+    raw = {
+        'ppi': {'value': 5.7, 'unit': '%', 'frequency': 'monthly',
+                'source': 'test', 'dataDate': today},
+        'carbonPrice': {'value': 97.0, 'unit': '¥/吨', 'frequency': 'daily',
+                        'source': 'test', 'dataDate': today},
+        'shanghaiCopper': {'value': 92550.0, 'unit': '¥/吨', 'frequency': 'daily',
+                           'source': 'test', 'dataDate': today},
+        'evPenetration': {'value': 67.4, 'unit': '%', 'frequency': 'monthly',
+                          'source': 'test', 'dataDate': today},
+        'cpi': {'value': 2.0, 'unit': '%', 'frequency': 'monthly',
+                'source': 'test', 'dataDate': today},
+    }
+    ind, meta = scoring.build_indicators_and_meta(raw)
+    sat = {k: (ind[k]['score'], ind[k]['saturated']) for k in
+           ('ppi', 'carbonPrice', 'shanghaiCopper', 'evPenetration')}
+    check('S14-01[±1.0 ⇒ saturated=true]',
+          all(s == 1.0 or s == -1.0 for s, _ in sat.values())
+          and all(f is True for _, f in sat.values()),
+          f'{sat}')
+    check('S14-02[未截断项 saturated=false]',
+          ind['cpi']['saturated'] is False and ind['cpi']['score'] != 1.0,
+          f"cpi score={ind['cpi']['score']} sat={ind['cpi']['saturated']}")
+    check('S14-03[维度级计数]',
+          meta['dimensions']['inflation']['saturated_count'] == 1
+          and 'ppi' in meta['dimensions']['inflation']['saturated_indicators']
+          and meta['dimensions']['techGreen']['saturated_count'] == 2,
+          f"inflation={meta['dimensions']['inflation']['saturated_count']} "
+          f"techGreen={meta['dimensions']['techGreen']['saturated_count']}")
+    check('S14-04[IAS 饱和总表]',
+          set(meta['ias']['saturated_inputs'])
+          >= {'ppi', 'carbonPrice', 'shanghaiCopper', 'evPenetration'},
+          f"{meta['ias']['saturated_inputs']}")
+
+
+# ══════════════════════════════════════════
+# S15：A4 拆汇率双计（creditSpread 只展示 / chinaBond10Y 进 liquidity）
+# ══════════════════════════════════════════
+
+def test_s15_fx_deconflation():
+    from datetime import date as _date
+    today = _date.today().isoformat()
+
+    # 元数据归属
+    liq = next(d for d in im.DIMENSIONS if d['id'] == 'liquidity')
+    fx = next(d for d in im.DIMENSIONS if d['id'] == 'fxExternal')
+    check('S15-01[chinaBond10Y 进 liquidity]',
+          'chinaBond10Y' in liq['indicators']
+          and im.INDICATORS['chinaBond10Y']['caliberNote'],
+          f"{liq['indicators']}")
+    check('S15-02[liquidity 4 项、最小有效 2]',
+          len(liq['indicators']) == 4 and im.required_valid_count(liq) == 2,
+          f"n={len(liq['indicators'])} req={im.required_valid_count(liq)}")
+    check('S15-03[creditSpread 转参考项]',
+          'creditSpread' not in fx['indicators']
+          and 'creditSpread' in fx.get('reference_indicators', [])
+          and im.is_reference_only('creditSpread'),
+          f"fx.indicators={fx['indicators']} ref={fx.get('reference_indicators')}")
+    check('S15-04[usBond10Y 仍在打分]',
+          'usBond10Y' in fx['indicators'] and not im.is_reference_only('usBond10Y'),
+          f"{fx['indicators']}")
+
+    def item(v, unit='', freq='daily'):
+        return {'value': v, 'unit': unit, 'frequency': freq,
+                'source': 'test', 'dataDate': today}
+    raw = {
+        'lpr': item(3.0, '%', 'monthly'), 'dr007': item(1.6, '%'), 'm2': item(8.9, '%', 'monthly'),
+        'chinaBond10Y': item(1.60, '%'),
+        'usdcnh': {'value': 6.65, 'unit': '', 'frequency': 'daily', 'source': 'test',
+                   'dataDate': today, 'history': []},
+        'dollarIndex': item(100.0), 'usBond10Y': item(4.94, '%'),
+        'creditSpread': item(334, 'bp'),
+    }
+    ind, meta = scoring.build_indicators_and_meta(raw)
+    check('S15-05[中债10Y 打分方向]',
+          ind['chinaBond10Y']['score'] == 0.9,
+          f"score={ind['chinaBond10Y']['score']}")
+    check('S15-06[creditSpread 不计分]',
+          ind['creditSpread']['reference_only'] is True
+          and ind['creditSpread']['excluded_from_scoring'] is True
+          and meta['dimensions']['fxExternal']['score'] is not None,
+          f"ref={ind['creditSpread']['reference_only']} "
+          f"excl={ind['creditSpread']['excluded_from_scoring']}")
+    # fx 的维度均分必须只由 3 个计分项构成（不含 creditSpread）
+    fx_dim = meta['dimensions']['fxExternal']
+    check('S15-07[fx 均分不含利差]',
+          fx_dim['active_count'] == 3 and fx_dim['reference_only_count'] == 1
+          and fx_dim['valid_count'] <= 3,
+          f"active={fx_dim['active_count']} ref={fx_dim['reference_only_count']} "
+          f"valid={fx_dim['valid_count']}")
+
+
+# ══════════════════════════════════════════
+# S16：IAS 边界余量 / 脆弱输入 / 置信度（A4 / 龙六 P0-3）
+# ══════════════════════════════════════════
+
+def test_s16_boundary_disclosure(doc):
+    ias = doc['meta']['ias']
+    for f in ('boundary_margin', 'boundary_threshold', 'boundary_next_signal',
+              'fragile_inputs', 'fragile_details', 'degraded_inputs', 'confidence'):
+        check(f'S16-00[{f} 存在]', f in ias, f'缺字段 {f}')
+    margin = ias.get('boundary_margin')
+    norm = ias.get('normalized')
+    thr = ias.get('boundary_threshold')
+    ok = (isinstance(margin, (int, float)) and isinstance(norm, (int, float))
+          and isinstance(thr, (int, float))
+          and abs(margin - round(norm - thr, 6)) < 1e-9
+          and thr in [t for t, _s, _p, _i in im.IAS_THRESHOLDS])
+    check('S16-01[余量 = normalized − 最近阈值]', ok,
+          f'norm={norm} thr={thr} margin={margin}')
+    check('S16-02[confidence 枚举]',
+          ias.get('confidence') in ('high', 'medium', 'low'),
+          f"{ias.get('confidence')}")
+    dims = {d['id'] for d in im.DIMENSIONS}
+    check('S16-03[fragile 子集且按影响降序]',
+          set(ias.get('fragile_inputs') or []) <= dims
+          and all(a['impact'] >= b['impact']
+                  for a, b in zip(ias.get('fragile_details') or [],
+                                  (ias.get('fragile_details') or [])[1:])),
+          f"{ias.get('fragile_inputs')}")
 
 
 # ══════════════════════════════════════════
@@ -1744,20 +1879,51 @@ def test_s13_usdcnh_degraded_no_score():
 
     d_fx = d_meta['dimensions']['fxExternal']
     n_fx = n_meta['dimensions']['fxExternal']
-    check('S13-06[降级不破维度 3/4 出分]',
-          d_fx['valid_count'] == 3 and d_fx['required_count'] == 2
+    # A4 后 fxExternal 计分项 = usdcnh/dollarIndex/usBond10Y（creditSpread 仅展示），
+    # required_valid 显式降为 2，保证 usdcnh 降级时仍按 2/3 出分（D2 不被降级破掉）。
+    check('S13-06[降级不破维度 2/3 出分]',
+          d_fx['valid_count'] == 2 and d_fx['required_count'] == 2
           and d_fx['insufficient_data'] is False and d_fx['score'] is not None,
           f'fx={d_fx}')
     check('S13-07[正常态对照：同值仍出分]',
           n_cnh['score'] is not None and n_cnh.get('ratio_value') is not None
-          and n_fx['valid_count'] == 4 and n_fx['score'] is not None
+          and n_fx['valid_count'] == 3 and n_fx['score'] is not None
           and n_meta['ias']['score'] is not None and d_meta['ias']['score'] is not None,
           f"normal: usdcnh={n_cnh['score']} fx={n_fx['score']} ias={n_meta['ias']['score']}; "
           f"degraded: usdcnh={d_cnh['score']} fx={d_fx['score']} ias={d_meta['ias']['score']}")
-    # 差异只能来自 usdcnh：另外 3 项分数必须逐个持平（降级不得波及他项）
-    shared_bad = [k for k in ('dollarIndex', 'creditSpread', 'usBond10Y')
+    # 差异只能来自 usdcnh：另外 2 个计分项分数必须逐个持平（降级不得波及他项）
+    shared_bad = [k for k in ('dollarIndex', 'usBond10Y')
                   if n_ind[k]['score'] != d_ind[k]['score']]
     check('S13-08[降级不波及他项]', not shared_bad, f'{shared_bad}')
+
+    # A4 P0：降级值不得写回历史序列（D7 只拦了打分，没拦住喂序列）
+    import tempfile
+    from pathlib import Path as _Path
+    import series_store as _ss
+    old_dir = _ss.SERIES_DIR
+    with tempfile.TemporaryDirectory() as td:
+        _ss.SERIES_DIR = _Path(td)
+        try:
+            before = _ss.load('usdcnh')
+            # 先写一条正常值做基底，再喂降级值，断言降级日不新增
+            ok = {'usdcnh': {'value': 6.6551, 'dataDate': end.isoformat(),
+                             'source': 'test', 'history': hist}}
+            fetch_mod.sync_series(ok)
+            base = _ss.load('usdcnh')
+            bad_day = {'usdcnh': {'value': 6.7000, 'dataDate': '2026-12-01',
+                                  'source': 'exchangerate-api',
+                                  'sourceDegraded': {'reason': 'primary_source_missing'},
+                                  'caliberNoteSuffix': '（在岸参考价）'}}
+            skipped = fetch_mod.sync_series(bad_day)
+            after = _ss.load('usdcnh')
+            check('S13-09[降级不写序列]',
+                  base == after and '2026-12-01' not in after
+                  and skipped == ['usdcnh']
+                  and 'history' not in bad_day['usdcnh'],
+                  f'before={len(before)} base={len(base)} after={len(after)} '
+                  f'skipped={skipped} hist={bad_day["usdcnh"].get("history")}')
+        finally:
+            _ss.SERIES_DIR = old_dir
 
 
 # ═══════════════════════════════════════════
@@ -1783,6 +1949,9 @@ def run_one(json_path, fixture_path=None, do_units=True):
     safe('S6', test_s6, doc, label, ref)
     safe('S7', test_s7, doc, text, label, live)
     safe('S6B', test_s6_boundaries)
+    safe('S14', test_s14_saturation)
+    safe('S15', test_s15_fx_deconflation)
+    safe('S16', test_s16_boundary_disclosure, doc)
     safe('T6b1', test_t6b1)
     safe('T6b2', test_t6b2, doc, label)
     safe('T6b3', test_t6b3, doc, label, live)

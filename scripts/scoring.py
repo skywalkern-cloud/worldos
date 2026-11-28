@@ -74,6 +74,9 @@ POSITIVE_PARAMS = {
 NEGATIVE_PARAMS = {
     'lpr':               (2.0, 3.5, 5.0),
     'dr007':             (1.0, 1.8, 3.0),
+    # A4：中债10Y 收编进 liquidity。收益率越低=国内货币环境越松=分越高。
+    # 1.5% 极低(+1) / 2.5% 中性(0) / 4.0% 高位(-1)；今日 1.60% → +0.9。
+    'chinaBond10Y':      (1.5, 2.5, 4.0),
     'creditSpread':      (100, 200, 400),
     'dollarIndex':       (92, 100, 112),
     'vix':               (12, 20, 35),
@@ -573,6 +576,7 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
         valid_count = 0
         ref_count = 0
         active_total = 0
+        saturated_keys = []
 
         for key in dim['indicators']:
             ind = indicators.get(key)
@@ -589,6 +593,9 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
                 total_weighted += score_val * alpha
                 total_alpha += alpha
                 valid_count += 1
+                # A4（龙六 P0-1）：饱和披露。只统计真正进平均的项（α>0）。
+                if ind.get('saturated') is True:
+                    saturated_keys.append(key)
 
         required = required_valid_count(dim)
         # V1a：只展示不打分的参考项也计入参考项数（它们不在 indicators 里，需要单独加）
@@ -608,6 +615,9 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
             'signal': signal,
             'valid_count': valid_count,
             'required_count': required,
+            # A4：饱和披露（到 ±1.0 截断的计分项数 + key 列表）
+            'saturated_count': len(saturated_keys),
+            'saturated_indicators': saturated_keys,
             'active_count': active_total,
             'reference_only_count': ref_count,
             'insufficient_data': insufficient,
@@ -623,7 +633,15 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
     return dim_scores
 
 
-def calc_ias(dim_scores: dict) -> dict:
+def _signal_for_normalized(norm: float):
+    """把 normalized 映射到 5 档信号（忽略覆盖率，仅供边界/脆弱度计算）。"""
+    for threshold, sig, pos, ico in IAS_THRESHOLDS:
+        if norm >= threshold:
+            return sig, pos, ico
+    return IAS_POSITION_ERROR
+
+
+def calc_ias(dim_scores: dict, indicators: dict = None) -> dict:
     """计算 IAS 综合评分（T3：按有效权重归一化；P1-8DIM：阈值改 normalized 语义）
 
     T3 修复（2026-11-09）：
@@ -686,6 +704,16 @@ def calc_ias(dim_scores: dict) -> dict:
             'position': '不适用',
             'signal_icon': '⚪',
             'is_actionable': False,
+            # A4：即使无有效维度，字段也必须在（存在但 null，而非本版未上线）
+            'boundary_margin': None,
+            'boundary_threshold': None,
+            'boundary_next_signal': None,
+            'fragile_inputs': [],
+            'fragile_details': [],
+            'degraded_inputs': [],
+            'confidence': 'low',
+            'saturated_inputs': [k for k, v in (indicators or {}).items()
+                                 if v.get('saturated') is True and not v.get('reference_only')],
         }
 
     normalized = q(total_weighted / valid_weight, 6)   # T15-1: 6 位，half-up
@@ -709,6 +737,67 @@ def calc_ias(dim_scores: dict) -> dict:
             # 中间档：仍然出分（部分维度缺失不等于没结论），但必须标出来
             signal = f'{signal}（部分维度缺失·参考）'
 
+    # ── A4（龙六 P0-3）：边界余量 / 脆弱输入 / 置信度披露 ──
+    # boundary_margin = normalized − 最近阈值（带符号）。>0 = 在该阈值内侧，<0 = 已越界。
+    signal_bare = signal.split('（')[0]
+    boundary_threshold, _bsig, _bpos, _bico = min(
+        IAS_THRESHOLDS, key=lambda x: abs(normalized - x[0]))
+    boundary_margin = q(normalized - boundary_threshold, 6)
+    if normalized >= boundary_threshold:
+        boundary_next_signal = _signal_for_normalized(boundary_threshold - 1e-9)[0]
+    else:
+        boundary_next_signal = _signal_for_normalized(boundary_threshold + 1e-9)[0]
+
+    # fragile_inputs：逐维剔除后信号会变的维度，按对 normalized 的影响绝对值降序。
+    fragile = []
+    for dim_id in counted:
+        ds = dim_scores.get(dim_id) or {}
+        s = ds.get('score')
+        w = ds.get('weight_effective')
+        if s is None or w is None or (valid_weight - w) <= 0:
+            continue
+        excl_norm = q((total_weighted - s * w) / (valid_weight - w), 6)
+        excl_cov = (valid_weight - w) / total_weight if total_weight else 0.0
+        if excl_cov < IAS_MIN_COVERAGE:
+            excl_sig = '数据不足'
+        else:
+            excl_sig = _signal_for_normalized(excl_norm)[0]
+        if excl_sig != signal_bare:
+            fragile.append({
+                'id': dim_id,
+                'normalized_without': excl_norm,
+                'signal_without': excl_sig,
+                'impact': round(abs(excl_norm - normalized), 6),
+            })
+    fragile.sort(key=lambda x: x['impact'], reverse=True)
+
+    # degraded_inputs：本项降级（如 usdcnh 在岸回退）或被口径降级挡在打分外。
+    degraded_inputs = []
+    for key, v in (indicators or {}).items():
+        sd = v.get('sourceDegraded')
+        if not sd and v.get('exclusion_reason') != 'degraded_no_score':
+            continue
+        degraded_inputs.append({
+            'key': key,
+            'dimension': im.dimension_of(key),
+            'reason': (sd or {}).get('reason') if isinstance(sd, dict) else v.get('exclusion_reason'),
+            'source': v.get('actualSource') or v.get('source'),
+        })
+
+    # confidence：刀锋（<0.02）、任一整维剔除、任一打分项降级 → low。
+    # 0.02~0.05 给 medium（靠近刀锋，结论方向可持但档位不稳）；其余 high。
+    if (boundary_margin is not None and abs(boundary_margin) < 0.02) \
+            or grayed or degraded_inputs or coverage < 0.999:
+        confidence = 'low'
+    elif abs(boundary_margin) < 0.05:
+        confidence = 'medium'
+    else:
+        confidence = 'high'
+
+    # 饱和输入总表（IAS 卡面披露「含 N 项饱和输入」）
+    saturated_inputs = [k for k, v in (indicators or {}).items()
+                        if v.get('saturated') is True and not v.get('reference_only')]
+
     return {
         'score': ias_score,
         'normalized': normalized,
@@ -729,6 +818,15 @@ def calc_ias(dim_scores: dict) -> dict:
         'signal_icon': icon,
         'is_actionable': actionable,
         'note': '未回测·非投资建议',
+        # ── A4（龙六 P0-3）边界余量披露 ──
+        'boundary_margin': boundary_margin,          # normalized − 最近阈值（带符号）
+        'boundary_threshold': boundary_threshold,    # 最近的阈值
+        'boundary_next_signal': boundary_next_signal,  # 跨过该阈值后的档位
+        'fragile_inputs': [x['id'] for x in fragile],  # 掉哪几维会翻档（按影响降序）
+        'fragile_details': fragile,                    # 含剔除后 normalized / 信号 / 影响
+        'degraded_inputs': degraded_inputs,
+        'confidence': confidence,                      # high / medium / low
+        'saturated_inputs': saturated_inputs,          # 本期饱和（常数）计分项
     }
 
 
@@ -820,6 +918,19 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             score = pct_meta['score']
         else:
             score = calc_score(key, value)
+
+        # A4（龙六 P0-1）：饱和标记。三条纯函数在 |score|=1.0（撞上下限）时
+        # 本项已退化成常数，必须在产物里显式披露，不能让读者把常数当结论。
+        # pct_rank / ratio_band / ratio_ma 用各自更细的饱和判据（分位 0/1、撞地板），
+        # 其余 breakpoint 类用 |score| = 1.0 判定。
+        if score is None:
+            saturated = False
+        elif ratio_ma_meta is not None:
+            saturated = bool(ratio_ma_meta.get('saturated'))
+        elif pct_meta is not None:
+            saturated = bool(pct_meta.get('saturated'))
+        else:
+            saturated = abs(float(score)) >= 1.0 - 1e-9
 
         # 实时报价类（源不提供日期）：不伪造 dataDate，改为显式标注 dateNote。
         # T13：兜底值不享受 realtime 待遇（上一轮值必然比今天旧）。
@@ -937,6 +1048,8 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             # 是否被排除在评分之外（给前端区分「数据旧了」和「这项没进评分」）
             'excluded_from_scoring': excluded,
             'exclusion_reason': exclusion_reason,
+            # A4：是否被 ±1.0 / 分位两端截断（前端挂「已到区间上界·不携带信息」）
+            'saturated': saturated,
         }
         # fetch 阶段带入的降级痕迹（fetch 失败、用上一轮值兜底）
         if info.get('used_fallback'):
@@ -1009,8 +1122,8 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
     # 维度评分
     dim_scores = calc_dimension_scores(indicators, raw_data)
 
-    # IAS
-    ias = calc_ias(dim_scores)
+    # IAS（A4：把 indicators 传进去，用于降级披露与置信度）
+    ias = calc_ias(dim_scores, indicators=indicators)
 
     # Build dimension output
     dimensions = {}
@@ -1028,6 +1141,9 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'signal': ds.get('signal', 'gray'),
             'valid_count': ds.get('valid_count', 0),
             'required_count': ds.get('required_count'),
+            # A4：维度级饱和计数（前端「N 项饱和」）
+            'saturated_count': ds.get('saturated_count', 0),
+            'saturated_indicators': ds.get('saturated_indicators', []),
             'active_count': ds.get('active_count'),
             'reference_only_count': ds.get('reference_only_count', 0),
             'insufficient_data': ds.get('insufficient_data', False),
@@ -1045,6 +1161,15 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
     meta = {
         'ias': ias,
         'dimensions': dimensions,
+        # A4（看门狗 G②）：整维因有效数不足被剔除时显式列出来（含丢失权重）。
+        'dimension_dropped': [
+            {'id': dim['id'], 'name': dim['name'],
+             'weight_lost': dimensions[dim['id']].get('weight_effective', dim['weight']),
+             'valid_count': dimensions[dim['id']].get('valid_count'),
+             'required_count': dimensions[dim['id']].get('required_count')}
+            for dim in DIMENSION_CONFIG
+            if dimensions.get(dim['id'], {}).get('insufficient_data')
+        ],
         'rules_snapshot': rules_snapshot(),
         'rules_hash': compute_rules_hash(rules_snapshot()),
         'model': {

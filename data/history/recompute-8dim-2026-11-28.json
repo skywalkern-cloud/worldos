@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-28T17:42:02",
+  "generatedAt": "2026-11-28T17:57:23",
   "purpose": "P1-8DIM 历史回算：旧 6 维（冻结字面量）vs 新 8 维，逐日对照 + 信号翻转清单",
   "legacy": {
     "dims": [
@@ -182,7 +182,7 @@
     "88cb8f040f89",
     "a306915b6fa9"
   ],
-  "rules_hash_new": "ae148d2b8a6d",
+  "rules_hash_new": "5df4722e09e9",
   "rows": [
     {
       "date": "2026-11-09",
@@ -208,13 +208,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.73,
+        "normalized": -0.130071,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -224,7 +223,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.284,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -239,6 +238,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22549.39,
+          "dataDate": "2026-11-06",
+          "max_used_date": "2026-11-06",
+          "history_days": 385
+        },
+        "southboundNet": {
+          "value": 9.22,
+          "dataDate": "2026-11-06",
+          "max_used_date": "2026-11-06",
+          "history_days": 384
+        },
+        "hstechMomentum": {
+          "value": 4.4,
+          "dataDate": "2026-11-06",
+          "max_used_date": "2026-11-06",
+          "history_days": 364
+        },
+        "ashareTurnover": {
+          "value": 16577.94,
+          "dataDate": "2026-11-06",
+          "max_used_date": "2026-11-06",
+          "history_days": 384
+        },
+        "usdcnh": {
+          "value": 6.6738,
+          "dataDate": "2026-11-06",
+          "max_used_date": "2026-11-06",
+          "history_days": 234
+        }
+      },
       "usdcnh": {
         "value": 6.6738,
         "data_date": "2026-11-06",
@@ -274,13 +305,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.73,
+        "normalized": -0.130071,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -290,7 +320,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.284,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -305,6 +335,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22670.31,
+          "dataDate": "2026-11-09",
+          "max_used_date": "2026-11-09",
+          "history_days": 386
+        },
+        "southboundNet": {
+          "value": 26.63,
+          "dataDate": "2026-11-09",
+          "max_used_date": "2026-11-09",
+          "history_days": 385
+        },
+        "hstechMomentum": {
+          "value": 0.3,
+          "dataDate": "2026-11-09",
+          "max_used_date": "2026-11-09",
+          "history_days": 365
+        },
+        "ashareTurnover": {
+          "value": 14826.13,
+          "dataDate": "2026-11-09",
+          "max_used_date": "2026-11-09",
+          "history_days": 385
+        },
+        "usdcnh": {
+          "value": 6.6693,
+          "dataDate": "2026-11-09",
+          "max_used_date": "2026-11-09",
+          "history_days": 235
+        }
+      },
       "usdcnh": {
         "value": 6.6693,
         "data_date": "2026-11-09",
@@ -340,13 +402,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.73,
+        "normalized": -0.130071,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -356,7 +417,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.284,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -371,6 +432,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22656.62,
+          "dataDate": "2026-11-10",
+          "max_used_date": "2026-11-10",
+          "history_days": 387
+        },
+        "southboundNet": {
+          "value": -43.35,
+          "dataDate": "2026-11-10",
+          "max_used_date": "2026-11-10",
+          "history_days": 386
+        },
+        "hstechMomentum": {
+          "value": 1.5,
+          "dataDate": "2026-11-10",
+          "max_used_date": "2026-11-10",
+          "history_days": 366
+        },
+        "ashareTurnover": {
+          "value": 15048.15,
+          "dataDate": "2026-11-10",
+          "max_used_date": "2026-11-10",
+          "history_days": 386
+        },
+        "usdcnh": {
+          "value": 6.6765,
+          "dataDate": "2026-11-10",
+          "max_used_date": "2026-11-10",
+          "history_days": 236
+        }
+      },
       "usdcnh": {
         "value": 6.6765,
         "data_date": "2026-11-10",
@@ -406,13 +499,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.73,
+        "normalized": -0.130071,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -422,7 +514,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.284,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -437,6 +529,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22731.37,
+          "dataDate": "2026-11-11",
+          "max_used_date": "2026-11-11",
+          "history_days": 388
+        },
+        "southboundNet": {
+          "value": 67.67,
+          "dataDate": "2026-11-11",
+          "max_used_date": "2026-11-11",
+          "history_days": 387
+        },
+        "hstechMomentum": {
+          "value": 0.5,
+          "dataDate": "2026-11-11",
+          "max_used_date": "2026-11-11",
+          "history_days": 367
+        },
+        "ashareTurnover": {
+          "value": 16762.79,
+          "dataDate": "2026-11-11",
+          "max_used_date": "2026-11-11",
+          "history_days": 387
+        },
+        "usdcnh": {
+          "value": 6.6738,
+          "dataDate": "2026-11-11",
+          "max_used_date": "2026-11-11",
+          "history_days": 237
+        }
+      },
       "usdcnh": {
         "value": 6.6738,
         "data_date": "2026-11-11",
@@ -472,13 +596,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.73,
+        "normalized": -0.130071,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -488,7 +611,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.284,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -503,6 +626,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22738.31,
+          "dataDate": "2026-11-12",
+          "max_used_date": "2026-11-12",
+          "history_days": 389
+        },
+        "southboundNet": {
+          "value": 59.13,
+          "dataDate": "2026-11-12",
+          "max_used_date": "2026-11-12",
+          "history_days": 388
+        },
+        "hstechMomentum": {
+          "value": -2.9,
+          "dataDate": "2026-11-12",
+          "max_used_date": "2026-11-12",
+          "history_days": 368
+        },
+        "ashareTurnover": {
+          "value": 19320.82,
+          "dataDate": "2026-11-12",
+          "max_used_date": "2026-11-12",
+          "history_days": 388
+        },
+        "usdcnh": {
+          "value": 6.6734,
+          "dataDate": "2026-11-12",
+          "max_used_date": "2026-11-12",
+          "history_days": 238
+        }
+      },
       "usdcnh": {
         "value": 6.6734,
         "data_date": "2026-11-12",
@@ -538,13 +693,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.77,
+        "normalized": -0.137214,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -554,7 +708,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.309,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -569,6 +723,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22571.97,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 390
+        },
+        "southboundNet": {
+          "value": 10.03,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 389
+        },
+        "hstechMomentum": {
+          "value": -4.1,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 369
+        },
+        "ashareTurnover": {
+          "value": 16556.68,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 389
+        },
+        "usdcnh": {
+          "value": 6.6747,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 239
+        }
+      },
       "usdcnh": {
         "value": 6.6747,
         "data_date": "2026-11-13",
@@ -604,13 +790,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.77,
+        "normalized": -0.137214,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -620,7 +805,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.309,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -635,6 +820,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22571.97,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 390
+        },
+        "southboundNet": {
+          "value": 10.03,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 389
+        },
+        "hstechMomentum": {
+          "value": -4.1,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 369
+        },
+        "ashareTurnover": {
+          "value": 16556.68,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 389
+        },
+        "usdcnh": {
+          "value": 6.6747,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 239
+        }
+      },
       "usdcnh": {
         "value": 6.6747,
         "data_date": "2026-11-13",
@@ -670,13 +887,12 @@
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.0685,
+        "score": -0.77,
+        "normalized": -0.137214,
         "signal": "数据不足",
-        "coverage": 0.357,
+        "coverage": 0.5,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "liquidity",
           "fxExternal",
           "sentimentA",
           "riskAppetite",
@@ -686,7 +902,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
+          "liquidity": -0.309,
           "fxExternal": null,
           "sentimentA": null,
           "riskAppetite": null,
@@ -701,6 +917,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22357.28,
+          "dataDate": "2026-11-16",
+          "max_used_date": "2026-11-16",
+          "history_days": 391
+        },
+        "southboundNet": {
+          "value": -71.2,
+          "dataDate": "2026-11-16",
+          "max_used_date": "2026-11-16",
+          "history_days": 390
+        },
+        "hstechMomentum": {
+          "value": -4.4,
+          "dataDate": "2026-11-16",
+          "max_used_date": "2026-11-16",
+          "history_days": 370
+        },
+        "ashareTurnover": {
+          "value": 14844.9,
+          "dataDate": "2026-11-16",
+          "max_used_date": "2026-11-16",
+          "history_days": 390
+        },
+        "usdcnh": {
+          "value": 6.6647,
+          "dataDate": "2026-11-16",
+          "max_used_date": "2026-11-16",
+          "history_days": 240
+        }
+      },
       "usdcnh": {
         "value": 6.6647,
         "data_date": "2026-11-16",
@@ -763,6 +1011,38 @@
         "structure_flip": true
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22170.96,
+          "dataDate": "2026-11-17",
+          "max_used_date": "2026-11-17",
+          "history_days": 392
+        },
+        "southboundNet": {
+          "value": 17.21,
+          "dataDate": "2026-11-17",
+          "max_used_date": "2026-11-17",
+          "history_days": 391
+        },
+        "hstechMomentum": {
+          "value": -3.1,
+          "dataDate": "2026-11-17",
+          "max_used_date": "2026-11-17",
+          "history_days": 371
+        },
+        "ashareTurnover": {
+          "value": 14576.95,
+          "dataDate": "2026-11-17",
+          "max_used_date": "2026-11-17",
+          "history_days": 391
+        },
+        "usdcnh": {
+          "value": 6.667,
+          "dataDate": "2026-11-17",
+          "max_used_date": "2026-11-17",
+          "history_days": 241
+        }
+      },
       "usdcnh": {
         "value": 6.667,
         "data_date": "2026-11-17",
@@ -777,51 +1057,80 @@
     {
       "date": "2026-11-19",
       "old": {
-        "score": -0.34,
-        "normalized": -0.073833,
-        "signal": "持有",
-        "coverage": 0.818,
+        "score": -0.52,
+        "normalized": -0.113682,
+        "signal": "减仓",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.132,
-          "sentiment": null,
+          "sentiment": -0.293,
           "resource": -0.249,
           "techGreen": 0.631
         }
       },
       "new": {
-        "score": -0.63,
-        "normalized": -0.112,
-        "signal": "减仓（部分维度缺失·参考）",
-        "coverage": 0.786,
+        "score": -0.44,
+        "normalized": -0.079208,
+        "signal": "持有",
+        "coverage": 0.946,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "sentimentA",
           "techGreen"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.112,
-          "fxExternal": -0.0,
-          "sentimentA": null,
+          "liquidity": 0.059,
+          "fxExternal": 0.247,
+          "sentimentA": -0.263,
           "riskAppetite": -0.353,
           "resource": -0.25,
           "techGreen": null
         }
       },
       "attribution": {
-        "threshold_only_signal": "持有",
-        "structure_only_signal": "减仓",
+        "threshold_only_signal": "减仓",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": true
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 22082.62,
+          "dataDate": "2026-11-18",
+          "max_used_date": "2026-11-18",
+          "history_days": 393
+        },
+        "southboundNet": {
+          "value": 32.02,
+          "dataDate": "2026-11-18",
+          "max_used_date": "2026-11-18",
+          "history_days": 392
+        },
+        "hstechMomentum": {
+          "value": -3.1,
+          "dataDate": "2026-11-18",
+          "max_used_date": "2026-11-18",
+          "history_days": 372
+        },
+        "ashareTurnover": {
+          "value": 13697.02,
+          "dataDate": "2026-11-18",
+          "max_used_date": "2026-11-18",
+          "history_days": 392
+        },
+        "usdcnh": {
+          "value": 6.6692,
+          "dataDate": "2026-11-18",
+          "max_used_date": "2026-11-18",
+          "history_days": 242
+        }
+      },
       "usdcnh": {
         "value": 6.6692,
         "data_date": "2026-11-18",
@@ -836,51 +1145,80 @@
     {
       "date": "2026-11-20",
       "old": {
-        "score": -0.3,
-        "normalized": -0.064889,
-        "signal": "持有",
-        "coverage": 0.818,
+        "score": -0.53,
+        "normalized": -0.114545,
+        "signal": "减仓",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.125,
-          "sentiment": null,
+          "sentiment": -0.338,
           "resource": -0.202,
           "techGreen": 0.623
         }
       },
       "new": {
-        "score": -0.71,
-        "normalized": -0.126023,
-        "signal": "减仓（部分维度缺失·参考）",
-        "coverage": 0.786,
+        "score": -0.5,
+        "normalized": -0.088887,
+        "signal": "持有",
+        "coverage": 0.946,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "sentimentA",
           "techGreen"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.112,
-          "fxExternal": 0.005,
-          "sentimentA": null,
+          "liquidity": 0.06,
+          "fxExternal": 0.249,
+          "sentimentA": -0.25,
           "riskAppetite": -0.516,
           "resource": -0.25,
           "techGreen": null
         }
       },
       "attribution": {
-        "threshold_only_signal": "持有",
-        "structure_only_signal": "减仓",
+        "threshold_only_signal": "减仓",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": true
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21927.43,
+          "dataDate": "2026-11-19",
+          "max_used_date": "2026-11-19",
+          "history_days": 394
+        },
+        "southboundNet": {
+          "value": 59.45,
+          "dataDate": "2026-11-19",
+          "max_used_date": "2026-11-19",
+          "history_days": 393
+        },
+        "hstechMomentum": {
+          "value": -1.6,
+          "dataDate": "2026-11-19",
+          "max_used_date": "2026-11-19",
+          "history_days": 373
+        },
+        "ashareTurnover": {
+          "value": 13051.47,
+          "dataDate": "2026-11-19",
+          "max_used_date": "2026-11-19",
+          "history_days": 393
+        },
+        "usdcnh": {
+          "value": 6.6924,
+          "dataDate": "2026-11-19",
+          "max_used_date": "2026-11-19",
+          "history_days": 243
+        }
+      },
       "usdcnh": {
         "value": 6.6924,
         "data_date": "2026-11-19",
@@ -895,38 +1233,34 @@
     {
       "date": "2026-11-21",
       "old": {
-        "score": -0.14,
-        "normalized": -0.029444,
+        "score": -0.43,
+        "normalized": -0.093909,
         "signal": "持有",
-        "coverage": 0.818,
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.104,
-          "sentiment": null,
+          "sentiment": -0.384,
           "resource": -0.015,
           "techGreen": 0.616
         }
       },
       "new": {
-        "score": -0.39,
-        "normalized": -0.069404,
+        "score": -0.31,
+        "normalized": -0.055786,
         "signal": "持有",
-        "coverage": 0.839,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "sentimentA"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.112,
-          "fxExternal": 0.026,
-          "sentimentA": null,
+          "liquidity": 0.06,
+          "fxExternal": 0.258,
+          "sentimentA": -0.318,
           "riskAppetite": -0.516,
           "resource": -0.25,
           "techGreen": 0.712
@@ -939,6 +1273,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21508.62,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 395
+        },
+        "southboundNet": {
+          "value": 170.6,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 394
+        },
+        "hstechMomentum": {
+          "value": -5.1,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 374
+        },
+        "ashareTurnover": {
+          "value": 14222.0,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 394
+        },
+        "usdcnh": {
+          "value": 6.6752,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 244
+        }
+      },
       "usdcnh": {
         "value": 6.6752,
         "data_date": "2026-11-20",
@@ -953,38 +1319,34 @@
     {
       "date": "2026-11-22",
       "old": {
-        "score": -0.13,
-        "normalized": -0.029222,
+        "score": -0.43,
+        "normalized": -0.093727,
         "signal": "持有",
-        "coverage": 0.818,
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.103,
-          "sentiment": null,
+          "sentiment": -0.384,
           "resource": -0.015,
           "techGreen": 0.616
         }
       },
       "new": {
-        "score": -0.39,
-        "normalized": -0.068957,
+        "score": -0.31,
+        "normalized": -0.055286,
         "signal": "持有",
-        "coverage": 0.839,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "sentimentA"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.112,
-          "fxExternal": 0.029,
-          "sentimentA": null,
+          "liquidity": 0.06,
+          "fxExternal": 0.262,
+          "sentimentA": -0.318,
           "riskAppetite": -0.516,
           "resource": -0.25,
           "techGreen": 0.712
@@ -997,6 +1359,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21508.62,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 395
+        },
+        "southboundNet": {
+          "value": 170.6,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 394
+        },
+        "hstechMomentum": {
+          "value": -5.1,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 374
+        },
+        "ashareTurnover": {
+          "value": 14222.0,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 394
+        },
+        "usdcnh": {
+          "value": 6.6752,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 244
+        }
+      },
       "usdcnh": {
         "value": 6.6752,
         "data_date": "2026-11-20",
@@ -1011,38 +1405,34 @@
     {
       "date": "2026-11-23",
       "old": {
-        "score": -0.13,
-        "normalized": -0.028056,
+        "score": -0.5,
+        "normalized": -0.108773,
         "signal": "持有",
-        "coverage": 0.818,
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.004,
-          "sentiment": null,
+          "sentiment": -0.472,
           "resource": -0.14,
           "techGreen": 0.616
         }
       },
       "new": {
-        "score": -0.38,
-        "normalized": -0.068,
+        "score": -0.37,
+        "normalized": -0.066125,
         "signal": "持有",
-        "coverage": 0.839,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "sentimentA"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.018,
-          "fxExternal": 0.086,
-          "sentimentA": null,
+          "liquidity": 0.147,
+          "fxExternal": 0.275,
+          "sentimentA": -0.318,
           "riskAppetite": -0.677,
           "resource": -0.4,
           "techGreen": 0.712
@@ -1055,6 +1445,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21508.62,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 395
+        },
+        "southboundNet": {
+          "value": 170.6,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 394
+        },
+        "hstechMomentum": {
+          "value": -5.1,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 374
+        },
+        "ashareTurnover": {
+          "value": 14222.0,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 394
+        },
+        "usdcnh": {
+          "value": 6.6752,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 244
+        }
+      },
       "usdcnh": {
         "value": 6.6752,
         "data_date": "2026-11-20",
@@ -1069,50 +1491,78 @@
     {
       "date": "2026-11-24",
       "old": {
-        "score": -0.21,
-        "normalized": -0.046222,
-        "signal": "持有",
-        "coverage": 0.818,
+        "score": -0.55,
+        "normalized": -0.118727,
+        "signal": "减仓",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.056,
-          "sentiment": null,
+          "sentiment": -0.445,
           "resource": -0.111,
           "techGreen": 0.41
         }
       },
       "new": {
-        "score": -0.48,
-        "normalized": -0.086447,
+        "score": -0.34,
+        "normalized": -0.061161,
         "signal": "持有",
-        "coverage": 0.839,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "sentimentA"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.013,
-          "fxExternal": 0.024,
-          "sentimentA": null,
+          "liquidity": 0.238,
+          "fxExternal": 0.254,
+          "sentimentA": -0.308,
           "riskAppetite": -0.721,
           "resource": -0.333,
           "techGreen": 0.528
         }
       },
       "attribution": {
-        "threshold_only_signal": "持有",
+        "threshold_only_signal": "减仓",
         "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": false
+        "structure_flip": true
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21419.38,
+          "dataDate": "2026-11-23",
+          "max_used_date": "2026-11-23",
+          "history_days": 396
+        },
+        "southboundNet": {
+          "value": -168.07,
+          "dataDate": "2026-11-23",
+          "max_used_date": "2026-11-23",
+          "history_days": 395
+        },
+        "hstechMomentum": {
+          "value": -4.8,
+          "dataDate": "2026-11-23",
+          "max_used_date": "2026-11-23",
+          "history_days": 375
+        },
+        "ashareTurnover": {
+          "value": 15528.8,
+          "dataDate": "2026-11-23",
+          "max_used_date": "2026-11-23",
+          "history_days": 395
+        },
+        "usdcnh": {
+          "value": 6.6663,
+          "dataDate": "2026-11-23",
+          "max_used_date": "2026-11-23",
+          "history_days": 245
+        }
+      },
       "usdcnh": {
         "value": 6.6663,
         "data_date": "2026-11-23",
@@ -1127,38 +1577,34 @@
     {
       "date": "2026-11-25",
       "old": {
-        "score": -0.19,
-        "normalized": -0.040333,
+        "score": -0.47,
+        "normalized": -0.102091,
         "signal": "持有",
-        "coverage": 0.818,
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.052,
-          "sentiment": null,
+          "sentiment": -0.38,
           "resource": -0.081,
           "techGreen": 0.41
         }
       },
       "new": {
-        "score": -0.44,
-        "normalized": -0.079362,
+        "score": -0.23,
+        "normalized": -0.04025,
         "signal": "持有",
-        "coverage": 0.839,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "sentimentA"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.015,
-          "fxExternal": 0.032,
-          "sentimentA": null,
+          "liquidity": 0.239,
+          "fxExternal": 0.262,
+          "sentimentA": -0.214,
           "riskAppetite": -0.712,
           "resource": -0.288,
           "techGreen": 0.528
@@ -1171,6 +1617,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21422.0,
+          "dataDate": "2026-11-24",
+          "max_used_date": "2026-11-24",
+          "history_days": 397
+        },
+        "southboundNet": {
+          "value": 89.02,
+          "dataDate": "2026-11-24",
+          "max_used_date": "2026-11-24",
+          "history_days": 396
+        },
+        "hstechMomentum": {
+          "value": -6.0,
+          "dataDate": "2026-11-24",
+          "max_used_date": "2026-11-24",
+          "history_days": 376
+        },
+        "ashareTurnover": {
+          "value": 16550.86,
+          "dataDate": "2026-11-24",
+          "max_used_date": "2026-11-24",
+          "history_days": 396
+        },
+        "usdcnh": {
+          "value": 6.6649,
+          "dataDate": "2026-11-24",
+          "max_used_date": "2026-11-24",
+          "history_days": 246
+        }
+      },
       "usdcnh": {
         "value": 6.6649,
         "data_date": "2026-11-24",
@@ -1185,50 +1663,78 @@
     {
       "date": "2026-11-26",
       "old": {
-        "score": -0.2,
-        "normalized": -0.043111,
-        "signal": "持有",
-        "coverage": 0.818,
+        "score": -0.57,
+        "normalized": -0.124,
+        "signal": "减仓",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.047,
-          "sentiment": null,
+          "sentiment": -0.488,
           "resource": -0.101,
           "techGreen": 0.4
         }
       },
       "new": {
-        "score": -0.49,
-        "normalized": -0.087723,
+        "score": -0.39,
+        "normalized": -0.069036,
         "signal": "持有",
-        "coverage": 0.839,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "sentimentA"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.014,
-          "fxExternal": 0.039,
-          "sentimentA": null,
+          "liquidity": 0.238,
+          "fxExternal": 0.262,
+          "sentimentA": -0.344,
           "riskAppetite": -0.777,
           "resource": -0.318,
           "techGreen": 0.52
         }
       },
       "attribution": {
-        "threshold_only_signal": "持有",
+        "threshold_only_signal": "减仓",
         "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": false
+        "structure_flip": true
       },
       "snapshot_rules_hash": "88cb8f040f89",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21213.86,
+          "dataDate": "2026-11-25",
+          "max_used_date": "2026-11-25",
+          "history_days": 398
+        },
+        "southboundNet": {
+          "value": 88.58,
+          "dataDate": "2026-11-25",
+          "max_used_date": "2026-11-25",
+          "history_days": 397
+        },
+        "hstechMomentum": {
+          "value": -6.8,
+          "dataDate": "2026-11-25",
+          "max_used_date": "2026-11-25",
+          "history_days": 377
+        },
+        "ashareTurnover": {
+          "value": 13830.98,
+          "dataDate": "2026-11-25",
+          "max_used_date": "2026-11-25",
+          "history_days": 397
+        },
+        "usdcnh": {
+          "value": 6.6675,
+          "dataDate": "2026-11-25",
+          "max_used_date": "2026-11-25",
+          "history_days": 247
+        }
+      },
       "usdcnh": {
         "value": 6.6675,
         "data_date": "2026-11-25",
@@ -1243,50 +1749,78 @@
     {
       "date": "2026-11-27",
       "old": {
-        "score": -0.14,
-        "normalized": -0.030444,
-        "signal": "持有",
-        "coverage": 0.818,
+        "score": -0.64,
+        "normalized": -0.140182,
+        "signal": "减仓",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
           "liquidity": -0.046,
-          "sentiment": null,
+          "sentiment": -0.634,
           "resource": -0.025,
           "techGreen": 0.396
         }
       },
       "new": {
-        "score": -0.47,
-        "normalized": -0.084319,
+        "score": -0.57,
+        "normalized": -0.101107,
         "signal": "持有",
-        "coverage": 0.839,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "sentimentA"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.011,
-          "fxExternal": 0.043,
-          "sentimentA": null,
+          "liquidity": 0.236,
+          "fxExternal": 0.267,
+          "sentimentA": -0.563,
           "riskAppetite": -0.777,
           "resource": -0.333,
           "techGreen": 0.597
         }
       },
       "attribution": {
-        "threshold_only_signal": "持有",
+        "threshold_only_signal": "减仓",
         "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": false
+        "structure_flip": true
       },
       "snapshot_rules_hash": "a306915b6fa9",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21055.79,
+          "dataDate": "2026-11-26",
+          "max_used_date": "2026-11-26",
+          "history_days": 399
+        },
+        "southboundNet": {
+          "value": -321.04,
+          "dataDate": "2026-11-26",
+          "max_used_date": "2026-11-26",
+          "history_days": 398
+        },
+        "hstechMomentum": {
+          "value": -3.9,
+          "dataDate": "2026-11-26",
+          "max_used_date": "2026-11-26",
+          "history_days": 378
+        },
+        "ashareTurnover": {
+          "value": 13173.77,
+          "dataDate": "2026-11-26",
+          "max_used_date": "2026-11-26",
+          "history_days": 398
+        },
+        "usdcnh": {
+          "value": 6.6613,
+          "dataDate": "2026-11-26",
+          "max_used_date": "2026-11-26",
+          "history_days": 248
+        }
+      },
       "usdcnh": {
         "value": 6.6613,
         "data_date": "2026-11-26",
@@ -1317,8 +1851,8 @@
         }
       },
       "new": {
-        "score": -0.57,
-        "normalized": -0.102,
+        "score": -0.23,
+        "normalized": -0.041286,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1326,8 +1860,8 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.011,
-          "fxExternal": 0.026,
+          "liquidity": 0.233,
+          "fxExternal": 0.258,
           "sentimentA": -0.302,
           "riskAppetite": -0.505,
           "resource": -0.333,
@@ -1341,6 +1875,38 @@
         "structure_flip": false
       },
       "snapshot_rules_hash": "269592dd0bb6",
+      "series_injected": {
+        "marginBalance": {
+          "value": 21055.79,
+          "dataDate": "2026-11-26",
+          "max_used_date": "2026-11-26",
+          "history_days": 399
+        },
+        "southboundNet": {
+          "value": 79.81,
+          "dataDate": "2026-11-27",
+          "max_used_date": "2026-11-27",
+          "history_days": 399
+        },
+        "hstechMomentum": {
+          "value": -3.3,
+          "dataDate": "2026-11-27",
+          "max_used_date": "2026-11-27",
+          "history_days": 379
+        },
+        "ashareTurnover": {
+          "value": 19997.94,
+          "dataDate": "2026-11-27",
+          "max_used_date": "2026-11-27",
+          "history_days": 399
+        },
+        "usdcnh": {
+          "value": 6.6551,
+          "dataDate": "2026-11-27",
+          "max_used_date": "2026-11-27",
+          "history_days": 249
+        }
+      },
       "usdcnh": {
         "value": 6.6551,
         "data_date": "2026-11-27",
@@ -1372,37 +1938,80 @@
     },
     {
       "date": "2026-11-19",
-      "old_signal": "持有",
-      "new_signal": "减仓（部分维度缺失·参考）",
-      "old_norm": -0.073833,
-      "new_norm": -0.112,
+      "old_signal": "减仓",
+      "new_signal": "持有",
+      "old_norm": -0.113682,
+      "new_norm": -0.079208,
       "cause": "结构/权重",
-      "old_coverage": 0.818,
-      "new_coverage": 0.786,
+      "old_coverage": 1.0,
+      "new_coverage": 0.946,
       "new_grayed": [
-        "sentimentA",
         "techGreen"
       ]
     },
     {
       "date": "2026-11-20",
-      "old_signal": "持有",
-      "new_signal": "减仓（部分维度缺失·参考）",
-      "old_norm": -0.064889,
-      "new_norm": -0.126023,
+      "old_signal": "减仓",
+      "new_signal": "持有",
+      "old_norm": -0.114545,
+      "new_norm": -0.088887,
       "cause": "结构/权重",
-      "old_coverage": 0.818,
-      "new_coverage": 0.786,
+      "old_coverage": 1.0,
+      "new_coverage": 0.946,
       "new_grayed": [
-        "sentimentA",
         "techGreen"
       ]
+    },
+    {
+      "date": "2026-11-24",
+      "old_signal": "减仓",
+      "new_signal": "持有",
+      "old_norm": -0.118727,
+      "new_norm": -0.061161,
+      "cause": "结构/权重",
+      "old_coverage": 1.0,
+      "new_coverage": 1.0,
+      "new_grayed": []
+    },
+    {
+      "date": "2026-11-26",
+      "old_signal": "减仓",
+      "new_signal": "持有",
+      "old_norm": -0.124,
+      "new_norm": -0.069036,
+      "cause": "结构/权重",
+      "old_coverage": 1.0,
+      "new_coverage": 1.0,
+      "new_grayed": []
+    },
+    {
+      "date": "2026-11-27",
+      "old_signal": "减仓",
+      "new_signal": "持有",
+      "old_norm": -0.140182,
+      "new_norm": -0.101107,
+      "cause": "结构/权重",
+      "old_coverage": 1.0,
+      "new_coverage": 1.0,
+      "new_grayed": []
     }
   ],
-  "flip_count": 3,
+  "flip_count": 6,
   "usdcnh_no_lookahead": {
     "violations": [],
     "passed": true,
     "rule": "每个快照日只允许使用 date < 快照日 的 usdcnh 观测（MA120 含当日=该日之前最近收盘）"
+  },
+  "series_no_lookahead": {
+    "violations": [],
+    "passed": true,
+    "keys": [
+      "marginBalance",
+      "southboundNet",
+      "hstechMomentum",
+      "ashareTurnover",
+      "usdcnh"
+    ],
+    "rule": "每个快照日对每一条 series 只使用 date < 快照日 的观测"
   }
 }

@@ -1102,10 +1102,10 @@
       "value": null,
       "unit": "",
       "frequency": "daily",
-      "source": "akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）",
+      "source": "akshare-东财离岸人民币日线（forex_hist_em USDCNH）",
       "dataDate": null,
       "lastFetched": "2026-11-28T10:00:00",
-      "realtime": true,
+      "realtime": false,
       "used_fallback": false,
       "fetchError": {
         "reason": "timeout",
@@ -1183,6 +1183,17 @@
       "unit": "bp",
       "frequency": "daily",
       "source": "akshare-中美国债利差",
+      "dataDate": "2024-06-11",
+      "lastFetched": "2026-11-28T10:00:00",
+      "realtime": false,
+      "used_fallback": false,
+      "fetchError": null
+    },
+    "chinaBond10Y": {
+      "value": 1.6,
+      "unit": "%",
+      "frequency": "daily",
+      "source": "akshare-中美债券（bond_zh_us_rate）",
       "dataDate": "2024-06-11",
       "lastFetched": "2026-11-28T10:00:00",
       "realtime": false,
@@ -1338,7 +1349,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "chinaPmi": {
       "value": 49.3,
@@ -1374,7 +1386,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "usGdp": {
       "value": 2.0,
@@ -1412,7 +1425,8 @@
         "no_date"
       ],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "servicePmi": {
       "value": 49.7,
@@ -1448,7 +1462,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "usCpi": {
       "value": 3.7,
@@ -1484,7 +1499,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "corePce": {
       "value": 2.3,
@@ -1520,7 +1536,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "vix": {
       "value": 20.52,
@@ -1556,7 +1573,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "oilPrice": {
       "value": 102.95,
@@ -1596,6 +1614,7 @@
       ],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
+      "saturated": false,
       "used_fallback": true,
       "fetchError": {
         "reason": "not_found",
@@ -1636,7 +1655,8 @@
       "freshness_level": "realtime",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "fedRate": {
       "value": 3.88,
@@ -1672,7 +1692,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "usBond2Y": {
       "value": 4.51,
@@ -1708,7 +1729,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "exclusion_reason": "reference_only",
+      "saturated": false
     },
     "usBond5Y": {
       "value": 4.64,
@@ -1744,7 +1766,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "exclusion_reason": "reference_only",
+      "saturated": false
     },
     "usBond10Y": {
       "value": 4.86,
@@ -1780,7 +1803,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "usNonFarm": {
       "value": 16.5,
@@ -1816,7 +1840,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "fearGreed": {
       "value": 22.1,
@@ -1852,7 +1877,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "ashareTurnover": {
       "value": 19997.94,
@@ -1889,12 +1915,12 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
+      "saturated": false,
       "scoring_method": "ratio_band",
       "transform": "ratio_ma120",
       "window": 120,
       "history_days": 125,
       "warmup": false,
-      "saturated": false,
       "polarity": "growth_proxy",
       "pct_20": null,
       "pct_60": null,
@@ -1938,12 +1964,12 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
+      "saturated": true,
       "scoring_method": "pct_rank",
       "transform": "delta5",
       "window": 20,
       "history_days": 20,
       "warmup": false,
-      "saturated": true,
       "polarity": "risk_appetite",
       "pct_20": 1.0,
       "pct_60": null,
@@ -1985,12 +2011,12 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "no_score",
+      "saturated": false,
       "scoring_method": "pct_rank",
       "transform": "sum5",
       "window": null,
       "history_days": 0,
       "warmup": true,
-      "saturated": false,
       "polarity": "risk_appetite",
       "pct_20": null,
       "pct_60": null,
@@ -2032,12 +2058,12 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
+      "saturated": true,
       "scoring_method": "pct_rank",
       "transform": "raw",
       "window": 60,
       "history_days": 65,
       "warmup": false,
-      "saturated": true,
       "polarity": "risk_appetite",
       "pct_20": 0.0,
       "pct_60": 0.0,
@@ -2078,7 +2104,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "cpi": {
       "value": 0.9,
@@ -2114,7 +2141,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "ppi": {
       "value": 5.0,
@@ -2126,7 +2154,7 @@
       "name": "PPI",
       "displayName": "PPI",
       "shortName": "PPI",
-      "caliberNote": "中国PPI当月同比",
+      "caliberNote": "中国PPI当月同比；**方向待批次 C 修正**：当前 PPI 成本冲击按利好计价（POSITIVE -5/0/3），5.7% 已越过上界恒为 +1.0，不代表本项已校准",
       "reference_only": false,
       "frequency": "monthly",
       "responsiveness": "月",
@@ -2150,7 +2178,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": true
     },
     "lpr": {
       "value": 3.0,
@@ -2186,7 +2215,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "dr007": {
       "value": 1.283,
@@ -2222,7 +2252,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "m2": {
       "value": 7.2,
@@ -2258,20 +2289,21 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "creditSpread": {
       "value": 327,
       "score": -0.635,
       "trend": "neutral",
-      "signal": "red",
+      "signal": "reference",
       "category": "fxExternal",
       "country": "🌐",
       "name": "中美10年利差",
       "displayName": "中美10年利差",
       "shortName": "中美10Y利差",
-      "caliberNote": "中美10年期国债收益率之差(bp)；非信用利差",
-      "reference_only": false,
+      "caliberNote": "中美10年期国债收益率之差(bp)；非信用利差。P1-8DIM A4 起**只展示、不计分**：美债10Y 已由 usBond10Y 单独计价，再把水平差计入 fxExternal 会让同一根美国10Y 被罚两次，且把中债降息误记为「外部压力」",
+      "reference_only": true,
       "frequency": "daily",
       "responsiveness": "T+0",
       "dataDate": "2024-06-11",
@@ -2294,7 +2326,45 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "reference_only",
+      "saturated": false
+    },
+    "chinaBond10Y": {
+      "value": 1.6,
+      "score": 0.9,
+      "trend": "neutral",
+      "signal": "green",
+      "category": "liquidity",
+      "country": "🇨🇳",
+      "name": "中国10年国债收益率",
+      "displayName": "中国10年国债收益率",
+      "shortName": "中债10Y",
+      "caliberNote": "中国10年期国债到期收益率。与中美10Y利差同一次 akshare 请求取数（不新增外部源）；进 liquidity 打分：收益率越低=国内货币环境越松=分越高（NEGATIVE 1.5/2.5/4.0）",
+      "reference_only": false,
+      "frequency": "daily",
+      "responsiveness": "T+0",
+      "dataDate": "2024-06-11",
+      "dataDateISO": "2024-06-11",
+      "dataDateKind": "day",
+      "days_stale": 900,
+      "overdue": true,
+      "overdue_level": "red",
+      "days_overdue": 890,
+      "staleness_rule": {
+        "yellow_days": 5,
+        "red_days": 10
+      },
+      "realtime": false,
+      "dateNote": null,
+      "source": "akshare-中美债券（bond_zh_us_rate）",
+      "unit": "%",
+      "timeliness": 0.0,
+      "freshness": "🔴",
+      "freshness_level": "expired",
+      "degraded_reasons": [],
+      "excluded_from_scoring": true,
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "carbonPrice": {
       "value": 96.19,
@@ -2330,7 +2400,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": true
     },
     "electricity": {
       "value": 3.9,
@@ -2366,7 +2437,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": false
     },
     "renewEnergyInvest": {
       "value": 1256.0,
@@ -2402,7 +2474,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": false
     },
     "aiGrowth": {
       "value": 4.1,
@@ -2438,7 +2511,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "exclusion_reason": "reference_only",
+      "saturated": false
     },
     "robotInstall": {
       "value": 5.5,
@@ -2474,7 +2548,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "exclusion_reason": "reference_only",
+      "saturated": false
     },
     "evPenetration": {
       "value": 65.4,
@@ -2510,7 +2585,8 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "expired_alpha0",
+      "saturated": true
     },
     "lmeIndex": {
       "value": 13755.5,
@@ -2546,7 +2622,8 @@
       "freshness_level": "realtime",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "reference_only"
+      "exclusion_reason": "reference_only",
+      "saturated": false
     },
     "shanghaiCopper": {
       "value": 105060.0,
@@ -2558,7 +2635,7 @@
       "name": "沪铜",
       "displayName": "沪铜",
       "shortName": "沪铜",
-      "caliberNote": "沪铜主力连续合约价",
+      "caliberNote": "沪铜主力连续合约价；**方向待批次 C 修正**：沪铜为负向代理（BIDIRECTIONAL 40000/55000/75000/90000，按「铜价过高=成本/通胀压力」计分），并非铜矿股盈利读数的正向指标，92,550 给 −1.0 不代表看空铜",
       "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+0",
@@ -2582,7 +2659,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "exclusion_reason": null,
+      "saturated": true
     },
     "newIndicatorSample": {
       "value": 5,
@@ -2618,7 +2696,8 @@
       "freshness_level": "fresh",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "no_score"
+      "exclusion_reason": "no_score",
+      "saturated": false
     }
   },
   "meta": {
@@ -2649,7 +2728,52 @@
       "position": "40-60%",
       "signal_icon": "➖",
       "is_actionable": true,
-      "note": "未回测·非投资建议"
+      "note": "未回测·非投资建议",
+      "boundary_margin": 0.025474,
+      "boundary_threshold": -0.109,
+      "boundary_next_signal": "减仓",
+      "fragile_inputs": [
+        "sentimentA",
+        "inflation",
+        "resource",
+        "economic"
+      ],
+      "fragile_details": [
+        {
+          "id": "sentimentA",
+          "normalized_without": -0.182069,
+          "signal_without": "数据不足",
+          "impact": 0.098543
+        },
+        {
+          "id": "inflation",
+          "normalized_without": -0.168,
+          "signal_without": "数据不足",
+          "impact": 0.084474
+        },
+        {
+          "id": "resource",
+          "normalized_without": -0.022545,
+          "signal_without": "数据不足",
+          "impact": 0.060981
+        },
+        {
+          "id": "economic",
+          "normalized_without": -0.023357,
+          "signal_without": "数据不足",
+          "impact": 0.060169
+        }
+      ],
+      "degraded_inputs": [],
+      "confidence": "low",
+      "saturated_inputs": [
+        "marginBalance",
+        "hstechMomentum",
+        "ppi",
+        "carbonPrice",
+        "evPenetration",
+        "shanghaiCopper"
+      ]
     },
     "dimensions": {
       "economic": {
@@ -2663,6 +2787,8 @@
         "signal": "yellow",
         "valid_count": 5,
         "required_count": 3,
+        "saturated_count": 0,
+        "saturated_indicators": [],
         "active_count": 6,
         "reference_only_count": 0,
         "insufficient_data": false,
@@ -2725,14 +2851,18 @@
         "signal": "lightgreen",
         "valid_count": 5,
         "required_count": 3,
+        "saturated_count": 1,
+        "saturated_indicators": [
+          "ppi"
+        ],
         "active_count": 5,
-        "reference_only_count": 0,
+        "reference_only_count": 1,
         "insufficient_data": false,
         "avg_alpha": 1.0,
-        "caliberNote": "5 项：中美 CPI + 核心PCE + PPI + 联邦基金利率",
+        "caliberNote": "5 项：中美 CPI + 核心PCE + PPI + 联邦基金利率；EPU 仅展示（滞后约 1 个月，参考项）",
         "responsiveness": {
           "slowest": "月",
-          "slowest_reference": null,
+          "slowest_reference": "月",
           "detail": [
             {
               "key": "cpi",
@@ -2758,6 +2888,11 @@
               "key": "fedRate",
               "label": "月",
               "reference_only": false
+            },
+            {
+              "key": "epu",
+              "label": "月",
+              "reference_only": true
             }
           ]
         },
@@ -2766,9 +2901,12 @@
           "ppi",
           "usCpi",
           "corePce",
-          "fedRate"
+          "fedRate",
+          "epu"
         ],
-        "reference_indicators": []
+        "reference_indicators": [
+          "epu"
+        ]
       },
       "liquidity": {
         "name": "流动性（国内）",
@@ -2780,12 +2918,14 @@
         "score": null,
         "signal": "gray",
         "valid_count": 0,
-        "required_count": 3,
-        "active_count": 3,
+        "required_count": 2,
+        "saturated_count": 0,
+        "saturated_indicators": [],
+        "active_count": 4,
         "reference_only_count": 0,
         "insufficient_data": true,
         "avg_alpha": 0.0,
-        "caliberNote": "仅国内 3 项（LPR / DR007 / M2）。T4：n≤3 要求全部有效，任一缺失整维置灰（0.8 权重归零）",
+        "caliberNote": "国内 4 项：LPR / DR007 / M2 / 中债10Y。4 项需 ≥2 有效（中债10Y 与中美利差同源、不新增外部依赖）",
         "responsiveness": {
           "slowest": "月",
           "slowest_reference": null,
@@ -2804,13 +2944,19 @@
               "key": "m2",
               "label": "月",
               "reference_only": false
+            },
+            {
+              "key": "chinaBond10Y",
+              "label": "T+0",
+              "reference_only": false
             }
           ]
         },
         "display_indicators": [
           "lpr",
           "dr007",
-          "m2"
+          "m2",
+          "chinaBond10Y"
         ],
         "reference_indicators": []
       },
@@ -2825,14 +2971,16 @@
         "signal": "gray",
         "valid_count": 0,
         "required_count": 2,
-        "active_count": 3,
-        "reference_only_count": 0,
+        "saturated_count": 0,
+        "saturated_indicators": [],
+        "active_count": 2,
+        "reference_only_count": 1,
         "insufficient_data": true,
         "avg_alpha": 0.0,
-        "caliberNote": "USDCNH（离岸优先，缺失回退在岸）+ 美元指数（三货币加权代理）+ 中美10Y利差 + 美债10Y；4 项需 ≥2 有效",
+        "caliberNote": "USDCNH（离岸日线，按相对 120 日均值打分）+ 美元指数（三货币加权代理）+ 美债10Y；3 项需 ≥2 有效（usdcnh 降级时仍可出分）。中美10Y利差仅展示、不计分",
         "responsiveness": {
           "slowest": "T+0",
-          "slowest_reference": null,
+          "slowest_reference": "T+0",
           "detail": [
             {
               "key": "usdcnh",
@@ -2845,24 +2993,26 @@
               "reference_only": false
             },
             {
-              "key": "creditSpread",
+              "key": "usBond10Y",
               "label": "T+0",
               "reference_only": false
             },
             {
-              "key": "usBond10Y",
+              "key": "creditSpread",
               "label": "T+0",
-              "reference_only": false
+              "reference_only": true
             }
           ]
         },
         "display_indicators": [
           "usdcnh",
           "dollarIndex",
-          "creditSpread",
-          "usBond10Y"
+          "usBond10Y",
+          "creditSpread"
         ],
-        "reference_indicators": []
+        "reference_indicators": [
+          "creditSpread"
+        ]
       },
       "sentimentA": {
         "name": "A股/港股情绪",
@@ -2875,6 +3025,11 @@
         "signal": "lightgreen",
         "valid_count": 3,
         "required_count": 2,
+        "saturated_count": 2,
+        "saturated_indicators": [
+          "marginBalance",
+          "hstechMomentum"
+        ],
         "active_count": 4,
         "reference_only_count": 0,
         "insufficient_data": false,
@@ -2925,6 +3080,8 @@
         "signal": "yellow",
         "valid_count": 2,
         "required_count": 2,
+        "saturated_count": 0,
+        "saturated_indicators": [],
         "active_count": 2,
         "reference_only_count": 2,
         "insufficient_data": false,
@@ -2978,6 +3135,10 @@
         "signal": "yellow",
         "valid_count": 3,
         "required_count": 3,
+        "saturated_count": 1,
+        "saturated_indicators": [
+          "shanghaiCopper"
+        ],
         "active_count": 3,
         "reference_only_count": 1,
         "insufficient_data": false,
@@ -3030,6 +3191,10 @@
         "signal": "gray",
         "valid_count": 1,
         "required_count": 3,
+        "saturated_count": 1,
+        "saturated_indicators": [
+          "carbonPrice"
+        ],
         "active_count": 3,
         "reference_only_count": 2,
         "insufficient_data": true,
@@ -3079,6 +3244,29 @@
         ]
       }
     },
+    "dimension_dropped": [
+      {
+        "id": "liquidity",
+        "name": "流动性（国内）",
+        "weight_lost": 0.8,
+        "valid_count": 0,
+        "required_count": 2
+      },
+      {
+        "id": "fxExternal",
+        "name": "汇率与外部",
+        "weight_lost": 0.7,
+        "valid_count": 0,
+        "required_count": 2
+      },
+      {
+        "id": "techGreen",
+        "name": "科技与绿色",
+        "weight_lost": 0.3,
+        "valid_count": 1,
+        "required_count": 3
+      }
+    ],
     "rules_snapshot": {
       "staleness_rules": {
         "daily": {
@@ -3115,6 +3303,7 @@
       "market_mismatch": {},
       "reference_only": [
         "aiGrowth",
+        "creditSpread",
         "epu",
         "lmeIndex",
         "robotInstall",
@@ -3150,11 +3339,12 @@
       "ias_partial_coverage": 0.8,
       "unknown_alpha": 0.5
     },
-    "rules_hash": "ae148d2b8a6d",
+    "rules_hash": "5df4722e09e9",
     "model": {
       "version": "v4.2",
       "reference_only": [
         "aiGrowth",
+        "creditSpread",
         "epu",
         "lmeIndex",
         "robotInstall",
@@ -3166,8 +3356,8 @@
     }
   },
   "validity_report": {
-    "total": 37,
-    "valid": 35,
+    "total": 38,
+    "valid": 36,
     "invalid": 2,
     "degraded": [
       {
@@ -3226,7 +3416,7 @@
       {
         "key": "usdcnh",
         "displayName": "美元兑离岸人民币",
-        "source": "akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）",
+        "source": "akshare-东财离岸人民币日线（forex_hist_em USDCNH）",
         "reason": "timeout",
         "reasonText": "夹具：超时",
         "dataDate": null,

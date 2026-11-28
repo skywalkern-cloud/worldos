@@ -314,7 +314,8 @@ INDICATORS = {
     'ppi': {
         'name': 'PPI', 'short': 'PPI',
         'source': '东方财富-国家统计局', 'country': '🇨🇳', 'unit': '%', 'frequency': 'monthly',
-        'caliberNote': '中国PPI当月同比',
+        'caliberNote': ('中国PPI当月同比；**方向待批次 C 修正**：当前 PPI 成本冲击按利好计价'
+                        '（POSITIVE -5/0/3），5.7% 已越过上界恒为 +1.0，不代表本项已校准'),
     },
     'lpr': {
         'name': 'LPR利率', 'short': 'LPR利率',
@@ -334,7 +335,18 @@ INDICATORS = {
     'creditSpread': {
         'name': '中美10年利差', 'short': '中美10Y利差',
         'source': 'akshare-中美国债利差', 'country': '🌐', 'unit': 'bp', 'frequency': 'daily',
-        'caliberNote': '中美10年期国债收益率之差(bp)；非信用利差',
+        'caliberNote': ('中美10年期国债收益率之差(bp)；非信用利差。P1-8DIM A4 起**只展示、不计分**：'
+                        '美债10Y 已由 usBond10Y 单独计价，再把水平差计入 fxExternal 会让同一根'
+                        '美国10Y 被罚两次，且把中债降息误记为「外部压力」'),
+        # A4（2026-11-28 龙六必改2）：拆掉 fxExternal 内对美债10Y的重复计价。
+        # 中美利差保留在页面上（读者仍需要看相对定价），但不再进维度平均。
+        'reference_only': True,
+    },
+    'chinaBond10Y': {
+        'name': '中国10年国债收益率', 'short': '中债10Y',
+        'source': 'akshare-中美债券（bond_zh_us_rate）', 'country': '🇨🇳', 'unit': '%', 'frequency': 'daily',
+        'caliberNote': ('中国10年期国债到期收益率。与中美10Y利差同一次 akshare 请求取数（不新增外部源）；'
+                        '进 liquidity 打分：收益率越低=国内货币环境越松=分越高（NEGATIVE 1.5/2.5/4.0）'),
     },
     'epu': {
         'name': '经济政策不确定性', 'short': 'EPU',
@@ -387,7 +399,9 @@ INDICATORS = {
     'shanghaiCopper': {
         'name': '沪铜', 'short': '沪铜',
         'source': '上期所-新浪财经', 'country': '🇨🇳', 'unit': '¥/吨', 'frequency': 'daily',
-        'caliberNote': '沪铜主力连续合约价',
+        'caliberNote': ('沪铜主力连续合约价；**方向待批次 C 修正**：沪铜为负向代理'
+                        '（BIDIRECTIONAL 40000/55000/75000/90000，按「铜价过高=成本/通胀压力」计分），'
+                        '并非铜矿股盈利读数的正向指标，92,550 给 −1.0 不代表看空铜'),
     },
 }
 
@@ -406,21 +420,31 @@ DIMENSIONS = [
     {
         'id': 'inflation', 'name': '通胀与政策', 'icon': '💰', 'weight': 1.0,
         'indicators': ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
-        'caliberNote': '5 项：中美 CPI + 核心PCE + PPI + 联邦基金利率',
+        # A4：epu 从孤儿 key 挂到本维参考项（只展示，不计分）
+        'reference_indicators': ['epu'],
+        'caliberNote': '5 项：中美 CPI + 核心PCE + PPI + 联邦基金利率；EPU 仅展示（滞后约 1 个月，参考项）',
     },
     {
         # P1-8DIM：**保留 id 不变**（避免历史序列 key 断裂），只改 name 与成员。
         # 移出 dollarIndex / creditSpread / usBond2Y / usBond5Y / usBond10Y。
+        # A4（龙六必改2）：把中债10Y 收编为第 4 项，n=4 → 最小有效 2，
+        # 顺手解掉「3 项全有效、缺一项整维归零」的脆弱度。
         'id': 'liquidity', 'name': '流动性（国内）', 'icon': '💧', 'weight': 0.8,
-        'indicators': ['lpr', 'dr007', 'm2'],
-        'caliberNote': '仅国内 3 项（LPR / DR007 / M2）。T4：n≤3 要求全部有效，任一缺失整维置灰（0.8 权重归零）',
+        'indicators': ['lpr', 'dr007', 'm2', 'chinaBond10Y'],
+        'caliberNote': ('国内 4 项：LPR / DR007 / M2 / 中债10Y。4 项需 ≥2 有效'
+                        '（中债10Y 与中美利差同源、不新增外部依赖）'),
     },
     {
-        # 新维度：汇率与外部（usdcnh 新增。4 项 → 最小有效数 max(2, ceil(4*0.5)) = 2，
-        # usdcnh 取不到时维度仍可出分）。
+        # 新维度：汇率与外部。A4 后 3 项计分（usdcnh/dollarIndex/usBond10Y），
+        # 中美10Y利差降为只展示参考项（消除美债10Y双计）。
+        # 因 usdcnh 设计上允许降级（D2/D7），显式把最小有效数定为 2，
+        # 避免「n=3 必须全有效」导致 usdcnh 降级时整维归零（与 D2 冲突）。
         'id': 'fxExternal', 'name': '汇率与外部', 'icon': '💱', 'weight': 0.7,
-        'indicators': ['usdcnh', 'dollarIndex', 'creditSpread', 'usBond10Y'],
-        'caliberNote': 'USDCNH（离岸日线，按相对 120 日均值打分；缺失按 3/4 有效出分）+ 美元指数（三货币加权代理）+ 中美10Y利差 + 美债10Y；4 项需 ≥2 有效',
+        'indicators': ['usdcnh', 'dollarIndex', 'usBond10Y'],
+        'reference_indicators': ['creditSpread'],
+        'required_valid': 2,
+        'caliberNote': ('USDCNH（离岸日线，按相对 120 日均值打分）+ 美元指数（三货币加权代理）+ 美债10Y；'
+                        '3 项需 ≥2 有效（usdcnh 降级时仍可出分）。中美10Y利差仅展示、不计分'),
     },
     {
         # 原 sentiment 拆分：4 个 A股/港股代理独立成 sentimentA（0.9），
@@ -568,6 +592,8 @@ DIMENSION_CONFIG = [
         # V1a：只展示不打分的参考项（不进分母、不参平均），前端渲染用这个列表
         'reference_indicators': list(d.get('reference_indicators', [])),
         'display_indicators': list(d['indicators']) + list(d.get('reference_indicators', [])),
+        # A4：允许维度显式收紧/放宽最小有效数（目前仅 fxExternal 用）
+        'required_valid': d.get('required_valid'),
     }
     for d in DIMENSIONS
 ]
@@ -745,9 +771,16 @@ def compute_rules_hash(snapshot: dict = None) -> str:
 
 
 def required_valid_count(dim: dict) -> int:
-    """维度最小有效指标数（排除参考项后的分母）。"""
+    """维度最小有效指标数（排除参考项后的分母）。
+
+    A4：维度可显式声明 `required_valid` 覆盖默认规则。用途只有一个——
+    fxExternal 计分项降到 3 项，但 usdcnh 按 D2/D7 允许降级；若不覆盖，
+    n=3 的「全部有效」会让降级直接把整维归零，与 D2 相反。
+    """
     active = [k for k in dim['indicators'] if not is_reference_only(k)]
     n = len(active)
+    if dim.get('required_valid'):
+        return min(n, int(dim['required_valid']))
     if n <= 3:
         return n
     return max(2, (n + 1) // 2)

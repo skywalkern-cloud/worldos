@@ -51,6 +51,8 @@ SAMPLE_VALUES = {
     'lpr': (3.0, OLD, 'monthly'),
     'dr007': (1.283, OLD, 'daily'),
     'm2': (7.2, OLD, 'monthly'),
+    # A4：中债10Y 进 liquidity（同样给过期值，保持「整维置灰」用例）
+    'chinaBond10Y': (1.60, OLD, 'daily'),
     'creditSpread': (327, OLD, 'daily'),
     'dollarIndex': (96.9, OLD, 'daily'),
     'usBond2Y': (4.51, OLD, 'daily'),

@@ -283,7 +283,7 @@ def _dim_commentary_inflation(indicators: dict, dim_meta: dict) -> str:
 def _dim_commentary_liquidity(indicators: dict, dim_meta: dict) -> str:
     """💧 流动性（国内）板块解读
 
-    P1-8DIM（2026-11-28）：本维度**只剩国内 3 项**（LPR / DR007 / M2）。
+    P1-8DIM（2026-11-28）：本维度为国内 4 项（LPR / DR007 / M2 / 中债10Y）。
     中美利差 / 美元指数 / 美债收益率已迁到 fxExternal，本段不再重复讲，
     否则同一件事在两张卡上说两遍（口径重复 = 读者无法归因）。
     """
@@ -293,6 +293,7 @@ def _dim_commentary_liquidity(indicators: dict, dim_meta: dict) -> str:
     lpr = get_indicator(indicators, 'lpr')
     dr007 = get_indicator(indicators, 'dr007')
     m2 = get_indicator(indicators, 'm2')
+    cny10 = get_indicator(indicators, 'chinaBond10Y')
 
     lines = []
     cls_label = ('国内流动性中性偏松但结构分化' if abs(dim_score) < 0.2
@@ -309,15 +310,19 @@ def _dim_commentary_liquidity(indicators: dict, dim_meta: dict) -> str:
         parts.append(f"DR007实际成交{value_str(dr007, 2)}{' 低于1.8%中性线，银行间不缺钱' if dr_v < 1.6 else ' 在1.8%附近，资金面中性'}")
     if m2_v is not None:
         parts.append(f"M2增速{value_str(m2)}{' 接近9%目标' if abs(m2_v - 9.0) < 1.5 else ''}")
+    cny10_v = cny10.get('value')
+    if cny10_v is not None:
+        parts.append(f"中债10Y {value_str(cny10, 2)}{' 处于低位，长端利率宽松' if cny10_v < 2.0 else ''}")
     if parts:
         lines.append("国内货币环境：" + "，".join(parts) + "。")
 
-    missing = [k for k, v in (('LPR', lpr), ('DR007', dr007), ('M2', m2)) if v.get('value') is None]
+    missing = [k for k, v in (('LPR', lpr), ('DR007', dr007), ('M2', m2),
+                               ('中债10Y', cny10)) if v.get('value') is None]
     if missing:
-        lines.append(f"注意：{'/'.join(missing)} 本轮缺失。本维度只有 3 项，"
-                     "按最小有效数规则须全部有效，任一缺失整维置灰（0.8 权重不计入 IAS）。")
+        lines.append(f"注意：{'/'.join(missing)} 本轮缺失。本维度 4 项，"
+                     "最小有效数 2；有效项不足 2 时整维置灰（0.8 权重不计入 IAS）。")
     else:
-        lines.append("三项均有效，按权重全额计入 IAS。")
+        lines.append("四项均有效，按权重全额计入 IAS。")
 
     lines.append("跨境资金与美债收益率已单独成「汇率与外部」维度，不在本段重复。")
     return ''.join(lines)
@@ -398,7 +403,8 @@ def _dim_commentary_fxExternal(indicators: dict, dim_meta: dict) -> str:
         lines.append(f"美元指数{value_str(dollar)}（三货币加权代理，非 ICE DXY）{' 高位' if d_v > 100 else ' 偏弱'}。")
     cr_v = credit.get('value')
     if cr_v is not None:
-        lines.append(f"中美10年利差{value_str(credit, 0)}{'，倒挂压力大。' if cr_v > 250 else '。'}")
+        lines.append(f"中美10年利差{value_str(credit, 0)}（仅展示、不计分；美债10Y 已单列，避免同一因子计两次）"
+                     f"{'，倒挂压力大。' if cr_v > 250 else '。'}")
     b10_v = b10y.get('value')
     if b10_v is not None:
         lines.append(f"美债10Y {value_str(b10y, 2)}，仍是全球资产定价锚。")

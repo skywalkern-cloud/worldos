@@ -155,6 +155,40 @@ def _band_new(norm: float) -> str:
     return '清仓/防御'
 
 
+# A4（泰斯特 §5.3）：回算必须把**所有**有 series 的指标按 as-of 注入。
+# 历史快照里这 4 个 A股/港股代理只有值、没有 history（→ pct_rank warmup →
+# sentimentA 整维置灰），导致「8 维回算」实际只有 7 维。这里统一补齐。
+SERIES_KEYS = list(im.QUANTILE_CONFIG)
+
+
+def _series_asof(key: str, ref_date: str):
+    """通用 as-of：取 ref_date **之前**最近收盘 + 该日之前的全部历史。
+
+    严格 `d < ref_date`（不用当日）：与泰斯特 §5.3 口径一致，等价于「快照日
+    开盘前已知的最近收盘」，保证任何一天都不会看到当天/未来的值。
+    """
+    series = series_store.load(key)
+    ds = sorted(d for d in series if d < ref_date)
+    if not ds:
+        return None
+    last = ds[-1]
+    hist = [{'date': d, 'value': series[d]} for d in ds[:-1]]
+    return {'value': series[last], 'dataDate': last, 'history': hist,
+            'max_used_date': last, 'history_days': len(hist)}
+
+
+def _series_entry(key: str, asof: dict) -> dict:
+    """把 as-of 结果包装成 build_indicators_and_meta 期望的 raw_data 条目。"""
+    meta = im.INDICATORS[key]
+    return {
+        'value': asof['value'], 'unit': meta['unit'], 'frequency': meta['frequency'],
+        'source': meta['source'], 'dataDate': asof['dataDate'],
+        'lastFetched': datetime.now().isoformat(),
+        'realtime': False, 'used_fallback': False, 'fetchError': None,
+        'history': asof['history'],
+    }
+
+
 def _cnh_series():
     """读取 usdcnh 日线序列（{date: close}）。无回填 → 空 dict（不造数）。"""
     return series_store.load('usdcnh')
@@ -206,21 +240,48 @@ def _usdcnh_entry(cnh: dict) -> dict:
 
 def compare(days: int, quiet: bool = False) -> dict:
     snaps = load_snapshots(days)
-    cnh_series = _cnh_series()
     rows = []
     flips = []
     lookahead_violations = []
     prev_data = None
     for ds, doc in snaps:
         data = {k: dict(v) for k, v in (doc.get('data') or {}).items() if isinstance(v, dict)}
-        # A2：把 usdcnh 日线以 as-of 方式注入（历史上快照里本来没有这一项）。
-        cnh = _cnh_asof(cnh_series, ds)
-        if cnh:
-            data['usdcnh'] = _usdcnh_entry(cnh)
-            # 无未来函数强断言：本日用到的所有 usdcnh 观测必须严格早于快照日。
-            used_dates = [r['date'] for r in cnh['history']] + [cnh['dataDate']]
+        # A2 + A4：所有有 series 的指标都以 as-of 方式注入（usdcnh + 4 个 A股代理）。
+        # 旧快照里这 4 项只有值没有 history → pct_rank warmup，本次一并修正。
+        cnh = None
+        injected = {}
+        for key in SERIES_KEYS:
+            asof = _series_asof(key, ds)
+            if not asof:
+                continue
+            data[key] = _series_entry(key, asof)
+            injected[key] = {'value': asof['value'], 'dataDate': asof['dataDate'],
+                             'max_used_date': asof['max_used_date'],
+                             'history_days': asof['history_days']}
+            if key == 'usdcnh':
+                cnh = asof
+            # 无未来函数强断言：本日用到的所有观测必须严格早于快照日。
+            used_dates = [r['date'] for r in asof['history']] + [asof['dataDate']]
             if max(used_dates) >= ds:
-                lookahead_violations.append({'date': ds, 'max_used': max(used_dates)})
+                lookahead_violations.append({'date': ds, 'key': key,
+                                             'max_used': max(used_dates)})
+        # A4：旧快照没有 chinaBond10Y（本批新增）。用同一快照已有的
+        # 「美债10Y − 中美利差」反算（同源、不造数），否则历史回算的 liquidity
+        # 仍是 3 项，和 live 4 项不可比（会出现两套结论）。
+        if not (data.get('chinaBond10Y') or {}).get('value'):
+            cs = (data.get('creditSpread') or {}).get('value')
+            u10 = (data.get('usBond10Y') or {}).get('value')
+            if cs is not None and u10 is not None:
+                data['chinaBond10Y'] = {
+                    'value': round(float(u10) - float(cs) / 100.0, 2),
+                    'unit': im.INDICATORS['chinaBond10Y']['unit'],
+                    'frequency': 'daily',
+                    'source': im.INDICATORS['chinaBond10Y']['source'],
+                    'caliberNoteSuffix': '（由美债10Y − 中美10Y利差反算，同源）',
+                    'dataDate': (data.get('creditSpread') or {}).get('dataDate'),
+                    'lastFetched': datetime.now().isoformat(),
+                    'realtime': False, 'used_fallback': False, 'fetchError': None,
+                }
 
         indicators, meta = scoring.build_indicators_and_meta(data, prev_data)
         prev_data = {k: {'value': v.get('value'), 'dataDate': v.get('dataDate')}
@@ -258,6 +319,7 @@ def compare(days: int, quiet: bool = False) -> dict:
                             'threshold_flip': threshold_only != old_ias['signal'],
                             'structure_flip': struct_only != threshold_only},
             'snapshot_rules_hash': (doc.get('meta') or {}).get('rules_hash'),
+            'series_injected': injected,
             'usdcnh': (_usdcnh_audit(indicators, cnh) if cnh else None),
         }
         rows.append(row)
@@ -289,9 +351,9 @@ def compare(days: int, quiet: bool = False) -> dict:
             print(f"  ★ {f['date']}: {f['old_signal']} → {f['new_signal']}（{f['cause']}；"
                   f"归一 {f['old_norm']} → {f['new_norm']}；覆盖 {f['old_coverage']} → {f['new_coverage']}）")
         if lookahead_violations:
-            print(f'  ❌ usdcnh 未来函数违规 {len(lookahead_violations)} 处: {lookahead_violations[:5]}')
+            print(f'  ❌ 序列未来函数违规 {len(lookahead_violations)} 处: {lookahead_violations[:5]}')
         else:
-            print('  ✅ usdcnh 无未来函数：每个快照日只使用 date < 当日 的观测')
+            print('  ✅ 所有 series 无未来函数：每个快照日只使用 date < 今日 的观测')
 
     return {'rows': rows, 'flips': flips,
             'lookahead_violations': lookahead_violations}
@@ -326,7 +388,8 @@ def rebuild_live():
     prev_ds, prev_doc = snaps[-2] if len(snaps) > 1 else (None, None)
     results = {k: dict(v) for k, v in (doc.get('data') or {}).items() if isinstance(v, dict)}
 
-    # usdcnh：从日线序列 as-of 取（11-28 快照 → 用 11-27 收盘 6.6551）
+    # A4：所有 series 指标统一 as-of 注入（usdcnh + 4 个 A股/港股代理）。
+    # 11-28 快照 → usdcnh 用 11-27 收盘 6.6551；4 个代理也用各自 11-27/11-26 收盘。
     meta_u = im.INDICATORS['usdcnh']
     cnh = _cnh_asof(_cnh_series(), ds)
     if cnh:
@@ -343,6 +406,31 @@ def rebuild_live():
                            'reasonText': '无 usdcnh 日线序列（不造数）'},
         }
     results['usdcnh'] = entry
+    for key in SERIES_KEYS:
+        if key == 'usdcnh':
+            continue
+        asof = _series_asof(key, ds)
+        if asof:
+            if asof['max_used_date'] >= ds:
+                raise RuntimeError(f'{key} 未来函数：用到 {asof["max_used_date"]} ≥ 快照日 {ds}')
+            results[key] = _series_entry(key, asof)
+
+    # A4：chinaBond10Y 在旧快照里不存在（本批新增）。它可以从同一批数据的
+    # 「美债10Y − 中美利差」反算：4.94 − 334bp = 1.60%，不是新数据源、不是造数。
+    if not (results.get('chinaBond10Y') or {}).get('value'):
+        cs = (results.get('creditSpread') or {}).get('value')
+        u10 = (results.get('usBond10Y') or {}).get('value')
+        if cs is not None and u10 is not None:
+            results['chinaBond10Y'] = {
+                'value': round(float(u10) - float(cs) / 100.0, 2),
+                'unit': im.INDICATORS['chinaBond10Y']['unit'],
+                'frequency': 'daily',
+                'source': im.INDICATORS['chinaBond10Y']['source'],
+                'caliberNoteSuffix': '（数值由美债10Y − 中美10Y利差反算，同源）',
+                'dataDate': (results.get('creditSpread') or {}).get('dataDate'),
+                'lastFetched': datetime.now().isoformat(),
+                'realtime': False, 'used_fallback': False, 'fetchError': None,
+            }
 
     prev_data = None
     if prev_doc:
@@ -452,6 +540,14 @@ def main():
             'violations': res['lookahead_violations'],
             'passed': not res['lookahead_violations'],
             'rule': '每个快照日只允许使用 date < 快照日 的 usdcnh 观测（MA120 含当日=该日之前最近收盘）',
+        },
+        # A4：所有 series 指标统一 as-of（usdcnh + ashareTurnover/marginBalance/
+        # southboundNet/hstechMomentum），否则 18/19 天 sentimentA=null。
+        'series_no_lookahead': {
+            'violations': res['lookahead_violations'],
+            'passed': not res['lookahead_violations'],
+            'keys': SERIES_KEYS,
+            'rule': '每个快照日对每一条 series 只使用 date < 快照日 的观测',
         },
     }
     Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)

@@ -643,7 +643,12 @@ _bond_yields_cache = None
 
 
 def _fetch_bond_yields():
-    """获取中美债券收益率（缓存，避免重复调用akshare）"""
+    """获取中美债券收益率（缓存，避免重复调用akshare）
+
+    A4（2026-11-28）：在**同一次** ak.bond_zh_us_rate() 里顺带取中国10Y，并算出
+    中美10Y利差。这样 chinaBond10Y / creditSpread 与美债10Y 同源同批次，
+    不新增外部数据源（龙六必改2：复用现有算利差的数据）。
+    """
     global _bond_yields_cache
     if _bond_yields_cache is not None:
         return _bond_yields_cache
@@ -656,6 +661,15 @@ def _fetch_bond_yields():
             valid = df[df[col].notna()]
             if not valid.empty:
                 result[key] = (float(valid.iloc[-1][col]), str(valid.iloc[-1]['日期'])[:10])
+        # A4：中债10Y + 中美利差（同一行计算，保证 334bp 可复算）
+        for i in range(len(df) - 1, -1, -1):
+            us10 = df.iloc[i]['美国国债收益率10年']
+            cn10 = df.iloc[i]['中国国债收益率10年']
+            if not pd.isna(us10) and not pd.isna(cn10):
+                d = str(df.iloc[i]['日期'])[:10]
+                result['CN10Y'] = (float(cn10), d)
+                result['creditSpread'] = (int(round((float(us10) - float(cn10)) * 100, 0)), d)
+                break
         _bond_yields_cache = result
         return result
     except Exception:
@@ -1084,15 +1098,20 @@ def get_energy_index():
 
 @with_timeout(20)
 def get_credit_spread():
-    """中美10年国债利差（bp）"""
-    import akshare as ak
-    import pandas as pd
-    df = ak.bond_zh_us_rate()
-    for i in range(len(df) - 1, -1, -1):
-        us10 = df.iloc[i]['美国国债收益率10年']
-        cn10 = df.iloc[i]['中国国债收益率10年']
-        if not pd.isna(us10) and not pd.isna(cn10):
-            return int(round((float(us10) - float(cn10)) * 100, 0)), str(df.iloc[i]['日期'])[:10], 'daily'
+    """中美10年国债利差（bp）—— 与 chinaBond10Y 共用同一次缓存取数。"""
+    data = _fetch_bond_yields()
+    if 'creditSpread' in data:
+        val, d = data['creditSpread']
+        return val, d, 'daily'
+    return None, None, None
+
+
+def get_china_bond_10y():
+    """中国10年期国债收益率（A4：liquidity 第 4 项）—— 复用美债同一请求。"""
+    data = _fetch_bond_yields()
+    if 'CN10Y' in data:
+        val, d = data['CN10Y']
+        return round(val, 2), d, 'daily'
     return None, None, None
 
 
@@ -1491,6 +1510,7 @@ FETCH_FUNCS = {
     'dr007': get_dr007,
     'm2': get_m2,
     'creditSpread': get_credit_spread,
+    'chinaBond10Y': get_china_bond_10y,
     'epu': get_epu,
     'carbonPrice': get_carbon_price,
     'electricity': get_electricity,
@@ -1673,7 +1693,54 @@ def save_results(results, fetch_ts):
     except Exception as e:
         print(f"  ⚠️ 历史快照归档失败: {e}")
 
+    # G（看门狗）：只加判据与日志，不新增 cron。三类告警：
+    # ① usdcnh 降级 ② 维度因有效数不足被剔除 ③ boundary_margin < 0.02
+    try:
+        import health_check
+        for warning in health_check.check_document(output):
+            print(f'  🩺 WARN: {warning}')
+    except Exception as e:  # noqa: BLE001
+        print(f'  🩺 健康检查跳过（{type(e).__name__}: {e}）')
+
     return valid, total
+
+
+def sync_series(results):
+    """把本轮值写回历史序列并挂 history（单一实现，fetch 与测试共用）。
+
+    A4 P0（泰斯特 §3.5）：`sourceDegraded` 非空（如 usdcnh 回退在岸价）→ **既不入库
+    也不注入 history**。D7 只拦了打分，没拦住喂序列；在岸价一旦写进 usdcnh.json，
+    会污染此后最多 120 个交易日的 MA120（在岸/离岸差 0.1~0.3%，而档位总宽 1.5%）。
+
+    返回：被跳过的降级 key 列表（供日志/测试断言）。
+    """
+    skipped = []
+    for key, cfg in PCT_SERIES_KEYS.items():
+        v = results.get(key, {})
+        val = v.get('value')
+        dd = v.get('dataDate')
+        if val is None or not dd:
+            continue
+        # 降级值只作展示：不 upsert、不挂 history（history 缺 → 打分侧自然 score=None）
+        if v.get('sourceDegraded'):
+            skipped.append(key)
+            print(f'  ⏭️ {key}: 源降级（{(v.get("sourceDegraded") or {}).get("reason", "degraded")}），'
+                  '跳过序列回写与 history 注入（值只展示，不进 MA/分位）')
+            continue
+        try:
+            series_store.upsert(key, dd, val,
+                                unit=SERIES_META[key]['unit'],
+                                transform=SERIES_META[key]['transform'])
+            # 每个指标的回看窗口不同（ratio_band 要 120，pct_rank 要 60），从配置派生
+            window = cfg.get('window') or PCT_RANK_WINDOW_LONG
+            lookback = window + PCT_TRANSFORM_LOOKBACK + 2
+            hist = series_store.history_before(key, dd, limit=lookback)
+            v['history'] = hist
+            print(f'  🧮 {key}: 历史样本 {len(hist)} 条（{cfg["method"]}, 窗口 {window}）')
+        except Exception as e:
+            # 历史写失败不能把当日值弄丢：history 留空 → 打分侧自然走 warmup
+            print(f'  ⚠️ {key}: 历史序列处理失败（本轮按 warmup, score=null）：{type(e).__name__}: {e}')
+    return skipped
 
 
 def main():
@@ -1803,25 +1870,7 @@ def main():
 
     # ── V1b-1：把今日值写回历史序列，并把「今日之前」的样本挂到 results[key]['history'] ──
     # 两个动作必须成对：写回 → 序列才能日积月累；挂 history → 打分不需要读磁盘，产物可回放。
-    for key, cfg in PCT_SERIES_KEYS.items():
-        v = results.get(key, {})
-        val = v.get('value')
-        dd = v.get('dataDate')
-        if val is None or not dd:
-            continue
-        try:
-            series_store.upsert(key, dd, val,
-                                unit=SERIES_META[key]['unit'],
-                                transform=SERIES_META[key]['transform'])
-            # 每个指标的回看窗口不同（ratio_band 要 120，pct_rank 要 60），从配置派生
-            window = cfg.get('window') or PCT_RANK_WINDOW_LONG
-            lookback = window + PCT_TRANSFORM_LOOKBACK + 2
-            hist = series_store.history_before(key, dd, limit=lookback)
-            v['history'] = hist
-            print(f'  🧮 {key}: 历史样本 {len(hist)} 条（{cfg["method"]}, 窗口 {window}）')
-        except Exception as e:
-            # 历史写失败不能把当日值弄丢：history 留空 → 打分侧自然走 warmup
-            print(f'  ⚠️ {key}: 历史序列处理失败（本轮按 warmup, score=null）：{type(e).__name__}: {e}')
+    sync_series(results)
 
     # 每次循环后尝试保存（防止超时导致数据丢失）
     valid, total = save_results(results, fetch_ts)

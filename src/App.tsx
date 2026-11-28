@@ -62,6 +62,8 @@ interface IndicatorInfo {
   excluded_from_scoring?: boolean
   /** reference_only | no_score | expired_alpha0 | degraded_no_score */
   exclusion_reason?: string
+  /** A4：是否被 ±1.0 / 分位两端截断（到区间上界，不携带新信息） */
+  saturated?: boolean
   frequency: string
   dataDate: string | null
   source: string
@@ -83,6 +85,9 @@ interface DimensionMeta {
   reference_only_count?: number
   insufficient_data?: boolean
   avg_alpha?: number
+  /** A4：维度内饱和（常数）计分项数量 */
+  saturated_count?: number
+  saturated_indicators?: string[]
   // === P0/D+ 权重可审计 ===
   weight_design?: number
   weight_effective?: number
@@ -122,6 +127,15 @@ interface IASMeta {
   weight_design_sum?: number
   weight_effective_sum?: number
   scale_coverage?: number
+  /** A4（龙六 P0-3）：边界余量 / 脆弱输入 / 置信度 */
+  boundary_margin?: number | null
+  boundary_threshold?: number | null
+  boundary_next_signal?: string | null
+  fragile_inputs?: string[]
+  fragile_details?: { id: string; normalized_without: number; signal_without: string; impact: number }[]
+  degraded_inputs?: { key: string; dimension: string; reason?: string; source?: string }[]
+  confidence?: 'high' | 'medium' | 'low'
+  saturated_inputs?: string[]
 }
 
 interface ValidityFailure {
@@ -240,8 +254,8 @@ const DIMENSION_LABELS: Record<string, { name: string; icon: string }> = {
 const DIMENSION_INDICATORS: Record<string, string[]> = {
   economic:     ['chinaGdp', 'chinaPmi', 'servicePmi', 'electricity', 'usGdp', 'usNonFarm'],
   inflation:    ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
-  liquidity:    ['lpr', 'dr007', 'm2'],
-  fxExternal:   ['usdcnh', 'dollarIndex', 'creditSpread', 'usBond10Y'],
+  liquidity:    ['lpr', 'dr007', 'm2', 'chinaBond10Y'],
+  fxExternal:   ['usdcnh', 'dollarIndex', 'usBond10Y', 'creditSpread'],
   sentimentA:   ['ashareTurnover', 'marginBalance', 'southboundNet', 'hstechMomentum'],
   riskAppetite: ['vix', 'fearGreed', 'usBond2Y', 'usBond5Y'],
   resource:     ['oilPrice', 'naturalGas', 'shanghaiCopper', 'lmeIndex'],
@@ -600,6 +614,43 @@ function IASCard({ ias }: { ias: IASMeta }) {
         )}
       </div>
 
+      {/* A4（龙六 P0-3）：边界余量 / 脆弱维度 / 置信度 —— 必须显式可见，
+          不能只躲在 tooltip 里。余量 = normalized − 最近阈值。 */}
+      {typeof ias.boundary_margin === 'number' && (
+        <div className="mt-1.5 flex items-center justify-center gap-2 flex-wrap">
+          <span
+            className={`text-[11px] px-2 py-0.5 rounded-full border ${
+              Math.abs(ias.boundary_margin) < 0.02
+                ? 'bg-red-500/20 text-red-100 border-red-300/40'
+                : 'bg-black/20 text-white/75 border-white/20'
+            }`}
+            title={
+              `boundary_margin = normalized − 最近阈值 ${ias.boundary_threshold}` +
+              `\n跨过该阈值后信号 = ${ias.boundary_next_signal}` +
+              `\n脆弱维度（剔除后翻档，按影响降序）：${(ias.fragile_inputs || []).join(' / ') || '无'}`
+            }
+          >
+            距翻档 {Math.abs(ias.boundary_margin).toFixed(3)}
+            {ias.boundary_next_signal && (ias.fragile_inputs?.length || 0) > 0
+              ? ` · 掉任一维度即变${ias.boundary_next_signal}`
+              : ` · 下档${ias.boundary_next_signal}`}
+          </span>
+          {ias.confidence && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/20 text-white/75 border border-white/20">
+              置信度 {ias.confidence === 'high' ? '高' : ias.confidence === 'medium' ? '中' : '低'}
+            </span>
+          )}
+          {(ias.saturated_inputs?.length || 0) > 0 && (
+            <span
+              className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-100 border border-amber-300/30"
+              title={`已到区间上界、不再携带新信息的计分项：${(ias.saturated_inputs || []).join(' / ')}`}
+            >
+              含 {ias.saturated_inputs!.length} 项饱和
+            </span>
+          )}
+        </div>
+      )}
+
       {/* 数据覆盖中间档（0.6~0.8）：出分但信号仅参考 */}
       {resolveCoverageTier(ias.data_coverage) === 'partial' && (
         <div className="mt-1.5">
@@ -792,10 +843,14 @@ function DimensionCardV4({
           <h2 className="text-base font-semibold text-gray-100 truncate">{dimName}</h2>
           <span
             className="text-xs text-gray-500 flex-shrink-0"
-            title={weightShrunk ? dimMeta?.weight_reason : '设计权重'}
+            title={`设计权重 w=${wDesign ?? '-'}；有效权重 eff=${wEffective ?? '-'}` +
+              (weightShrunk ? `\n收缩原因：${dimMeta?.weight_reason}` : '')}
           >
-            w={weightShrunk ? wEffective : (wDesign ?? '-')}
-            {weightShrunk && <span className="text-amber-500/80">（设计 {wDesign}）</span>}
+            <span className="text-gray-500">w={wDesign ?? '-'}</span>
+            <span className="mx-0.5 text-gray-600">·</span>
+            <span className={weightShrunk ? 'text-amber-500/90' : 'text-gray-500'}>
+              eff={wEffective ?? '-'}
+            </span>
           </span>
           {respLabel && (
             <span
@@ -835,6 +890,14 @@ function DimensionCardV4({
           </span>
         )}
         {typeof requiredCount === 'number' && <span className="text-gray-600">· 需 ≥{requiredCount}</span>}
+        {(dimMeta?.saturated_count ?? 0) > 0 && (
+          <span
+            className="text-amber-500/90"
+            title={`饱和项（已到区间上界、不携带新信息）：${(dimMeta?.saturated_indicators || []).join(' / ')}`}
+          >
+            · {dimMeta?.saturated_count} 项饱和
+          </span>
+        )}
       </div>
 
       {/* V1a：口径（后端单一真源 caliberNote，前端只展示不做判断） */}
@@ -977,6 +1040,14 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
               title={exclusionBadge.title}
             >
               {exclusionBadge.text}
+            </span>
+          )}
+          {info.saturated === true && (
+            <span
+              className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-300/90 border border-amber-500/25 flex-shrink-0"
+              title="本项已到评分区间上/下界（|score|=1.0），不再随数值变化，不携带新信息；不应拿它当独立看多/看空证据"
+            >
+              已到区间上界·不携带信息
             </span>
           )}
           {isFallback && (
