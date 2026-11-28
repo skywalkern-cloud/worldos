@@ -74,9 +74,8 @@ POSITIVE_PARAMS = {
 NEGATIVE_PARAMS = {
     'lpr':               (2.0, 3.5, 5.0),
     'dr007':             (1.0, 1.8, 3.0),
-    # A4：中债10Y 收编进 liquidity。收益率越低=国内货币环境越松=分越高。
-    # 1.5% 极低(+1) / 2.5% 中性(0) / 4.0% 高位(-1)；今日 1.60% → +0.9。
-    'chinaBond10Y':      (1.5, 2.5, 4.0),
+    # P1-3（2026-11-28）：chinaBond10Y 的固定水位 1.5/2.5/4.0 已移除（打回）。
+    # 现走 ratio_ma_steps（相对 120 日均值五档，见 indicator_meta），不再在这里留第二套断点。
     'creditSpread':      (100, 200, 400),
     'dollarIndex':       (92, 100, 112),
     'vix':               (12, 20, 35),
@@ -574,6 +573,7 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
         total_alpha = 0.0
         alpha_sum_active = 0.0   # 含 α=0 的指标，用于「这个维度数据整体多新」
         valid_count = 0
+        valid_keys = []          # P1-4：例外白名单需要知道「到底缺了谁」
         ref_count = 0
         active_total = 0
         saturated_keys = []
@@ -593,11 +593,13 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
                 total_weighted += score_val * alpha
                 total_alpha += alpha
                 valid_count += 1
+                valid_keys.append(key)
                 # A4（龙六 P0-1）：饱和披露。只统计真正进平均的项（α>0）。
                 if ind.get('saturated') is True:
                     saturated_keys.append(key)
 
-        required = required_valid_count(dim)
+        # P1-4：required 按「本维实际有效集合」算 —— 显式覆盖只在白名单项缺失时生效。
+        required = required_valid_count(dim, set(valid_keys))
         # V1a：只展示不打分的参考项也计入参考项数（它们不在 indicators 里，需要单独加）
         ref_count += len(dim.get('reference_indicators', []))
         insufficient = valid_count < required
@@ -708,6 +710,9 @@ def calc_ias(dim_scores: dict, indicators: dict = None) -> dict:
             'boundary_margin': None,
             'boundary_threshold': None,
             'boundary_next_signal': None,
+            'next_threshold': None,
+            'next_signal': None,
+            'next_direction': None,
             'fragile_inputs': [],
             'fragile_details': [],
             'degraded_inputs': [],
@@ -738,15 +743,21 @@ def calc_ias(dim_scores: dict, indicators: dict = None) -> dict:
             signal = f'{signal}（部分维度缺失·参考）'
 
     # ── A4（龙六 P0-3）：边界余量 / 脆弱输入 / 置信度披露 ──
-    # boundary_margin = normalized − 最近阈值（带符号）。>0 = 在该阈值内侧，<0 = 已越界。
+    # P1-1（2026-11-28 泰斯特 A4-P1-2）：旧实现只给「带符号距离」，normalized 落在某档
+    # 下半区时 margin 变负、next 指向更好档位，前端又写死「下档」→ 方向反。
+    # 现显式给出方向：next_direction = up/down（要往上/往下才翻档），
+    # margin 仍保留带符号值（= normalized − 最近阈值），但前端一律按 direction 出文案。
+    #   例：norm −0.20，最近阈值 −0.109 在**上方** → direction=up，next=持有。
     signal_bare = signal.split('（')[0]
     boundary_threshold, _bsig, _bpos, _bico = min(
         IAS_THRESHOLDS, key=lambda x: abs(normalized - x[0]))
     boundary_margin = q(normalized - boundary_threshold, 6)
-    if normalized >= boundary_threshold:
-        boundary_next_signal = _signal_for_normalized(boundary_threshold - 1e-9)[0]
-    else:
+    next_direction = 'up' if boundary_threshold > normalized else 'down'
+    if next_direction == 'up':
+        # 往上跨过该阈值 → 进入阈值上方的档（用 +1e-9 保证取到上方那档）
         boundary_next_signal = _signal_for_normalized(boundary_threshold + 1e-9)[0]
+    else:
+        boundary_next_signal = _signal_for_normalized(boundary_threshold - 1e-9)[0]
 
     # fragile_inputs：逐维剔除后信号会变的维度，按对 normalized 的影响绝对值降序。
     fragile = []
@@ -819,9 +830,14 @@ def calc_ias(dim_scores: dict, indicators: dict = None) -> dict:
         'is_actionable': actionable,
         'note': '未回测·非投资建议',
         # ── A4（龙六 P0-3）边界余量披露 ──
-        'boundary_margin': boundary_margin,          # normalized − 最近阈值（带符号）
+        'boundary_margin': boundary_margin,          # normalized − 最近阈值（带符号；<0 = 边界在上方）
         'boundary_threshold': boundary_threshold,    # 最近的阈值
         'boundary_next_signal': boundary_next_signal,  # 跨过该阈值后的档位
+        # P1-1：明确字段（前端只读这三个，不再自己判方向/写死「下档」）
+        'next_threshold': boundary_threshold,        # 下一次翻档的阈值
+        'next_signal': boundary_next_signal,         # 翻过去之后是什么信号
+        'next_direction': next_direction,            # 'up' | 'down'：要往上/往下才翻档
+        'boundary_distance': abs(boundary_margin),   # 距离（不带方向）
         'fragile_inputs': [x['id'] for x in fragile],  # 掉哪几维会翻档（按影响降序）
         'fragile_details': fragile,                    # 含剔除后 normalized / 信号 / 影响
         'degraded_inputs': degraded_inputs,
@@ -868,15 +884,22 @@ def build_degraded_items(indicators: dict) -> list:
     return items
 
 
-def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
+def build_indicators_and_meta(raw_data: dict, prev_data: dict = None, today=None) -> tuple:
     """
     从原始数据构建 indicators 和 meta 对象
 
     raw_data: { key: {value, unit, frequency, source, dataDate} }
     prev_data: { key: {value, ...} } 用于趋势比较
+    today:     新鲜度判定的「今天」（date 或 ISO 串）。
+               live 抓取留 None = 墙钟今天；**回算必须传快照日**（P1-5）。
+               旧实现恒用墙钟 → 11-06 收盘跟 11-28 比 = 22 天 → α=0，
+               把 11-09~11-18 九天误判成「数据不足」。
 
     Returns: (indicators, meta)
     """
+    # today 允许传 ISO 串（回算脚本按快照日字符串传），统一成 date 再往下交。
+    if isinstance(today, str):
+        today = date.fromisoformat(today[:10])
     indicators = {}
     data_values = {}  # flat { key: value } for dimension scoring
 
@@ -923,6 +946,8 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         # 本项已退化成常数，必须在产物里显式披露，不能让读者把常数当结论。
         # pct_rank / ratio_band / ratio_ma 用各自更细的饱和判据（分位 0/1、撞地板），
         # 其余 breakpoint 类用 |score| = 1.0 判定。
+        # P1-2（2026-11-28 泰斯特 P2）：饱和侧必须分上/下界 —— 沪铜 −1.0 是**下界**，
+        # 旧文案写死「已到区间上界」是错的。side 按**分数区间**判：+1.0 = upper，−1.0 = lower。
         if score is None:
             saturated = False
         elif ratio_ma_meta is not None:
@@ -931,6 +956,7 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             saturated = bool(pct_meta.get('saturated'))
         else:
             saturated = abs(float(score)) >= 1.0 - 1e-9
+        saturated_side = (('upper' if float(score) > 0 else 'lower') if saturated else None)
 
         # 实时报价类（源不提供日期）：不伪造 dataDate，改为显式标注 dateNote。
         # T13：兜底值不享受 realtime 待遇（上一轮值必然比今天旧）。
@@ -940,7 +966,7 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         # T13：α / 图标 / 状态 / 降级原因全部一次性从唯一真源拿，
         # 不再「先算 α 再单独判图标」（两套判定 = 两个可能不一致的口径）。
         fresh = resolve_freshness(data_date, freq, realtime=realtime,
-                                  used_fallback=used_fallback)
+                                  used_fallback=used_fallback, today=today)
         timeliness = fresh['alpha']
         stale_days = fresh['days_stale']
 
@@ -1048,8 +1074,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             # 是否被排除在评分之外（给前端区分「数据旧了」和「这项没进评分」）
             'excluded_from_scoring': excluded,
             'exclusion_reason': exclusion_reason,
-            # A4：是否被 ±1.0 / 分位两端截断（前端挂「已到区间上界·不携带信息」）
+            # A4：是否被 ±1.0 / 分位两端截断（前端挂「已到区间上界/下界·不携带信息」）
             'saturated': saturated,
+            # P1-2：饱和侧 upper/lower（未饱和为 None），前端文案按它分方向
+            'saturated_side': saturated_side,
         }
         # fetch 阶段带入的降级痕迹（fetch 失败、用上一轮值兜底）
         if info.get('used_fallback'):

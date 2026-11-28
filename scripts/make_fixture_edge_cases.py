@@ -93,6 +93,9 @@ PCT_HISTORY_LEN = {
     'marginBalance': 25,      # delta5：25 条 → 20 个 transform → 仅 S20
     'southboundNet': 3,       # sum5：3 条 → 算不出 → warmup
     'hstechMomentum': 65,     # raw：65 条 → 60 窗口
+    # P1-3：中债10Y 改 ratio_ma_steps（需 120 点）→ 给足历史才能覆盖
+    # 「有过期但能出分 → expired_alpha0」这条分支。
+    'chinaBond10Y': 125,
 }
 
 
@@ -100,9 +103,11 @@ def _synthetic_history(key, n):
     """生成 n 条历史（不含今日），日期从远到近。"""
     import math
     base = {'ashareTurnover': 15000.0, 'marginBalance': 20000.0,
-            'southboundNet': 20.0, 'hstechMomentum': 0.0}[key]
+            'southboundNet': 20.0, 'hstechMomentum': 0.0,
+            'chinaBond10Y': 2.0}[key]
     span = {'ashareTurnover': 6000.0, 'marginBalance': 1500.0,
-            'southboundNet': 60.0, 'hstechMomentum': 8.0}[key]
+            'southboundNet': 60.0, 'hstechMomentum': 8.0,
+            'chinaBond10Y': 0.12}[key]
     out = []
     for i in range(n):
         days_ago = n - i

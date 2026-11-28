@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-28T17:57:23",
+  "generatedAt": "2026-11-28T18:13:08",
   "purpose": "P1-8DIM 历史回算：旧 6 维（冻结字面量）vs 新 8 维，逐日对照 + 信号翻转清单",
   "legacy": {
     "dims": [
@@ -187,53 +187,42 @@
     {
       "date": "2026-11-09",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": -0.28,
+        "normalized": -0.060818,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.027,
+          "sentiment": -0.14,
+          "resource": -0.185,
+          "techGreen": 0.57
         }
       },
       "new": {
-        "score": -0.73,
-        "normalized": -0.130071,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": -0.02,
+        "normalized": -0.003339,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.284,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": 0.135,
+          "fxExternal": 0.296,
+          "sentimentA": 0.006,
+          "riskAppetite": -0.433,
+          "resource": -0.486,
+          "techGreen": 0.713
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -268,6 +257,12 @@
           "dataDate": "2026-11-06",
           "max_used_date": "2026-11-06",
           "history_days": 234
+        },
+        "chinaBond10Y": {
+          "value": 1.5868,
+          "dataDate": "2026-11-06",
+          "max_used_date": "2026-11-06",
+          "history_days": 234
         }
       },
       "usdcnh": {
@@ -284,53 +279,42 @@
     {
       "date": "2026-11-10",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": -0.22,
+        "normalized": -0.048455,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.062,
+          "sentiment": -0.012,
+          "resource": -0.209,
+          "techGreen": 0.542
         }
       },
       "new": {
-        "score": -0.73,
-        "normalized": -0.130071,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": 0.11,
+        "normalized": 0.019821,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.284,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": 0.132,
+          "fxExternal": 0.277,
+          "sentimentA": 0.076,
+          "riskAppetite": -0.188,
+          "resource": -0.486,
+          "techGreen": 0.661
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -365,6 +349,12 @@
           "dataDate": "2026-11-09",
           "max_used_date": "2026-11-09",
           "history_days": 235
+        },
+        "chinaBond10Y": {
+          "value": 1.5874,
+          "dataDate": "2026-11-09",
+          "max_used_date": "2026-11-09",
+          "history_days": 235
         }
       },
       "usdcnh": {
@@ -381,53 +371,44 @@
     {
       "date": "2026-11-11",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": -0.21,
+        "normalized": -0.045409,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.054,
+          "sentiment": -0.039,
+          "resource": -0.154,
+          "techGreen": 0.52
         }
       },
       "new": {
-        "score": -0.73,
-        "normalized": -0.130071,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": 0.36,
+        "normalized": 0.064275,
+        "signal": "持有",
+        "coverage": 0.911,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
+          "resource"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.284,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
+          "liquidity": 0.129,
+          "fxExternal": 0.3,
+          "sentimentA": -0.06,
+          "riskAppetite": 0.004,
           "resource": null,
-          "techGreen": null
+          "techGreen": 0.68
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -462,6 +443,12 @@
           "dataDate": "2026-11-10",
           "max_used_date": "2026-11-10",
           "history_days": 236
+        },
+        "chinaBond10Y": {
+          "value": 1.5965,
+          "dataDate": "2026-11-10",
+          "max_used_date": "2026-11-10",
+          "history_days": 236
         }
       },
       "usdcnh": {
@@ -478,53 +465,44 @@
     {
       "date": "2026-11-12",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": -0.08,
+        "normalized": -0.018136,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.06,
+          "sentiment": 0.11,
+          "resource": -0.141,
+          "techGreen": 0.509
         }
       },
       "new": {
-        "score": -0.73,
-        "normalized": -0.130071,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": 0.56,
+        "normalized": 0.09949,
+        "signal": "持有",
+        "coverage": 0.911,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
+          "resource"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.284,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
+          "liquidity": 0.129,
+          "fxExternal": 0.283,
+          "sentimentA": 0.092,
+          "riskAppetite": 0.146,
           "resource": null,
-          "techGreen": null
+          "techGreen": 0.673
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -559,6 +537,12 @@
           "dataDate": "2026-11-11",
           "max_used_date": "2026-11-11",
           "history_days": 237
+        },
+        "chinaBond10Y": {
+          "value": 1.6039,
+          "dataDate": "2026-11-11",
+          "max_used_date": "2026-11-11",
+          "history_days": 237
         }
       },
       "usdcnh": {
@@ -575,53 +559,44 @@
     {
       "date": "2026-11-13",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": 0.03,
+        "normalized": 0.006136,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.096,
+          "sentiment": 0.267,
+          "resource": -0.123,
+          "techGreen": 0.505
         }
       },
       "new": {
-        "score": -0.73,
-        "normalized": -0.130071,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": 0.77,
+        "normalized": 0.138373,
+        "signal": "持有",
+        "coverage": 0.911,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
+          "resource"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.284,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
+          "liquidity": 0.14,
+          "fxExternal": 0.253,
+          "sentimentA": 0.326,
+          "riskAppetite": 0.148,
           "resource": null,
-          "techGreen": null
+          "techGreen": 0.67
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -656,6 +631,12 @@
           "dataDate": "2026-11-12",
           "max_used_date": "2026-11-12",
           "history_days": 238
+        },
+        "chinaBond10Y": {
+          "value": 1.6032,
+          "dataDate": "2026-11-12",
+          "max_used_date": "2026-11-12",
+          "history_days": 238
         }
       },
       "usdcnh": {
@@ -672,53 +653,44 @@
     {
       "date": "2026-11-14",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": -0.05,
+        "normalized": -0.011773,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.115,
+          "sentiment": 0.18,
+          "resource": -0.112,
+          "techGreen": 0.502
         }
       },
       "new": {
-        "score": -0.77,
-        "normalized": -0.137214,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": 0.62,
+        "normalized": 0.111118,
+        "signal": "持有",
+        "coverage": 0.911,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
+          "resource"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.309,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
+          "liquidity": 0.128,
+          "fxExternal": 0.237,
+          "sentimentA": 0.198,
+          "riskAppetite": 0.142,
           "resource": null,
-          "techGreen": null
+          "techGreen": 0.668
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -750,6 +722,12 @@
         },
         "usdcnh": {
           "value": 6.6747,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 239
+        },
+        "chinaBond10Y": {
+          "value": 1.6123,
           "dataDate": "2026-11-13",
           "max_used_date": "2026-11-13",
           "history_days": 239
@@ -769,53 +747,44 @@
     {
       "date": "2026-11-16",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": -0.05,
+        "normalized": -0.011364,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.116,
+          "sentiment": 0.154,
+          "resource": -0.064,
+          "techGreen": 0.475
         }
       },
       "new": {
-        "score": -0.77,
-        "normalized": -0.137214,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": 0.58,
+        "normalized": 0.103706,
+        "signal": "持有",
+        "coverage": 0.911,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
+          "resource"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.309,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
+          "liquidity": 0.126,
+          "fxExternal": 0.237,
+          "sentimentA": 0.198,
+          "riskAppetite": 0.065,
           "resource": null,
-          "techGreen": null
+          "techGreen": 0.65
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -850,6 +819,12 @@
           "dataDate": "2026-11-13",
           "max_used_date": "2026-11-13",
           "history_days": 239
+        },
+        "chinaBond10Y": {
+          "value": 1.6123,
+          "dataDate": "2026-11-13",
+          "max_used_date": "2026-11-13",
+          "history_days": 239
         }
       },
       "usdcnh": {
@@ -866,53 +841,44 @@
     {
       "date": "2026-11-17",
       "old": {
-        "score": -0.32,
-        "normalized": -0.0685,
-        "signal": "数据不足",
-        "coverage": 0.455,
+        "score": -0.34,
+        "normalized": -0.074727,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "liquidity",
-          "sentiment",
-          "resource",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": null,
-          "sentiment": null,
-          "resource": null,
-          "techGreen": null
+          "liquidity": -0.13,
+          "sentiment": -0.152,
+          "resource": -0.102,
+          "techGreen": 0.475
         }
       },
       "new": {
-        "score": -0.77,
-        "normalized": -0.137214,
-        "signal": "数据不足",
-        "coverage": 0.5,
+        "score": 0.13,
+        "normalized": 0.023686,
+        "signal": "持有",
+        "coverage": 0.911,
         "weight_effective_sum": 5.6,
         "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "resource",
-          "techGreen"
+          "resource"
         ],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.309,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
+          "liquidity": 0.126,
+          "fxExternal": 0.23,
+          "sentimentA": -0.162,
+          "riskAppetite": -0.133,
           "resource": null,
-          "techGreen": null
+          "techGreen": 0.65
         }
       },
       "attribution": {
-        "threshold_only_signal": "数据不足",
-        "structure_only_signal": "数据不足",
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
         "structure_flip": false
       },
@@ -947,6 +913,12 @@
           "dataDate": "2026-11-16",
           "max_used_date": "2026-11-16",
           "history_days": 240
+        },
+        "chinaBond10Y": {
+          "value": 1.6285,
+          "dataDate": "2026-11-16",
+          "max_used_date": "2026-11-16",
+          "history_days": 240
         }
       },
       "usdcnh": {
@@ -963,52 +935,44 @@
     {
       "date": "2026-11-18",
       "old": {
-        "score": -0.44,
-        "normalized": -0.096,
+        "score": -0.3,
+        "normalized": -0.065864,
         "signal": "持有",
-        "coverage": 0.773,
+        "coverage": 1.0,
         "weight_effective_sum": 4.4,
-        "grayed": [
-          "sentiment",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.05,
-          "sentiment": null,
-          "resource": -0.249,
-          "techGreen": null
+          "liquidity": -0.095,
+          "sentiment": -0.173,
+          "resource": -0.049,
+          "techGreen": 0.455
         }
       },
       "new": {
-        "score": -0.61,
-        "normalized": -0.108485,
-        "signal": "数据不足",
-        "coverage": 0.589,
+        "score": -0.05,
+        "normalized": -0.009464,
+        "signal": "持有",
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "fxExternal",
-          "sentimentA",
-          "riskAppetite",
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.12,
-          "fxExternal": null,
-          "sentimentA": null,
-          "riskAppetite": null,
-          "resource": -0.25,
-          "techGreen": null
+          "liquidity": 0.129,
+          "fxExternal": 0.244,
+          "sentimentA": -0.074,
+          "riskAppetite": -0.37,
+          "resource": -0.333,
+          "techGreen": 0.637
         }
       },
       "attribution": {
         "threshold_only_signal": "持有",
-        "structure_only_signal": "数据不足",
+        "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
       "series_injected": {
@@ -1041,6 +1005,12 @@
           "dataDate": "2026-11-17",
           "max_used_date": "2026-11-17",
           "history_days": 241
+        },
+        "chinaBond10Y": {
+          "value": 1.6055,
+          "dataDate": "2026-11-17",
+          "max_used_date": "2026-11-17",
+          "history_days": 241
         }
       },
       "usdcnh": {
@@ -1057,46 +1027,44 @@
     {
       "date": "2026-11-19",
       "old": {
-        "score": -0.52,
-        "normalized": -0.113682,
-        "signal": "减仓",
+        "score": -0.39,
+        "normalized": -0.084364,
+        "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 4.4,
         "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.132,
+          "liquidity": -0.088,
           "sentiment": -0.293,
-          "resource": -0.249,
-          "techGreen": 0.631
+          "resource": -0.031,
+          "techGreen": 0.446
         }
       },
       "new": {
-        "score": -0.44,
-        "normalized": -0.079208,
+        "score": -0.24,
+        "normalized": -0.042982,
         "signal": "持有",
-        "coverage": 0.946,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.059,
+          "liquidity": 0.14,
           "fxExternal": 0.247,
           "sentimentA": -0.263,
           "riskAppetite": -0.353,
-          "resource": -0.25,
-          "techGreen": null
+          "resource": -0.4,
+          "techGreen": 0.631
         }
       },
       "attribution": {
-        "threshold_only_signal": "减仓",
+        "threshold_only_signal": "持有",
         "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
       "series_injected": {
@@ -1129,6 +1097,12 @@
           "dataDate": "2026-11-18",
           "max_used_date": "2026-11-18",
           "history_days": 242
+        },
+        "chinaBond10Y": {
+          "value": 1.5892,
+          "dataDate": "2026-11-18",
+          "max_used_date": "2026-11-18",
+          "history_days": 242
         }
       },
       "usdcnh": {
@@ -1145,46 +1119,44 @@
     {
       "date": "2026-11-20",
       "old": {
-        "score": -0.53,
-        "normalized": -0.114545,
-        "signal": "减仓",
+        "score": -0.42,
+        "normalized": -0.090273,
+        "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 4.4,
         "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.125,
+          "liquidity": -0.08,
           "sentiment": -0.338,
-          "resource": -0.202,
-          "techGreen": 0.623
+          "resource": -0.021,
+          "techGreen": 0.434
         }
       },
       "new": {
-        "score": -0.5,
-        "normalized": -0.088887,
+        "score": -0.26,
+        "normalized": -0.046875,
         "signal": "持有",
-        "coverage": 0.946,
+        "coverage": 1.0,
         "weight_effective_sum": 5.6,
-        "grayed": [
-          "techGreen"
-        ],
+        "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.06,
+          "liquidity": 0.139,
           "fxExternal": 0.249,
           "sentimentA": -0.25,
           "riskAppetite": -0.516,
-          "resource": -0.25,
-          "techGreen": null
+          "resource": -0.333,
+          "techGreen": 0.623
         }
       },
       "attribution": {
-        "threshold_only_signal": "减仓",
+        "threshold_only_signal": "持有",
         "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
       "series_injected": {
@@ -1217,6 +1189,12 @@
           "dataDate": "2026-11-19",
           "max_used_date": "2026-11-19",
           "history_days": 243
+        },
+        "chinaBond10Y": {
+          "value": 1.5755,
+          "dataDate": "2026-11-19",
+          "max_used_date": "2026-11-19",
+          "history_days": 243
         }
       },
       "usdcnh": {
@@ -1234,7 +1212,7 @@
       "date": "2026-11-21",
       "old": {
         "score": -0.43,
-        "normalized": -0.093909,
+        "normalized": -0.092955,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 4.4,
@@ -1242,15 +1220,15 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.104,
+          "liquidity": -0.053,
           "sentiment": -0.384,
-          "resource": -0.015,
-          "techGreen": 0.616
+          "resource": -0.012,
+          "techGreen": 0.424
         }
       },
       "new": {
-        "score": -0.31,
-        "normalized": -0.055786,
+        "score": -0.35,
+        "normalized": -0.063036,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1258,12 +1236,12 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.06,
+          "liquidity": 0.139,
           "fxExternal": 0.258,
           "sentimentA": -0.318,
           "riskAppetite": -0.516,
-          "resource": -0.25,
-          "techGreen": 0.712
+          "resource": -0.4,
+          "techGreen": 0.616
         }
       },
       "attribution": {
@@ -1300,6 +1278,12 @@
         },
         "usdcnh": {
           "value": 6.6752,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 244
+        },
+        "chinaBond10Y": {
+          "value": 1.5803,
           "dataDate": "2026-11-20",
           "max_used_date": "2026-11-20",
           "history_days": 244
@@ -1320,7 +1304,7 @@
       "date": "2026-11-22",
       "old": {
         "score": -0.43,
-        "normalized": -0.093727,
+        "normalized": -0.092773,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 4.4,
@@ -1328,15 +1312,15 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.103,
+          "liquidity": -0.052,
           "sentiment": -0.384,
-          "resource": -0.015,
-          "techGreen": 0.616
+          "resource": -0.012,
+          "techGreen": 0.424
         }
       },
       "new": {
-        "score": -0.31,
-        "normalized": -0.055286,
+        "score": -0.35,
+        "normalized": -0.062536,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1344,12 +1328,12 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.06,
+          "liquidity": 0.139,
           "fxExternal": 0.262,
           "sentimentA": -0.318,
           "riskAppetite": -0.516,
-          "resource": -0.25,
-          "techGreen": 0.712
+          "resource": -0.4,
+          "techGreen": 0.616
         }
       },
       "attribution": {
@@ -1386,6 +1370,12 @@
         },
         "usdcnh": {
           "value": 6.6752,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 244
+        },
+        "chinaBond10Y": {
+          "value": 1.5803,
           "dataDate": "2026-11-20",
           "max_used_date": "2026-11-20",
           "history_days": 244
@@ -1405,8 +1395,8 @@
     {
       "date": "2026-11-23",
       "old": {
-        "score": -0.5,
-        "normalized": -0.108773,
+        "score": -0.43,
+        "normalized": -0.092545,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 4.4,
@@ -1414,15 +1404,15 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": -0.004,
-          "sentiment": -0.472,
-          "resource": -0.14,
-          "techGreen": 0.616
+          "liquidity": -0.05,
+          "sentiment": -0.384,
+          "resource": -0.013,
+          "techGreen": 0.424
         }
       },
       "new": {
-        "score": -0.37,
-        "normalized": -0.066125,
+        "score": -0.35,
+        "normalized": -0.061911,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1430,12 +1420,12 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.147,
-          "fxExternal": 0.275,
+          "liquidity": 0.139,
+          "fxExternal": 0.267,
           "sentimentA": -0.318,
-          "riskAppetite": -0.677,
+          "riskAppetite": -0.516,
           "resource": -0.4,
-          "techGreen": 0.712
+          "techGreen": 0.616
         }
       },
       "attribution": {
@@ -1475,6 +1465,12 @@
           "dataDate": "2026-11-20",
           "max_used_date": "2026-11-20",
           "history_days": 244
+        },
+        "chinaBond10Y": {
+          "value": 1.5803,
+          "dataDate": "2026-11-20",
+          "max_used_date": "2026-11-20",
+          "history_days": 244
         }
       },
       "usdcnh": {
@@ -1491,9 +1487,9 @@
     {
       "date": "2026-11-24",
       "old": {
-        "score": -0.55,
-        "normalized": -0.118727,
-        "signal": "减仓",
+        "score": -0.48,
+        "normalized": -0.103591,
+        "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 4.4,
         "grayed": [],
@@ -1502,13 +1498,13 @@
           "inflation": 0.113,
           "liquidity": -0.056,
           "sentiment": -0.445,
-          "resource": -0.111,
+          "resource": 0.0,
           "techGreen": 0.41
         }
       },
       "new": {
-        "score": -0.34,
-        "normalized": -0.061161,
+        "score": -0.4,
+        "normalized": -0.071643,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1516,19 +1512,19 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.238,
+          "liquidity": 0.135,
           "fxExternal": 0.254,
           "sentimentA": -0.308,
           "riskAppetite": -0.721,
           "resource": -0.333,
-          "techGreen": 0.528
+          "techGreen": 0.607
         }
       },
       "attribution": {
-        "threshold_only_signal": "减仓",
+        "threshold_only_signal": "持有",
         "structure_only_signal": "持有",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
       "snapshot_rules_hash": "88cb8f040f89",
       "series_injected": {
@@ -1561,6 +1557,12 @@
           "dataDate": "2026-11-23",
           "max_used_date": "2026-11-23",
           "history_days": 245
+        },
+        "chinaBond10Y": {
+          "value": 1.5861,
+          "dataDate": "2026-11-23",
+          "max_used_date": "2026-11-23",
+          "history_days": 245
         }
       },
       "usdcnh": {
@@ -1577,8 +1579,8 @@
     {
       "date": "2026-11-25",
       "old": {
-        "score": -0.47,
-        "normalized": -0.102091,
+        "score": -0.4,
+        "normalized": -0.087364,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 4.4,
@@ -1588,13 +1590,13 @@
           "inflation": 0.113,
           "liquidity": -0.052,
           "sentiment": -0.38,
-          "resource": -0.081,
+          "resource": 0.027,
           "techGreen": 0.41
         }
       },
       "new": {
-        "score": -0.23,
-        "normalized": -0.04025,
+        "score": -0.28,
+        "normalized": -0.050732,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1602,12 +1604,12 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.239,
+          "liquidity": 0.136,
           "fxExternal": 0.262,
           "sentimentA": -0.214,
           "riskAppetite": -0.712,
           "resource": -0.288,
-          "techGreen": 0.528
+          "techGreen": 0.607
         }
       },
       "attribution": {
@@ -1647,6 +1649,12 @@
           "dataDate": "2026-11-24",
           "max_used_date": "2026-11-24",
           "history_days": 246
+        },
+        "chinaBond10Y": {
+          "value": 1.5853,
+          "dataDate": "2026-11-24",
+          "max_used_date": "2026-11-24",
+          "history_days": 246
         }
       },
       "usdcnh": {
@@ -1679,8 +1687,8 @@
         }
       },
       "new": {
-        "score": -0.39,
-        "normalized": -0.069036,
+        "score": -0.47,
+        "normalized": -0.083607,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1688,7 +1696,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.238,
+          "liquidity": 0.136,
           "fxExternal": 0.262,
           "sentimentA": -0.344,
           "riskAppetite": -0.777,
@@ -1733,6 +1741,12 @@
           "dataDate": "2026-11-25",
           "max_used_date": "2026-11-25",
           "history_days": 247
+        },
+        "chinaBond10Y": {
+          "value": 1.5914,
+          "dataDate": "2026-11-25",
+          "max_used_date": "2026-11-25",
+          "history_days": 247
         }
       },
       "usdcnh": {
@@ -1765,16 +1779,16 @@
         }
       },
       "new": {
-        "score": -0.57,
-        "normalized": -0.101107,
-        "signal": "持有",
+        "score": -0.65,
+        "normalized": -0.115821,
+        "signal": "减仓",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
         "grayed": [],
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.236,
+          "liquidity": 0.133,
           "fxExternal": 0.267,
           "sentimentA": -0.563,
           "riskAppetite": -0.777,
@@ -1784,9 +1798,9 @@
       },
       "attribution": {
         "threshold_only_signal": "减仓",
-        "structure_only_signal": "持有",
+        "structure_only_signal": "减仓",
         "threshold_flip": false,
-        "structure_flip": true
+        "structure_flip": false
       },
       "snapshot_rules_hash": "a306915b6fa9",
       "series_injected": {
@@ -1816,6 +1830,12 @@
         },
         "usdcnh": {
           "value": 6.6613,
+          "dataDate": "2026-11-26",
+          "max_used_date": "2026-11-26",
+          "history_days": 248
+        },
+        "chinaBond10Y": {
+          "value": 1.5912,
           "dataDate": "2026-11-26",
           "max_used_date": "2026-11-26",
           "history_days": 248
@@ -1851,8 +1871,8 @@
         }
       },
       "new": {
-        "score": -0.23,
-        "normalized": -0.041286,
+        "score": -0.31,
+        "normalized": -0.055571,
         "signal": "持有",
         "coverage": 1.0,
         "weight_effective_sum": 5.6,
@@ -1860,7 +1880,7 @@
         "dims": {
           "economic": -0.25,
           "inflation": 0.113,
-          "liquidity": 0.233,
+          "liquidity": 0.133,
           "fxExternal": 0.258,
           "sentimentA": -0.302,
           "riskAppetite": -0.505,
@@ -1905,6 +1925,12 @@
           "dataDate": "2026-11-27",
           "max_used_date": "2026-11-27",
           "history_days": 249
+        },
+        "chinaBond10Y": {
+          "value": 1.5972,
+          "dataDate": "2026-11-27",
+          "max_used_date": "2026-11-27",
+          "history_days": 249
         }
       },
       "usdcnh": {
@@ -1921,82 +1947,18 @@
   ],
   "flips": [
     {
-      "date": "2026-11-18",
-      "old_signal": "持有",
-      "new_signal": "数据不足",
-      "old_norm": -0.096,
-      "new_norm": -0.108485,
-      "cause": "缺失剔除（覆盖率跌破 0.6）",
-      "old_coverage": 0.773,
-      "new_coverage": 0.589,
-      "new_grayed": [
-        "fxExternal",
-        "sentimentA",
-        "riskAppetite",
-        "techGreen"
-      ]
-    },
-    {
-      "date": "2026-11-19",
-      "old_signal": "减仓",
-      "new_signal": "持有",
-      "old_norm": -0.113682,
-      "new_norm": -0.079208,
-      "cause": "结构/权重",
-      "old_coverage": 1.0,
-      "new_coverage": 0.946,
-      "new_grayed": [
-        "techGreen"
-      ]
-    },
-    {
-      "date": "2026-11-20",
-      "old_signal": "减仓",
-      "new_signal": "持有",
-      "old_norm": -0.114545,
-      "new_norm": -0.088887,
-      "cause": "结构/权重",
-      "old_coverage": 1.0,
-      "new_coverage": 0.946,
-      "new_grayed": [
-        "techGreen"
-      ]
-    },
-    {
-      "date": "2026-11-24",
-      "old_signal": "减仓",
-      "new_signal": "持有",
-      "old_norm": -0.118727,
-      "new_norm": -0.061161,
-      "cause": "结构/权重",
-      "old_coverage": 1.0,
-      "new_coverage": 1.0,
-      "new_grayed": []
-    },
-    {
       "date": "2026-11-26",
       "old_signal": "减仓",
       "new_signal": "持有",
       "old_norm": -0.124,
-      "new_norm": -0.069036,
-      "cause": "结构/权重",
-      "old_coverage": 1.0,
-      "new_coverage": 1.0,
-      "new_grayed": []
-    },
-    {
-      "date": "2026-11-27",
-      "old_signal": "减仓",
-      "new_signal": "持有",
-      "old_norm": -0.140182,
-      "new_norm": -0.101107,
+      "new_norm": -0.083607,
       "cause": "结构/权重",
       "old_coverage": 1.0,
       "new_coverage": 1.0,
       "new_grayed": []
     }
   ],
-  "flip_count": 6,
+  "flip_count": 1,
   "usdcnh_no_lookahead": {
     "violations": [],
     "passed": true,
@@ -2010,7 +1972,8 @@
       "southboundNet",
       "hstechMomentum",
       "ashareTurnover",
-      "usdcnh"
+      "usdcnh",
+      "chinaBond10Y"
     ],
     "rule": "每个快照日对每一条 series 只使用 date < 快照日 的观测"
   }

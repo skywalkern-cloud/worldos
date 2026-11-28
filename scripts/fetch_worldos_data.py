@@ -43,6 +43,8 @@ SERIES_META = {                 # 存储声明，与 indicator_meta 的 transfor
     'southboundNet': {'unit': '亿元', 'transform': 'sum5'},
     'hstechMomentum': {'unit': '百分点', 'transform': 'raw'},
     'usdcnh': {'unit': '', 'transform': 'raw'},   # A2：日线收盘，ratio_ma_steps 的 MA120 来源
+    # P1-3（2026-11-28）：中债10Y 改相对 120 日均值打分 → 必须有自己的日线序列
+    'chinaBond10Y': {'unit': '%', 'transform': 'raw'},
 }
 
 # ========== 配置常量 ==========
@@ -1712,7 +1714,14 @@ def sync_series(results):
     也不注入 history**。D7 只拦了打分，没拦住喂序列；在岸价一旦写进 usdcnh.json，
     会污染此后最多 120 个交易日的 MA120（在岸/离岸差 0.1~0.3%，而档位总宽 1.5%）。
 
-    返回：被跳过的降级 key 列表（供日志/测试断言）。
+    A4-P0-2（泰斯特 A4-1.3）：只判 sourceDegraded 仍有一条二次通道——
+    Day1 主源失败走备源降级（不写序列）、Day2 全源失败走「上一轮兜底」时，
+    load_prev() 丢掉了 sourceDegraded，兜底分支又显式清空它，于是降级日值会被
+    当成正常值写进序列（复现：points=251 degraded_day_persisted=True）。
+    因此判定改为：**sourceDegraded 或 used_fallback 一律跳过**（写序列 + history 注入都跳过）。
+    兜底值本来就已经在序列里（同日同值，跳过无损）；唯一例外正是「降级日的兜底」，跳过即正确。
+
+    返回：被跳过的 key 列表（供日志/测试断言）。
     """
     skipped = []
     for key, cfg in PCT_SERIES_KEYS.items():
@@ -1721,11 +1730,12 @@ def sync_series(results):
         dd = v.get('dataDate')
         if val is None or not dd:
             continue
-        # 降级值只作展示：不 upsert、不挂 history（history 缺 → 打分侧自然 score=None）
-        if v.get('sourceDegraded'):
+        # 降级值 / 兜底值只作展示：不 upsert、不挂 history（history 缺 → 打分侧自然 score=None）
+        if v.get('sourceDegraded') or v.get('used_fallback'):
             skipped.append(key)
-            print(f'  ⏭️ {key}: 源降级（{(v.get("sourceDegraded") or {}).get("reason", "degraded")}），'
-                  '跳过序列回写与 history 注入（值只展示，不进 MA/分位）')
+            why = ('源降级' if v.get('sourceDegraded') else '上一轮兜底')
+            reason = (v.get('sourceDegraded') or {}).get('reason', 'used_fallback')
+            print(f'  ⏭️ {key}: {why}（{reason}），跳过序列回写与 history 注入（值只展示，不进 MA/分位）')
             continue
         try:
             series_store.upsert(key, dd, val,

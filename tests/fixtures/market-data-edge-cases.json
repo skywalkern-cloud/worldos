@@ -1198,7 +1198,509 @@
       "lastFetched": "2026-11-28T10:00:00",
       "realtime": false,
       "used_fallback": false,
-      "fetchError": null
+      "fetchError": null,
+      "history": [
+        {
+          "date": "2026-07-26",
+          "value": 2.0
+        },
+        {
+          "date": "2026-07-27",
+          "value": 2.22
+        },
+        {
+          "date": "2026-07-28",
+          "value": 2.44
+        },
+        {
+          "date": "2026-07-29",
+          "value": 2.66
+        },
+        {
+          "date": "2026-07-30",
+          "value": 2.87
+        },
+        {
+          "date": "2026-07-31",
+          "value": 3.09
+        },
+        {
+          "date": "2026-08-01",
+          "value": 3.3
+        },
+        {
+          "date": "2026-08-02",
+          "value": 3.51
+        },
+        {
+          "date": "2026-08-03",
+          "value": 3.72
+        },
+        {
+          "date": "2026-08-04",
+          "value": 3.92
+        },
+        {
+          "date": "2026-08-05",
+          "value": 4.12
+        },
+        {
+          "date": "2026-08-06",
+          "value": 4.32
+        },
+        {
+          "date": "2026-08-07",
+          "value": 4.51
+        },
+        {
+          "date": "2026-08-08",
+          "value": 4.7
+        },
+        {
+          "date": "2026-08-09",
+          "value": 4.89
+        },
+        {
+          "date": "2026-08-10",
+          "value": 5.07
+        },
+        {
+          "date": "2026-08-11",
+          "value": 5.25
+        },
+        {
+          "date": "2026-08-12",
+          "value": 5.44
+        },
+        {
+          "date": "2026-08-13",
+          "value": 5.62
+        },
+        {
+          "date": "2026-08-14",
+          "value": 5.8
+        },
+        {
+          "date": "2026-08-15",
+          "value": 5.98
+        },
+        {
+          "date": "2026-08-16",
+          "value": 6.16
+        },
+        {
+          "date": "2026-08-17",
+          "value": 6.34
+        },
+        {
+          "date": "2026-08-18",
+          "value": 6.52
+        },
+        {
+          "date": "2026-08-19",
+          "value": 6.71
+        },
+        {
+          "date": "2026-08-20",
+          "value": 6.9
+        },
+        {
+          "date": "2026-08-21",
+          "value": 7.09
+        },
+        {
+          "date": "2026-08-22",
+          "value": 7.28
+        },
+        {
+          "date": "2026-08-23",
+          "value": 7.48
+        },
+        {
+          "date": "2026-08-24",
+          "value": 7.68
+        },
+        {
+          "date": "2026-08-25",
+          "value": 7.88
+        },
+        {
+          "date": "2026-08-26",
+          "value": 8.09
+        },
+        {
+          "date": "2026-08-27",
+          "value": 8.3
+        },
+        {
+          "date": "2026-08-28",
+          "value": 8.52
+        },
+        {
+          "date": "2026-08-29",
+          "value": 8.73
+        },
+        {
+          "date": "2026-08-30",
+          "value": 8.95
+        },
+        {
+          "date": "2026-08-31",
+          "value": 9.17
+        },
+        {
+          "date": "2026-09-01",
+          "value": 9.39
+        },
+        {
+          "date": "2026-09-02",
+          "value": 9.61
+        },
+        {
+          "date": "2026-09-03",
+          "value": 9.83
+        },
+        {
+          "date": "2026-09-04",
+          "value": 10.04
+        },
+        {
+          "date": "2026-09-05",
+          "value": 10.26
+        },
+        {
+          "date": "2026-09-06",
+          "value": 10.48
+        },
+        {
+          "date": "2026-09-07",
+          "value": 10.69
+        },
+        {
+          "date": "2026-09-08",
+          "value": 10.9
+        },
+        {
+          "date": "2026-09-09",
+          "value": 11.11
+        },
+        {
+          "date": "2026-09-10",
+          "value": 11.32
+        },
+        {
+          "date": "2026-09-11",
+          "value": 11.52
+        },
+        {
+          "date": "2026-09-12",
+          "value": 11.72
+        },
+        {
+          "date": "2026-09-13",
+          "value": 11.91
+        },
+        {
+          "date": "2026-09-14",
+          "value": 12.11
+        },
+        {
+          "date": "2026-09-15",
+          "value": 12.3
+        },
+        {
+          "date": "2026-09-16",
+          "value": 12.48
+        },
+        {
+          "date": "2026-09-17",
+          "value": 12.67
+        },
+        {
+          "date": "2026-09-18",
+          "value": 12.85
+        },
+        {
+          "date": "2026-09-19",
+          "value": 13.03
+        },
+        {
+          "date": "2026-09-20",
+          "value": 13.21
+        },
+        {
+          "date": "2026-09-21",
+          "value": 13.39
+        },
+        {
+          "date": "2026-09-22",
+          "value": 13.57
+        },
+        {
+          "date": "2026-09-23",
+          "value": 13.75
+        },
+        {
+          "date": "2026-09-24",
+          "value": 13.93
+        },
+        {
+          "date": "2026-09-25",
+          "value": 14.12
+        },
+        {
+          "date": "2026-09-26",
+          "value": 14.31
+        },
+        {
+          "date": "2026-09-27",
+          "value": 14.49
+        },
+        {
+          "date": "2026-09-28",
+          "value": 14.69
+        },
+        {
+          "date": "2026-09-29",
+          "value": 14.88
+        },
+        {
+          "date": "2026-09-30",
+          "value": 15.08
+        },
+        {
+          "date": "2026-10-01",
+          "value": 15.28
+        },
+        {
+          "date": "2026-10-02",
+          "value": 15.49
+        },
+        {
+          "date": "2026-10-03",
+          "value": 15.69
+        },
+        {
+          "date": "2026-10-04",
+          "value": 15.91
+        },
+        {
+          "date": "2026-10-05",
+          "value": 16.12
+        },
+        {
+          "date": "2026-10-06",
+          "value": 16.34
+        },
+        {
+          "date": "2026-10-07",
+          "value": 16.55
+        },
+        {
+          "date": "2026-10-08",
+          "value": 16.77
+        },
+        {
+          "date": "2026-10-09",
+          "value": 16.99
+        },
+        {
+          "date": "2026-10-10",
+          "value": 17.21
+        },
+        {
+          "date": "2026-10-11",
+          "value": 17.43
+        },
+        {
+          "date": "2026-10-12",
+          "value": 17.65
+        },
+        {
+          "date": "2026-10-13",
+          "value": 17.87
+        },
+        {
+          "date": "2026-10-14",
+          "value": 18.08
+        },
+        {
+          "date": "2026-10-15",
+          "value": 18.3
+        },
+        {
+          "date": "2026-10-16",
+          "value": 18.51
+        },
+        {
+          "date": "2026-10-17",
+          "value": 18.71
+        },
+        {
+          "date": "2026-10-18",
+          "value": 18.92
+        },
+        {
+          "date": "2026-10-19",
+          "value": 19.12
+        },
+        {
+          "date": "2026-10-20",
+          "value": 19.32
+        },
+        {
+          "date": "2026-10-21",
+          "value": 19.51
+        },
+        {
+          "date": "2026-10-22",
+          "value": 19.7
+        },
+        {
+          "date": "2026-10-23",
+          "value": 19.89
+        },
+        {
+          "date": "2026-10-24",
+          "value": 20.08
+        },
+        {
+          "date": "2026-10-25",
+          "value": 20.26
+        },
+        {
+          "date": "2026-10-26",
+          "value": 20.44
+        },
+        {
+          "date": "2026-10-27",
+          "value": 20.62
+        },
+        {
+          "date": "2026-10-28",
+          "value": 20.8
+        },
+        {
+          "date": "2026-10-29",
+          "value": 20.98
+        },
+        {
+          "date": "2026-10-30",
+          "value": 21.17
+        },
+        {
+          "date": "2026-10-31",
+          "value": 21.35
+        },
+        {
+          "date": "2026-11-01",
+          "value": 21.53
+        },
+        {
+          "date": "2026-11-02",
+          "value": 21.71
+        },
+        {
+          "date": "2026-11-03",
+          "value": 21.9
+        },
+        {
+          "date": "2026-11-04",
+          "value": 22.09
+        },
+        {
+          "date": "2026-11-05",
+          "value": 22.28
+        },
+        {
+          "date": "2026-11-06",
+          "value": 22.48
+        },
+        {
+          "date": "2026-11-07",
+          "value": 22.68
+        },
+        {
+          "date": "2026-11-08",
+          "value": 22.88
+        },
+        {
+          "date": "2026-11-09",
+          "value": 23.09
+        },
+        {
+          "date": "2026-11-10",
+          "value": 23.3
+        },
+        {
+          "date": "2026-11-11",
+          "value": 23.51
+        },
+        {
+          "date": "2026-11-12",
+          "value": 23.72
+        },
+        {
+          "date": "2026-11-13",
+          "value": 23.94
+        },
+        {
+          "date": "2026-11-14",
+          "value": 24.16
+        },
+        {
+          "date": "2026-11-15",
+          "value": 24.38
+        },
+        {
+          "date": "2026-11-16",
+          "value": 24.6
+        },
+        {
+          "date": "2026-11-17",
+          "value": 24.82
+        },
+        {
+          "date": "2026-11-18",
+          "value": 25.04
+        },
+        {
+          "date": "2026-11-19",
+          "value": 25.26
+        },
+        {
+          "date": "2026-11-20",
+          "value": 25.47
+        },
+        {
+          "date": "2026-11-21",
+          "value": 25.69
+        },
+        {
+          "date": "2026-11-22",
+          "value": 25.9
+        },
+        {
+          "date": "2026-11-23",
+          "value": 26.11
+        },
+        {
+          "date": "2026-11-24",
+          "value": 26.32
+        },
+        {
+          "date": "2026-11-25",
+          "value": 26.52
+        },
+        {
+          "date": "2026-11-26",
+          "value": 26.72
+        },
+        {
+          "date": "2026-11-27",
+          "value": 26.92
+        }
+      ]
     },
     "epu": {
       "value": null,
@@ -1350,7 +1852,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "chinaPmi": {
       "value": 49.3,
@@ -1387,7 +1890,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "usGdp": {
       "value": 2.0,
@@ -1426,7 +1930,8 @@
       ],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "servicePmi": {
       "value": 49.7,
@@ -1463,7 +1968,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "usCpi": {
       "value": 3.7,
@@ -1500,7 +2006,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "corePce": {
       "value": 2.3,
@@ -1537,7 +2044,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "vix": {
       "value": 20.52,
@@ -1574,7 +2082,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "oilPrice": {
       "value": 102.95,
@@ -1615,6 +2124,7 @@
       "excluded_from_scoring": false,
       "exclusion_reason": null,
       "saturated": false,
+      "saturated_side": null,
       "used_fallback": true,
       "fetchError": {
         "reason": "not_found",
@@ -1656,7 +2166,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "fedRate": {
       "value": 3.88,
@@ -1693,7 +2204,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "usBond2Y": {
       "value": 4.51,
@@ -1730,7 +2242,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "usBond5Y": {
       "value": 4.64,
@@ -1767,7 +2280,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "usBond10Y": {
       "value": 4.86,
@@ -1804,7 +2318,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "usNonFarm": {
       "value": 16.5,
@@ -1841,7 +2356,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "fearGreed": {
       "value": 22.1,
@@ -1878,7 +2394,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "ashareTurnover": {
       "value": 19997.94,
@@ -1916,6 +2433,7 @@
       "excluded_from_scoring": false,
       "exclusion_reason": null,
       "saturated": false,
+      "saturated_side": null,
       "scoring_method": "ratio_band",
       "transform": "ratio_ma120",
       "window": 120,
@@ -1965,6 +2483,7 @@
       "excluded_from_scoring": false,
       "exclusion_reason": null,
       "saturated": true,
+      "saturated_side": "upper",
       "scoring_method": "pct_rank",
       "transform": "delta5",
       "window": 20,
@@ -2012,6 +2531,7 @@
       "excluded_from_scoring": true,
       "exclusion_reason": "no_score",
       "saturated": false,
+      "saturated_side": null,
       "scoring_method": "pct_rank",
       "transform": "sum5",
       "window": null,
@@ -2059,6 +2579,7 @@
       "excluded_from_scoring": false,
       "exclusion_reason": null,
       "saturated": true,
+      "saturated_side": "lower",
       "scoring_method": "pct_rank",
       "transform": "raw",
       "window": 60,
@@ -2105,7 +2626,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "cpi": {
       "value": 0.9,
@@ -2142,7 +2664,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "ppi": {
       "value": 5.0,
@@ -2179,7 +2702,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": true
+      "saturated": true,
+      "saturated_side": "upper"
     },
     "lpr": {
       "value": 3.0,
@@ -2216,7 +2740,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "dr007": {
       "value": 1.283,
@@ -2253,7 +2778,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "m2": {
       "value": 7.2,
@@ -2290,7 +2816,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "creditSpread": {
       "value": 327,
@@ -2327,11 +2854,12 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "chinaBond10Y": {
       "value": 1.6,
-      "score": 0.9,
+      "score": 1.0,
       "trend": "neutral",
       "signal": "green",
       "category": "liquidity",
@@ -2339,7 +2867,7 @@
       "name": "中国10年国债收益率",
       "displayName": "中国10年国债收益率",
       "shortName": "中债10Y",
-      "caliberNote": "中国10年期国债到期收益率。与中美10Y利差同一次 akshare 请求取数（不新增外部源）；进 liquidity 打分：收益率越低=国内货币环境越松=分越高（NEGATIVE 1.5/2.5/4.0）",
+      "caliberNote": "中国10年期国债到期收益率。与中美10Y利差同一次 akshare 请求取数（不新增外部源）；进 liquidity 打分：**相对均值口径**，ratio = 中债10Y / MA120（120 个交易日收盘均值，含当日），反映**边际宽松**（收益率低于自身均值=边际转松=利好），**不反映绝对水位**；五档对称（±10% 满档、±3% 零值区），历史不足 120 日不出分；当前 1.6 vs 120 日均值 14.8939 = -89.26%（ratio 0.1074→+1.0）",
       "reference_only": false,
       "frequency": "daily",
       "responsiveness": "T+0",
@@ -2364,7 +2892,30 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": true,
+      "saturated_side": "upper",
+      "scoring_method": "ratio_ma_steps",
+      "window": 120,
+      "history_days": 125,
+      "total_points": 126,
+      "warmup": false,
+      "raw_value": 1.6,
+      "ratio_value": 0.107426,
+      "ma_base": 14.893917,
+      "deviation_pct": -89.257,
+      "ratio_steps": [
+        0.9,
+        0.97,
+        1.03,
+        1.1
+      ],
+      "ratio_values": [
+        1.0,
+        0.5,
+        0.0,
+        -0.5,
+        -1.0
+      ]
     },
     "carbonPrice": {
       "value": 96.19,
@@ -2401,7 +2952,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": true
+      "saturated": true,
+      "saturated_side": "upper"
     },
     "electricity": {
       "value": 3.9,
@@ -2438,7 +2990,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "renewEnergyInvest": {
       "value": 1256.0,
@@ -2475,7 +3028,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "aiGrowth": {
       "value": 4.1,
@@ -2512,7 +3066,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "robotInstall": {
       "value": 5.5,
@@ -2549,7 +3104,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "evPenetration": {
       "value": 65.4,
@@ -2586,7 +3142,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "expired_alpha0",
-      "saturated": true
+      "saturated": true,
+      "saturated_side": "upper"
     },
     "lmeIndex": {
       "value": 13755.5,
@@ -2623,7 +3180,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "reference_only",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     },
     "shanghaiCopper": {
       "value": 105060.0,
@@ -2660,7 +3218,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": false,
       "exclusion_reason": null,
-      "saturated": true
+      "saturated": true,
+      "saturated_side": "lower"
     },
     "newIndicatorSample": {
       "value": 5,
@@ -2697,7 +3256,8 @@
       "degraded_reasons": [],
       "excluded_from_scoring": true,
       "exclusion_reason": "no_score",
-      "saturated": false
+      "saturated": false,
+      "saturated_side": null
     }
   },
   "meta": {
@@ -2732,6 +3292,10 @@
       "boundary_margin": 0.025474,
       "boundary_threshold": -0.109,
       "boundary_next_signal": "减仓",
+      "next_threshold": -0.109,
+      "next_signal": "减仓",
+      "next_direction": "down",
+      "boundary_distance": 0.025474,
       "fragile_inputs": [
         "sentimentA",
         "inflation",
@@ -2770,6 +3334,7 @@
         "marginBalance",
         "hstechMomentum",
         "ppi",
+        "chinaBond10Y",
         "carbonPrice",
         "evPenetration",
         "shanghaiCopper"
@@ -2970,14 +3535,14 @@
         "score": null,
         "signal": "gray",
         "valid_count": 0,
-        "required_count": 2,
+        "required_count": 3,
         "saturated_count": 0,
         "saturated_indicators": [],
         "active_count": 2,
         "reference_only_count": 1,
         "insufficient_data": true,
         "avg_alpha": 0.0,
-        "caliberNote": "USDCNH（离岸日线，按相对 120 日均值打分）+ 美元指数（三货币加权代理）+ 美债10Y；3 项需 ≥2 有效（usdcnh 降级时仍可出分）。中美10Y利差仅展示、不计分",
+        "caliberNote": "USDCNH（离岸日线，按相对 120 日均值打分）+ 美元指数（三货币加权代理）+ 美债10Y；3 项需 ≥2 有效（仅 usdcnh 降级/缺失时例外）；中美10Y利差仅展示、不计分",
         "responsiveness": {
           "slowest": "T+0",
           "slowest_reference": "T+0",
@@ -3257,7 +3822,7 @@
         "name": "汇率与外部",
         "weight_lost": 0.7,
         "valid_count": 0,
-        "required_count": 2
+        "required_count": 3
       },
       {
         "id": "techGreen",

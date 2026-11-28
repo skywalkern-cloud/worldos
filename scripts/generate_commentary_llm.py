@@ -475,6 +475,8 @@ def generate_commentary_llm(indicators: dict, meta: dict, prev_commentary: Optio
         'dataTimestamp': now,
         'ias': {
             'score': ias.get('score', 0),
+            # P0-1：normalized 必须落盘并与 meta.ias.normalized 一致（防「改了一半」）
+            'normalized': ias.get('normalized'),
             'signal': ias.get('signal', '持有'),
             'summary': llm_ias.get('summary', ''),
             'keyDivergences': llm_ias.get('keyDivergences', []),
@@ -607,6 +609,9 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     # strict 写入：NaN/Inf → null，绝不产出非法 JSON
     write_json_strict(out_path, commentary)
+    dist_path = WORKSPACE / 'dist' / 'data' / 'commentary.json'
+    if dist_path.parent.exists():
+        write_json_strict(dist_path, commentary)
 
     generator = commentary.get('generator', 'template' if used_fallback else 'llm')
     print(f"  {'✅ 评论已保存' if not used_fallback else '⚠️  评论已保存（模板降级）'}: {out_path}")

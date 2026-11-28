@@ -283,7 +283,7 @@ def compare(days: int, quiet: bool = False) -> dict:
                     'realtime': False, 'used_fallback': False, 'fetchError': None,
                 }
 
-        indicators, meta = scoring.build_indicators_and_meta(data, prev_data)
+        indicators, meta = scoring.build_indicators_and_meta(data, prev_data, today=ds)
         prev_data = {k: {'value': v.get('value'), 'dataDate': v.get('dataDate')}
                      for k, v in data.items() if isinstance(v, dict)}
         new_ias = meta['ias']
@@ -437,8 +437,9 @@ def rebuild_live():
         prev_data = {k: {'value': v.get('value'), 'dataDate': v.get('dataDate')}
                      for k, v in (prev_doc.get('data') or {}).items() if isinstance(v, dict)}
 
-    indicators, meta = scoring.build_indicators_and_meta(results, prev_data)
-    indicators, meta = scoring.build_indicators_and_meta(results, prev_data)  # 幂等（trend 与 prev 无关）
+    indicators, meta = scoring.build_indicators_and_meta(results, prev_data, today=ds)
+    # 幂等（trend 与 prev 无关；today 固定为快照日，隔天重跑也不变）
+    indicators, meta = scoring.build_indicators_and_meta(results, prev_data, today=ds)
 
     failed = []
     for key, info in im.INDICATORS.items():
@@ -471,8 +472,9 @@ def rebuild_live():
     output = {
         'timestamp': datetime.now().isoformat(),
         'recompute': {
-            'note': 'P1-8DIM 批次 A + A2：usdcnh 取自回填日线序列（as-of，严格早于快照日），'
-                    f'其余全部取自 {ds} 快照（不重抓、不造数）',
+            'note': 'P1-8DIM 批次 A + A2 + P1：usdcnh / 4 个 A股港股代理 / 中债10Y 均取自回填日线序列'
+                    f'（as-of，严格早于快照日），其余全部取自 {ds} 快照（不重抓、不造数）；'
+                    '新鲜度 α 以**快照日**为“今天”计算（P1-5）。',
             'sourceSnapshot': ds,
             'generatedBy': 'scripts/replay_8dim_30d.py --rebuild-live',
             'usdcnh': {'value': entry.get('value'), 'dataDate': entry.get('dataDate'),

@@ -15,6 +15,9 @@ import {
   resolveIasLevel,
   formatSigned,
   formatDecimal,
+  describeBoundary,
+  saturatedBadgeText,
+  saturatedBadgeTitle,
   type DataDateKind,
   type ContributionEntry,
 } from './lib/caliber'
@@ -64,6 +67,8 @@ interface IndicatorInfo {
   exclusion_reason?: string
   /** A4：是否被 ±1.0 / 分位两端截断（到区间上界，不携带新信息） */
   saturated?: boolean
+  /** P1-2：饱和侧（+1.0=upper，−1.0=lower），前端徽标按此分「上界/下界」 */
+  saturated_side?: 'upper' | 'lower' | null
   frequency: string
   dataDate: string | null
   source: string
@@ -131,6 +136,11 @@ interface IASMeta {
   boundary_margin?: number | null
   boundary_threshold?: number | null
   boundary_next_signal?: string | null
+  /** P1-1：明确字段（方向/阈值/目标档），前端不再写死「下档」 */
+  next_threshold?: number | null
+  next_signal?: string | null
+  next_direction?: 'up' | 'down' | null
+  boundary_distance?: number | null
   fragile_inputs?: string[]
   fragile_details?: { id: string; normalized_without: number; signal_without: string; impact: number }[]
   degraded_inputs?: { key: string; dimension: string; reason?: string; source?: string }[]
@@ -558,6 +568,8 @@ function IASCard({ ias }: { ias: IASMeta }) {
   // 关键词与图标：后端 ias.signal / signal_icon 为真源，前端不按 score 判级
   const kw = resolveIasKeyword(ias) ?? { keyword: '—', emoji: '' }
   const grayed = ias.grayed_dimensions ?? []
+  // P1-1：翻档方向只读后端字段（旧产物无 next_direction 时才按 margin 符号回退）
+  const boundary = describeBoundary(ias)
 
   return (
     <div className={`bg-gradient-to-r ${getGradient()} rounded-xl p-5 mb-4 text-center shadow-lg`}>
@@ -615,25 +627,26 @@ function IASCard({ ias }: { ias: IASMeta }) {
       </div>
 
       {/* A4（龙六 P0-3）：边界余量 / 脆弱维度 / 置信度 —— 必须显式可见，
-          不能只躲在 tooltip 里。余量 = normalized − 最近阈值。 */}
-      {typeof ias.boundary_margin === 'number' && (
+          不能只躲在 tooltip 里。余量 = |normalized − 最近阈值|，方向由 next_direction 决定。 */}
+      {boundary && (
         <div className="mt-1.5 flex items-center justify-center gap-2 flex-wrap">
           <span
             className={`text-[11px] px-2 py-0.5 rounded-full border ${
-              Math.abs(ias.boundary_margin) < 0.02
+              boundary.distance < 0.02
                 ? 'bg-red-500/20 text-red-100 border-red-300/40'
                 : 'bg-black/20 text-white/75 border-white/20'
             }`}
             title={
               `boundary_margin = normalized − 最近阈值 ${ias.boundary_threshold}` +
-              `\n跨过该阈值后信号 = ${ias.boundary_next_signal}` +
+              `\n翻档方向 = ${boundary.direction === 'up' ? '向上（上档）' : boundary.direction === 'down' ? '向下（下档）' : '未知'}` +
+              `\n跨过该阈值后信号 = ${boundary.signal}` +
               `\n脆弱维度（剔除后翻档，按影响降序）：${(ias.fragile_inputs || []).join(' / ') || '无'}`
             }
           >
-            距翻档 {Math.abs(ias.boundary_margin).toFixed(3)}
-            {ias.boundary_next_signal && (ias.fragile_inputs?.length || 0) > 0
-              ? ` · 掉任一维度即变${ias.boundary_next_signal}`
-              : ` · 下档${ias.boundary_next_signal}`}
+            距翻档 {boundary.distance.toFixed(3)}
+            {boundary.signal && (ias.fragile_inputs?.length || 0) > 0
+              ? ` · 掉任一维度即变${boundary.signal}`
+              : ` · ${boundary.direction === 'up' ? '上档' : boundary.direction === 'down' ? '下档' : ''}${boundary.signal ?? ''}`}
           </span>
           {ias.confidence && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/20 text-white/75 border border-white/20">
@@ -643,7 +656,7 @@ function IASCard({ ias }: { ias: IASMeta }) {
           {(ias.saturated_inputs?.length || 0) > 0 && (
             <span
               className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-100 border border-amber-300/30"
-              title={`已到区间上界、不再携带新信息的计分项：${(ias.saturated_inputs || []).join(' / ')}`}
+              title={`已到区间上/下界、不再携带新信息的计分项：${(ias.saturated_inputs || []).join(' / ')}`}
             >
               含 {ias.saturated_inputs!.length} 项饱和
             </span>
@@ -893,7 +906,7 @@ function DimensionCardV4({
         {(dimMeta?.saturated_count ?? 0) > 0 && (
           <span
             className="text-amber-500/90"
-            title={`饱和项（已到区间上界、不携带新信息）：${(dimMeta?.saturated_indicators || []).join(' / ')}`}
+            title={`饱和项（已到评分区间上/下界、不携带新信息）：${(dimMeta?.saturated_indicators || []).join(' / ')}`}
           >
             · {dimMeta?.saturated_count} 项饱和
           </span>
@@ -1045,9 +1058,9 @@ function IndicatorRowV4({ info, indicatorKey }: { info: IndicatorInfo; indicator
           {info.saturated === true && (
             <span
               className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-300/90 border border-amber-500/25 flex-shrink-0"
-              title="本项已到评分区间上/下界（|score|=1.0），不再随数值变化，不携带新信息；不应拿它当独立看多/看空证据"
+              title={saturatedBadgeTitle(info)}
             >
-              已到区间上界·不携带信息
+              {saturatedBadgeText(info)}
             </span>
           )}
           {isFallback && (

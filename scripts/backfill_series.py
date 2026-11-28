@@ -39,6 +39,7 @@ SERIES_META = {
     'southboundNet': {'unit': '亿元', 'transform': 'sum5'},
     'hstechMomentum': {'unit': '百分点', 'transform': 'raw'},
     'usdcnh': {'unit': '', 'transform': 'raw'},      # A2：离岸人民币日线（MA120 分母序列）
+    'chinaBond10Y': {'unit': '%', 'transform': 'raw'},  # P1-3：中债10Y 相对 120 日均值
 }
 
 
@@ -187,12 +188,41 @@ def build_usdcnh():
     return out
 
 
+def build_china_bond_10y():
+    """中国 10 年期国债到期收益率日线（P1-3，2026-11-28）。
+
+    源：akshare.bond_zh_us_rate() 的 `中国国债收益率10年` 列 —— 与线上
+    fetch_worldos_data._fetch_bond_yields() **同一次请求、同一个源**（不新引源）。
+    实测 9398 行历史，带交易日；只回填**最近 250 个交易日**（够 MA120 + 19 日回算窗口）。
+    序列存 raw 收益率，MA120 在打分时现算，不落任何均值常数。
+    """
+    import akshare as ak
+    df = ak.bond_zh_us_rate()
+    if df is None or df.empty or '中国国债收益率10年' not in df.columns:
+        raise ValueError('bond_zh_us_rate 返回空或缺中国10Y列')
+    col = '中国国债收益率10年'
+    df = df[df[col].notna()].copy()
+    df['日期'] = df['日期'].astype(str).str[:10]
+    df = df.sort_values('日期')
+    out = {}
+    for _, row in df.tail(250).iterrows():
+        d = str(row['日期'])[:10]
+        v = row[col]
+        if not d or v is None or v != v:      # v==v 排 NaN（不依赖 numpy）
+            continue
+        out[d] = round(float(v), 4)
+    if not out:
+        raise ValueError('中债10Y 无有效记录')
+    return out
+
+
 BUILDERS = {
     'ashareTurnover': build_ashare_turnover,
     'marginBalance': build_margin_balance,
     'southboundNet': build_southbound_net,
     'hstechMomentum': build_hstech_momentum,
     'usdcnh': build_usdcnh,
+    'chinaBond10Y': build_china_bond_10y,
 }
 
 

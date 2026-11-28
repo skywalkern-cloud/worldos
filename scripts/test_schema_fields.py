@@ -651,6 +651,7 @@ def test_s5(doc, label):
           f'{sum(d["weight_design"] for d in dims.values())} != {im.IAS_SCALE}')
 
     bad = []
+    ind = doc['indicators']
     for d in im.DIMENSIONS:
         x = dims[d['id']]
         # V1b-1b（龙六）：先断言两个列表交集为空，再计数。
@@ -665,15 +666,20 @@ def test_s5(doc, label):
                 if im.is_reference_only(k)]
         # A4：required 可由维度显式覆盖（fxExternal 3 项但允许 usdcnh 降级 → 2），
         # 单一真源在 im.required_valid_count，不在测试里复写一份规则。
-        if x['required_count'] != im.required_valid_count(d):
-            bad.append(f'{d["id"]}.required {x["required_count"]} != {im.required_valid_count(d)}')
+        # P1-4：覆盖已收窄成例外白名单 —— 必须按「本维实际有效集合」判定，
+        # 否则 3 项全有效时产物给 3、而裸调用给 2，会对不上。
+        valid_set = {k for k in active
+                     if ind.get(k) and ind[k].get('score') is not None
+                     and (ind[k].get('timeliness') or 0) > 0}
+        if x['required_count'] != im.required_valid_count(d, valid_set):
+            bad.append(f'{d["id"]}.required {x["required_count"]} != '
+                       f'{im.required_valid_count(d, valid_set)}')
         if x['active_count'] != len(active):
             bad.append(f'{d["id"]}.active {x["active_count"]} != {len(active)}')
         if x['reference_only_count'] != len(refs):
             bad.append(f'{d["id"]}.ref {x["reference_only_count"]} != {len(refs)}')
     check(f'S5-04[{label}]', not bad, '; '.join(bad))
 
-    ind = doc['indicators']
     bad = []
     for d in im.DIMENSIONS:
         x = dims[d['id']]
@@ -1075,9 +1081,22 @@ def test_s9(doc, label):
     check(f'S9-05[{label}]', not bad, '; '.join(bad[:6]))
 
     # ── 已转正项必须真的在计分 ──
-    bad = [k for k in ind if k in im.QUANTILE_CONFIG
-           and (ind[k]['reference_only'] is not False
-                or (not ind[k]['warmup'] and ind[k]['excluded_from_scoring'] is not False))]
+    # P1-3：chinaBond10Y 进来后，夹具里的中债故意是过期值（α=0）→
+    # exclusion_reason='expired_alpha0' 是**设计中的分支**，不是「当成参考项」。
+    # 这里只报「因参考项/无评分/降级被排除」的真问题。
+    bad = []
+    for k in ind:
+        if k not in im.QUANTILE_CONFIG:
+            continue
+        if ind[k]['reference_only'] is not False:
+            bad.append(k)
+            continue
+        reason = ind[k].get('exclusion_reason')
+        if reason in (None, 'expired_alpha0'):
+            continue
+        if reason == 'no_score' and ind[k].get('warmup'):
+            continue          # 历史不足 → 不出分，是设计分支（非参考/降级）
+        bad.append(k)
     check(f'S9-06[{label}]', not bad, f'仍被当参考项/被排除: {bad}')
 
     # ── S9-07：ratio_band 测试向量逐点（龙六给的 14 点，字面量输入，不依赖任何产物）──
@@ -1698,18 +1717,25 @@ def test_s15_fx_deconflation():
     def item(v, unit='', freq='daily'):
         return {'value': v, 'unit': unit, 'frequency': freq,
                 'source': 'test', 'dataDate': today}
+    # P1-3：中债10Y 已改「相对 120 日均值」五档，必须给历史才能出分。
+    # 119×2.0 + 今日 1.70 → MA=1.9975、ratio=0.8510（低于均值 15%）→ +1.0（边际宽松=利好）。
+    cnh_hist_119 = [{'date': (date(2026, 1, 1) + timedelta(days=i)).isoformat(), 'value': 2.0}
+                    for i in range(119)]
     raw = {
         'lpr': item(3.0, '%', 'monthly'), 'dr007': item(1.6, '%'), 'm2': item(8.9, '%', 'monthly'),
-        'chinaBond10Y': item(1.60, '%'),
+        'chinaBond10Y': {'value': 1.70, 'unit': '%', 'frequency': 'daily',
+                         'source': 'test', 'dataDate': today, 'history': cnh_hist_119},
         'usdcnh': {'value': 6.65, 'unit': '', 'frequency': 'daily', 'source': 'test',
                    'dataDate': today, 'history': []},
         'dollarIndex': item(100.0), 'usBond10Y': item(4.94, '%'),
         'creditSpread': item(334, 'bp'),
     }
     ind, meta = scoring.build_indicators_and_meta(raw)
-    check('S15-05[中债10Y 打分方向]',
-          ind['chinaBond10Y']['score'] == 0.9,
-          f"score={ind['chinaBond10Y']['score']}")
+    check('S15-05[中债10Y 相对均值打分方向（低于均值→利好）]',
+          ind['chinaBond10Y']['score'] == 1.0
+          and ind['chinaBond10Y']['scoring_method'] == 'ratio_ma_steps'
+          and ind['chinaBond10Y']['ratio_value'] < 0.90,
+          f"score={ind['chinaBond10Y']['score']} ratio={ind['chinaBond10Y'].get('ratio_value')}")
     check('S15-06[creditSpread 不计分]',
           ind['creditSpread']['reference_only'] is True
           and ind['creditSpread']['excluded_from_scoring'] is True
@@ -1927,6 +1953,329 @@ def test_s13_usdcnh_degraded_no_score():
 
 
 # ═══════════════════════════════════════════
+# S17：commentary.json 必须随 data 重生成（P0-1，2026-11-28 泰斯特 A4-P1-4）
+# ═══════════════════════════════════════════
+
+def test_s17_commentary_consistency(json_path):
+    """防复发：commentary 里的 IAS 数字必须等于当前 market-data 的 meta.ias。
+
+    A4 只改了 commentary_generator.py 而没重生成产物 → 页面头部 −0.23、正文 −0.57。
+    这类「改一半」今天已三次，所以用**数据值断言**钉死：
+      ① commentary.ias.score      == meta.ias.score（2 位）
+      ② commentary.ias.normalized == meta.ias.normalized（6 位）
+      ③ 正文首句「IAS综合评分**X**」的 X == score（防止只改字段不改文案）
+      ④ dist/data/commentary.json（存在时）与 public 逐个相等（防止构建产物留旧值）
+    """
+    import re
+    p = Path(json_path)
+    cpath = p.parent / 'commentary.json'
+    if not cpath.exists():
+        check('S17-00[commentary 存在]', False, f'缺 {cpath}')
+        return
+    md = json.loads(p.read_text(encoding='utf-8'))
+    cm = json.loads(cpath.read_text(encoding='utf-8'))
+    ias = (md.get('meta') or {}).get('ias') or {}
+    cias = cm.get('ias') or {}
+    score, norm = ias.get('score'), ias.get('normalized')
+
+    cscore = cias.get('score')
+    check('S17-01[commentary score == meta.ias.score]',
+          isinstance(cscore, (int, float)) and isinstance(score, (int, float))
+          and abs(cscore - score) < 1e-9,
+          f'commentary={cscore} meta={score}')
+    cnorm = cias.get('normalized')
+    check('S17-02[commentary normalized == meta.ias.normalized]',
+          isinstance(cnorm, (int, float)) and isinstance(norm, (int, float))
+          and abs(cnorm - norm) < 1e-9,
+          f'commentary={cnorm} meta={norm}')
+
+    summary = cias.get('summary') or ''
+    m = re.search(r'IAS综合评分\*\*([+-]?\d+(?:\.\d+)?)\*\*', summary)
+    ok = bool(m) and isinstance(score, (int, float)) \
+        and abs(float(m.group(1)) - score) < 1e-9
+    check('S17-03[正文首句数字 == score]', ok,
+          f'正文={m.group(1) if m else None} meta={score}')
+
+    # dist 是部署产物：两套数就是用户可见的自相矛盾，必须逐字一致
+    dist = WS / 'dist' / 'data' / 'commentary.json'
+    if dist.exists():
+        dcm = json.loads(dist.read_text(encoding='utf-8'))
+        dist_score = (dcm.get('ias') or {}).get('score')
+        check('S17-04[dist commentary == public]',
+              dist_score == cscore
+              and (dcm.get('ias') or {}).get('summary') == summary,
+              f"dist={dist_score} public={cscore}")
+    else:
+        warn_or_pass('S17-04[dist commentary]', False, 'dist 未构建（跳过，构建后必须一致）')
+
+
+# ═══════════════════════════════════════════
+# S18：降级 → 次日兜底的链式污染（P0-2，泰斯特 A4-P0-2）
+# ═══════════════════════════════════════════
+
+def test_s18_series_fallback_chain():
+    """链式场景（S13-09 结构上测不到）：
+
+    Day1 主源失败 → 备源在岸价 + sourceDegraded（序列正确地不写）；
+    Day2 全源失败 → val=None → 取 prev（Day1 的 6.62，同样日期）→ used_fallback=True。
+    旧代码只判 sourceDegraded，且兜底分支把它清空 → Day1 的在岸 6.62 被写进序列。
+    断言：Day1、Day2 都不得 upsert，序列既无降级值也无兜底值，且都不挂 history。
+    """
+    import tempfile
+    from pathlib import Path as _Path
+    import fetch_worldos_data as fetch_mod
+    import series_store as _ss
+
+    old_dir = _ss.SERIES_DIR
+    with tempfile.TemporaryDirectory() as td:
+        _ss.SERIES_DIR = _Path(td)
+        try:
+            base_day = date(2026, 1, 5)
+            for i in range(250):
+                _ss.upsert('usdcnh', (base_day + timedelta(days=i)).isoformat(), 6.6000,
+                           unit='', transform='raw')
+            n0 = len(_ss.load('usdcnh'))
+
+            # Day1：主源缺失 → 在岸回退（有 sourceDegraded）
+            day1 = {'usdcnh': {'value': 6.62, 'dataDate': '2026-11-28',
+                               'source': 'exchangerate-api',
+                               'sourceDegraded': {'reason': 'primary_source_missing'},
+                               'caliberNoteSuffix': '（在岸参考价）'}}
+            s1 = fetch_mod.sync_series(day1)
+            after1 = _ss.load('usdcnh')
+            # Day2：全源失败 → 上一轮兜底（load_prev 只回填 value/dataDate，sourceDegraded 已丢）
+            day2 = {'usdcnh': {'value': 6.62, 'dataDate': '2026-11-28',
+                               'source': 'exchangerate-api', 'used_fallback': True}}
+            s2 = fetch_mod.sync_series(day2)
+            after2 = _ss.load('usdcnh')
+
+            check('S18-01[Day1 降级不写序列]',
+                  s1 == ['usdcnh'] and len(after1) == n0 and '2026-11-28' not in after1,
+                  f'skipped={s1} {n0}->{len(after1)}')
+            check('S18-02[Day2 兜底不写序列]',
+                  s2 == ['usdcnh'] and len(after2) == n0 and '2026-11-28' not in after2,
+                  f'skipped={s2} {n0}->{len(after2)} degraded_day_persisted='
+                  f"{'2026-11-28' in after2}")
+            check('S18-03[序列里既无降级值也无兜底值]',
+                  6.62 not in after2.values(), f'values_contains_6.62={6.62 in after2.values()}')
+            check('S18-04[两日均不挂 history]',
+                  'history' not in day1['usdcnh'] and 'history' not in day2['usdcnh'],
+                  f"day1={day1['usdcnh'].get('history')} day2={day2['usdcnh'].get('history')}")
+        finally:
+            _ss.SERIES_DIR = old_dir
+
+
+# ═══════════════════════════════════════════
+# S19：boundary 方向（P1-1，泰斯特 A4-P1-2）
+# ═══════════════════════════════════════════
+
+def test_s19_boundary_direction():
+    """4 个探针（上/下半区各 2 个）：direction 与目标档必须正确。
+
+    旧实现只给带符号 margin，前端写死「下档」→ norm=−0.20 显示「下档持有」
+    （真实要涨 0.091 才变持有）。
+    """
+    def boundary_of(norm):
+        dims = {d['id']: {'score': None, 'weight_effective': im.dimension_weights(d)['effective']}
+                for d in im.DIMENSIONS}
+        dims['economic'] = {'score': norm, 'weight_effective': 1.0}
+        return scoring.calc_ias(dims)
+
+    cases = [
+        # (norm, direction, next_signal, threshold, distance)
+        (-0.041286, 'down', '减仓', -0.109, 0.067714),
+        (0.300, 'down', '持有', 0.217, 0.083),
+        (-0.200, 'up', '持有', -0.109, 0.091),
+        (-0.400, 'up', '减仓', -0.326, 0.074),
+    ]
+    bad = []
+    for norm, want_dir, want_sig, want_thr, want_dist in cases:
+        ias = boundary_of(norm)
+        got = (ias.get('next_direction'), ias.get('next_signal'),
+               ias.get('next_threshold'), round(ias.get('boundary_distance') or 0, 6))
+        if got != (want_dir, want_sig, want_thr, want_dist):
+            bad.append(f'norm={norm}: got={got} want={(want_dir, want_sig, want_thr, want_dist)}')
+    check('S19-01[上下半区方向/目标档/距离 4 探针]', not bad, '; '.join(bad))
+
+    # 兼容字段：next_* 与 boundary_* 必须同值（前端新旧两套读法不能打架）
+    ias = boundary_of(-0.200)
+    check('S19-02[next_* 与 boundary_* 同值]',
+          ias['next_threshold'] == ias['boundary_threshold']
+          and ias['next_signal'] == ias['boundary_next_signal']
+          and abs(abs(ias['boundary_margin']) - ias['boundary_distance']) < 1e-12
+          and ias['boundary_margin'] < 0,
+          f"{ {k: ias.get(k) for k in ('boundary_margin','next_direction','next_signal')} }")
+
+
+# ═══════════════════════════════════════════
+# S20：饱和侧 upper/lower（P1-2，泰斯特 P2-7）
+# ═══════════════════════════════════════════
+
+def test_s20_saturated_side():
+    today = date.today().isoformat()
+    raw = {
+        'ppi': {'value': 5.7, 'unit': '%', 'frequency': 'monthly', 'source': 't', 'dataDate': today},
+        'shanghaiCopper': {'value': 92550.0, 'unit': '¥/吨', 'frequency': 'daily',
+                           'source': 't', 'dataDate': today},
+        'cpi': {'value': 2.0, 'unit': '%', 'frequency': 'monthly', 'source': 't', 'dataDate': today},
+    }
+    ind, _meta = scoring.build_indicators_and_meta(raw)
+    check('S20-01[+1.0 → upper]',
+          ind['ppi']['saturated'] is True and ind['ppi']['saturated_side'] == 'upper',
+          f"{ind['ppi']['saturated_side']}")
+    check('S20-02[−1.0 → lower]',
+          ind['shanghaiCopper']['saturated'] is True
+          and ind['shanghaiCopper']['saturated_side'] == 'lower',
+          f"{ind['shanghaiCopper']['saturated_side']}")
+    check('S20-03[未饱和 → side=None]',
+          ind['cpi']['saturated'] is False and ind['cpi']['saturated_side'] is None,
+          f"{ind['cpi'].get('saturated_side')}")
+
+
+# ═══════════════════════════════════════════
+# S21：chinaBond10Y 相对 120 日均值口径（P1-3，泰斯特 A4-P1-5）
+# ═══════════════════════════════════════════
+
+def test_s21_china_bond_relative():
+    cfg = im.RATIO_MA_STEPS_CONFIG.get('chinaBond10Y')
+    check('S21-01[走 ratio_ma_steps、固定水位已移除]',
+          cfg is not None and 'chinaBond10Y' not in scoring.NEGATIVE_PARAMS
+          and cfg['window'] == 120
+          and cfg['steps'] == (0.90, 0.97, 1.03, 1.10),
+          f"cfg={cfg} in_negative={'chinaBond10Y' in scoring.NEGATIVE_PARAMS}")
+    note = im.INDICATORS['chinaBond10Y']['caliberNote']
+    check('S21-02[caliberNote 写相对均值/边际宽松/非绝对水位]',
+          '相对均值口径' in note and '边际宽松' in note and '不反映绝对水位' in note,
+          note)
+
+    steps = (0.90, 0.97, 1.03, 1.10)
+    values = (1.0, 0.5, 0.0, -0.5, -1.0)
+    probes = [(0.85, 1.0), (0.90, 1.0), (0.9001, 0.5), (0.97, 0.5),
+              (0.9701, 0.0), (1.03, 0.0), (1.0301, -0.5), (1.10, -0.5),
+              (1.1001, -1.0)]
+    bad = [f'{r}->{scoring.ratio_ma_steps_score(r, steps, values)} (期望 {w})'
+           for r, w in probes
+           if scoring.ratio_ma_steps_score(r, steps, values) != w]
+    check('S21-03[五档边界探针 9 点]', not bad, '; '.join(bad))
+
+    # 历史不足 120 日 → score=null（不破维度）
+    short_hist = [{'date': f'2026-01-{i+1:02d}', 'value': 2.0} for i in range(100)]
+    m = scoring.score_by_ratio_ma('chinaBond10Y', 2.0, short_hist)
+    check('S21-04[历史不足 120 日 → score=null]',
+          m['score'] is None and m['warmup'] is True,
+          f"score={m['score']} warmup={m['warmup']} total={m['total_points']}")
+
+    # 走完整 build：history 119 + 今日 → ratio 0.90075 → +0.5；维度不破
+    hist = [{'date': f'2026-01-{i+1:02d}', 'value': 2.0} for i in range(119)]
+    raw = {'chinaBond10Y': {'value': 1.8, 'unit': '%', 'frequency': 'daily',
+                            'source': 't', 'dataDate': date.today().isoformat(),
+                            'history': hist}}
+    ind, meta = scoring.build_indicators_and_meta(raw)
+    r = ind['chinaBond10Y']
+    check('S21-05[整链复算 ratio→score]',
+          r['scoring_method'] == 'ratio_ma_steps' and r['score'] == 0.5
+          and abs(r['ratio_value'] - 0.9008) < 1e-3,
+          f"score={r['score']} ratio={r['ratio_value']} ma={r['ma_base']}")
+
+
+# ═══════════════════════════════════════════
+# S22：required_valid 收窄到「仅 usdcnh 例外」（P1-4，泰斯特 A4-P1-3）
+# ═══════════════════════════════════════════
+
+def test_s22_required_valid_narrowed():
+    fx = next(d for d in im.DIMENSIONS if d['id'] == 'fxExternal')
+    check('S22-01[默认（无缺失信息）仍是 2]', im.required_valid_count(fx) == 2,
+          f'{im.required_valid_count(fx)}')
+    check('S22-02[3 项全有效 → required=3]',
+          im.required_valid_count(fx, {'usdcnh', 'dollarIndex', 'usBond10Y'}) == 3)
+    check('S22-03[缺 usdcnh → required=2]',
+          im.required_valid_count(fx, {'dollarIndex', 'usBond10Y'}) == 2)
+    check('S22-04[缺 dollarIndex → required=3]',
+          im.required_valid_count(fx, {'usdcnh', 'usBond10Y'}) == 3)
+    check('S22-05[缺 usBond10Y → required=3]',
+          im.required_valid_count(fx, {'usdcnh', 'dollarIndex'}) == 3)
+
+    today = date.today().isoformat()
+    hist119 = [{'date': (date(2026, 1, 1) + timedelta(days=i)).isoformat(), 'value': 6.72}
+               for i in range(119)]
+
+    def item(v, unit='', freq='daily'):
+        return {'value': v, 'unit': unit, 'frequency': freq, 'source': 't', 'dataDate': today}
+
+    cnh = {'value': 6.65, 'unit': '', 'frequency': 'daily', 'source': 't',
+           'dataDate': today, 'history': hist119}
+
+    # 缺 usdcnh → 仍出分
+    raw = {'dollarIndex': item(97.8), 'usBond10Y': item(4.94, '%')}
+    _i, meta = scoring.build_indicators_and_meta(raw)
+    fx_meta = meta['dimensions']['fxExternal']
+    check('S22-06[缺 usdcnh → 出分]',
+          fx_meta['valid_count'] == 2 and fx_meta['required_count'] == 2
+          and fx_meta['insufficient_data'] is False and fx_meta['score'] is not None,
+          f"valid={fx_meta['valid_count']} req={fx_meta['required_count']} insuff={fx_meta['insufficient_data']}")
+
+    # 缺 dollarIndex → insufficient
+    raw = {'usdcnh': cnh, 'usBond10Y': item(4.94, '%')}
+    _i, meta = scoring.build_indicators_and_meta(raw)
+    fx_meta = meta['dimensions']['fxExternal']
+    check('S22-07[缺 dollarIndex → 整维 insufficient]',
+          fx_meta['valid_count'] == 2 and fx_meta['required_count'] == 3
+          and fx_meta['insufficient_data'] is True and fx_meta['score'] is None,
+          f"valid={fx_meta['valid_count']} req={fx_meta['required_count']} insuff={fx_meta['insufficient_data']}")
+
+    # 缺 usBond10Y → insufficient
+    raw = {'usdcnh': cnh, 'dollarIndex': item(97.8)}
+    _i, meta = scoring.build_indicators_and_meta(raw)
+    fx_meta = meta['dimensions']['fxExternal']
+    check('S22-08[缺 usBond10Y → 整维 insufficient]',
+          fx_meta['valid_count'] == 2 and fx_meta['required_count'] == 3
+          and fx_meta['insufficient_data'] is True and fx_meta['score'] is None,
+          f"valid={fx_meta['valid_count']} req={fx_meta['required_count']} insuff={fx_meta['insufficient_data']}")
+
+
+# ═══════════════════════════════════════════
+# S23：回算时钟 = 快照日（P1-5，泰斯特 A4-P1-1）
+# ═══════════════════════════════════════════
+
+def test_s23_recompute_asof_clock():
+    # ① 单点：同一份 dataDate，today 不同 → α 不同（证明 today 真的透传了）
+    f_asof = im.resolve_freshness('2026-11-06', 'daily', today=date(2026, 11, 9))
+    f_wall = im.resolve_freshness('2026-11-06', 'daily', today=date(2026, 11, 28))
+    check('S23-01[α 按传入的 today 算]',
+          f_asof['alpha'] == 1.0 and f_wall['alpha'] == 0.0,
+          f"asof={f_asof['alpha']} wall={f_wall['alpha']}")
+
+    # ② 产物级：11-09 快照按快照日重算 → 8 维全在、α 生效
+    raw = {'usBond10Y': {'value': 4.94, 'unit': '%', 'frequency': 'daily',
+                         'source': 't', 'dataDate': '2026-11-06'}}
+    ind_asof, _m = scoring.build_indicators_and_meta(raw, today='2026-11-09')
+    ind_wall, _m2 = scoring.build_indicators_and_meta(raw, today='2026-11-28')
+    check('S23-02[build_indicators_and_meta 透传 today]',
+          ind_asof['usBond10Y']['timeliness'] == 1.0
+          and ind_wall['usBond10Y']['timeliness'] == 0.0,
+          f"asof={ind_asof['usBond10Y']['timeliness']} wall={ind_wall['usBond10Y']['timeliness']}")
+
+    # ③ 回算产物：不再有「数据不足」，覆盖率 ≥0.9
+    rp = WS / 'data' / 'history' / 'recompute-8dim-2026-11-28.json'
+    if not rp.exists():
+        warn_or_pass('S23-03[回算产物]', False, f'缺 {rp}（跑 scripts/replay_8dim_30d.py）')
+        return
+    doc = json.loads(rp.read_text(encoding='utf-8'))
+    rows = doc.get('rows') or []
+    bad = [f"{r['date']}:{r['new']['signal']}/cov={r['new']['coverage']}" for r in rows
+           if r['new']['signal'].startswith('数据不足') or (r['new']['coverage'] or 0) < 0.9]
+    check('S23-03[19 天回算无「数据不足」、覆盖率 ≥0.9]', rows and not bad,
+          f'rows={len(rows)} bad={bad[:5]}')
+    check('S23-04[11-09~11-18 九天修复]',
+          all((r['new']['coverage'] or 0) >= 0.9 for r in rows
+              if '2026-11-09' <= r['date'] <= '2026-11-18'),
+          f"{[ (r['date'], r['new']['coverage']) for r in rows if '2026-11-09' <= r['date'] <= '2026-11-18']}")
+    check('S23-05[序列无未来函数]',
+          (doc.get('series_no_lookahead') or {}).get('passed') is True,
+          f"{doc.get('series_no_lookahead')}")
+
+
+# ═══════════════════════════════════════════
 # main
 # ═══════════════════════════════════════════
 
@@ -1952,6 +2301,13 @@ def run_one(json_path, fixture_path=None, do_units=True):
     safe('S14', test_s14_saturation)
     safe('S15', test_s15_fx_deconflation)
     safe('S16', test_s16_boundary_disclosure, doc)
+    safe('S17', test_s17_commentary_consistency, json_path)
+    safe('S18', test_s18_series_fallback_chain)
+    safe('S19', test_s19_boundary_direction)
+    safe('S20', test_s20_saturated_side)
+    safe('S21', test_s21_china_bond_relative)
+    safe('S22', test_s22_required_valid_narrowed)
+    safe('S23', test_s23_recompute_asof_clock)
     safe('T6b1', test_t6b1)
     safe('T6b2', test_t6b2, doc, label)
     safe('T6b3', test_t6b3, doc, label, live)

@@ -345,8 +345,19 @@ INDICATORS = {
     'chinaBond10Y': {
         'name': '中国10年国债收益率', 'short': '中债10Y',
         'source': 'akshare-中美债券（bond_zh_us_rate）', 'country': '🇨🇳', 'unit': '%', 'frequency': 'daily',
+        # P1-3（2026-11-28 泰斯特 A4-P1-5）：固定水位 1.5/2.5/4.0 打回。
+        # 今日 1.60% 距地板只 0.10pp，实质二值化；长期 ≤1.5% 恒 +1.0 —— 今天第三个
+        # 「固定水位→恒定满分」。改「相对 120 日均值」的五档对称口径，与 usdcnh 同法：
+        #   ratio = 中债10Y / MA120；收益率低于均值 = 边际宽松 = 利好（ratio 越低分越高）
+        #   ratio ≤0.90 → +1.0；≤0.97 → +0.5；≤1.03 → 0；≤1.10 → −0.5；>1.10 → −1.0
         'caliberNote': ('中国10年期国债到期收益率。与中美10Y利差同一次 akshare 请求取数（不新增外部源）；'
-                        '进 liquidity 打分：收益率越低=国内货币环境越松=分越高（NEGATIVE 1.5/2.5/4.0）'),
+                        '进 liquidity 打分：**相对均值口径**，ratio = 中债10Y / MA120（120 个交易日收盘均值，含当日），'
+                        '反映**边际宽松**（收益率低于自身均值=边际转松=利好），**不反映绝对水位**；'
+                        '五档对称（±10% 满档、±3% 零值区），历史不足 120 日不出分'),
+        'scoring_method': 'ratio_ma_steps',
+        'ratio_ma_window': 120,
+        'ratio_steps': (0.90, 0.97, 1.03, 1.10),
+        'ratio_values': (1.0, 0.5, 0.0, -0.5, -1.0),
     },
     'epu': {
         'name': '经济政策不确定性', 'short': 'EPU',
@@ -437,14 +448,17 @@ DIMENSIONS = [
     {
         # 新维度：汇率与外部。A4 后 3 项计分（usdcnh/dollarIndex/usBond10Y），
         # 中美10Y利差降为只展示参考项（消除美债10Y双计）。
-        # 因 usdcnh 设计上允许降级（D2/D7），显式把最小有效数定为 2，
-        # 避免「n=3 必须全有效」导致 usdcnh 降级时整维归零（与 D2 冲突）。
+        # 因 usdcnh 设计上允许降级（D2/D7），显式把最小有效数定为 2；
+        # P1-4（2026-11-28 泰斯特 A4-P1-3）：这个 2 **只对 usdcnh 缺失生效**，
+        # 不再是对任何缺失都松手的「3 选 2」——dollarIndex / usBond10Y 缺失仍要求 3 项全有效。
         'id': 'fxExternal', 'name': '汇率与外部', 'icon': '💱', 'weight': 0.7,
         'indicators': ['usdcnh', 'dollarIndex', 'usBond10Y'],
         'reference_indicators': ['creditSpread'],
         'required_valid': 2,
+        # 例外白名单：只有这些指标缺失时才允许按 2 计（其余缺失走 T4 默认规则）
+        'required_valid_exceptions': ['usdcnh'],
         'caliberNote': ('USDCNH（离岸日线，按相对 120 日均值打分）+ 美元指数（三货币加权代理）+ 美债10Y；'
-                        '3 项需 ≥2 有效（usdcnh 降级时仍可出分）。中美10Y利差仅展示、不计分'),
+                        '3 项需 ≥2 有效（仅 usdcnh 降级/缺失时例外）；中美10Y利差仅展示、不计分'),
     },
     {
         # 原 sentiment 拆分：4 个 A股/港股代理独立成 sentimentA（0.9），
@@ -594,6 +608,9 @@ DIMENSION_CONFIG = [
         'display_indicators': list(d['indicators']) + list(d.get('reference_indicators', [])),
         # A4：允许维度显式收紧/放宽最小有效数（目前仅 fxExternal 用）
         'required_valid': d.get('required_valid'),
+        # P1-4：例外白名单必须一并带过去，否则 scoring 只看得到 required_valid=2，
+        # 会把「3 选 2」又放松回去（本字段当初就是漏拷导致例外不生效）。
+        'required_valid_exceptions': list(d.get('required_valid_exceptions') or []),
     }
     for d in DIMENSIONS
 ]
@@ -770,20 +787,36 @@ def compute_rules_hash(snapshot: dict = None) -> str:
     return hashlib.sha256(canonical_rules_json(snap).encode('utf-8')).hexdigest()[:12]
 
 
-def required_valid_count(dim: dict) -> int:
+def required_valid_count(dim: dict, valid_keys=None) -> int:
     """维度最小有效指标数（排除参考项后的分母）。
 
     A4：维度可显式声明 `required_valid` 覆盖默认规则。用途只有一个——
     fxExternal 计分项降到 3 项，但 usdcnh 按 D2/D7 允许降级；若不覆盖，
     n=3 的「全部有效」会让降级直接把整维归零，与 D2 相反。
+
+    P1-4（2026-11-28 泰斯特 A4-P1-3）：覆盖**收窄成例外白名单**。
+    只有 `required_valid_exceptions`（当前 = ['usdcnh']）里的指标缺失时，
+    才允许按 `required_valid`（2）计；其他指标缺失一律回落到 T4 默认规则。
+    否则「3 选 2」对美元指数/美债缺失也松手，等于静默出分。
+
+    Args:
+        dim:        维度定义
+        valid_keys: 本维当前有效的指标 key 集合（None = 无缺失信息，
+                    退化为「一律按覆盖值」以兼容旧调用/元数据校验）
     """
     active = [k for k in dim['indicators'] if not is_reference_only(k)]
     n = len(active)
-    if dim.get('required_valid'):
-        return min(n, int(dim['required_valid']))
-    if n <= 3:
-        return n
-    return max(2, (n + 1) // 2)
+    default = n if n <= 3 else max(2, (n + 1) // 2)
+    override = dim.get('required_valid')
+    if not override:
+        return default
+    if valid_keys is None:
+        return min(n, int(override))
+    missing = [k for k in active if k not in valid_keys]
+    exceptions = set(dim.get('required_valid_exceptions') or [])
+    if missing and all(k in exceptions for k in missing):
+        return min(n, int(override))
+    return default
 
 
 # ═══════════════════════════════════════════

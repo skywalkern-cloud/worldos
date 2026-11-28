@@ -806,6 +806,9 @@ def generate_commentary(
         'dataTimestamp': now,
         'ias': {
             'score': ias.get('score', 0),
+            # P0-1（2026-11-28 泰斯特 A4-P1-4）：把 normalized 也落盘并锁到 meta.ias.normalized，
+            # 否则「改了一半没重生成」只能靠人眼发现（页面头部 −0.23 / 正文 −0.57）。
+            'normalized': ias.get('normalized'),
             'signal': ias.get('signal', '持有'),
             'summary': ias_summary,
             'keyDivergences': divergences,
@@ -854,6 +857,12 @@ if __name__ == '__main__':
         out_path.parent.mkdir(parents=True, exist_ok=True)
         # strict 写入：NaN/Inf → null，绝不产出非法 JSON
         write_json_strict(out_path, commentary)
+        # P0-1：dist/ 是 11-28 还挂着旧值的那份（−0.57）。构建前也同步，
+        # 避免「本地预览 / 部署产物两套数」。
+        dist_path = workspace / 'dist' / 'data' / 'commentary.json'
+        if dist_path.parent.exists():
+            write_json_strict(dist_path, commentary)
+            print(f"✅ 同步 dist: {dist_path}")
 
         print(f"✅ 评论已生成: {out_path}")
         print(f"   版本: {commentary['version']}")

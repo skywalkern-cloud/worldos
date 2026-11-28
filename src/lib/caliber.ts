@@ -595,3 +595,75 @@ export function computeContribution(score: number | null, weight: number): numbe
   if (!Number.isFinite(weight)) return 0
   return score * weight
 }
+
+// ====== P1-1 / P1-2：翻档方向 & 饱和侧（2026-11-28 泰斯特 A4-P1-2 / P2）======
+//
+// 旧版 App.tsx 把边界余量的符号抹掉、文案写死「下档 X」：
+//   normalized=−0.20（减仓档下半区）→ 最近阈值 −0.109 在**上方**，
+//   真实是「上档持有」，页面却渲染成「距翻档 0.091 · 下档持有」——方向反了。
+// 现后端给 next_threshold / next_signal / next_direction(up|down)，
+// 前端只读字段，不再自己判方向；旧产物（无新字段）回退到 margin 符号。
+
+export interface BoundaryInput {
+  boundary_margin?: number | null
+  boundary_threshold?: number | null
+  boundary_next_signal?: string | null
+  next_threshold?: number | null
+  next_signal?: string | null
+  next_direction?: 'up' | 'down' | null
+}
+
+export type NextDirection = 'up' | 'down' | null
+
+/** 翻档方向：优先读后端字段，缺失时按 margin 符号回退（<0 = 边界在上方 → up）。 */
+export function resolveNextDirection(ias: BoundaryInput | null | undefined): NextDirection {
+  if (ias?.next_direction === 'up' || ias?.next_direction === 'down') return ias.next_direction
+  if (typeof ias?.boundary_margin === 'number' && Number.isFinite(ias.boundary_margin)) {
+    return ias.boundary_margin < 0 ? 'up' : 'down'
+  }
+  return null
+}
+
+export interface BoundaryDescription {
+  /** 到最近档边的距离（不带方向） */
+  distance: number
+  direction: NextDirection
+  /** 跨过去之后的信号档（持有/减仓/…） */
+  signal: string | null
+  /** 徽标文案：「0.068 · 下档减仓」 */
+  label: string
+}
+
+/** 边界余量 → 可展示文案。distance 恒为绝对值，方向只由 direction 决定。 */
+export function describeBoundary(ias: BoundaryInput | null | undefined): BoundaryDescription | null {
+  const margin = ias?.boundary_margin
+  if (typeof margin !== 'number' || !Number.isFinite(margin)) return null
+  const direction = resolveNextDirection(ias)
+  const signal = ias?.next_signal ?? ias?.boundary_next_signal ?? null
+  const distance = Math.abs(margin)
+  const dirText = direction === 'up' ? '上档' : direction === 'down' ? '下档' : ''
+  return {
+    distance,
+    direction,
+    signal,
+    label: `${distance.toFixed(3)} · ${dirText}${signal ?? ''}`,
+  }
+}
+
+export interface SaturatedInput {
+  saturated?: boolean
+  saturated_side?: 'upper' | 'lower' | null
+}
+
+/** 饱和徽标文案：上界/下界必须分开（沪铜 −1.0 是下界，旧文案写死「上界」）。 */
+export function saturatedBadgeText(info: SaturatedInput | null | undefined): string {
+  return info?.saturated_side === 'lower'
+    ? '已到区间下界·不携带信息'
+    : '已到区间上界·不携带信息'
+}
+
+/** 饱和 tooltip（含方向）。 */
+export function saturatedBadgeTitle(info: SaturatedInput | null | undefined): string {
+  const side = info?.saturated_side === 'lower' ? '下界' : '上界'
+  return `本项已到评分区间${side}（|score|=1.0），不再随数值变化，不携带新信息；不应拿它当独立看多/看空证据`
+}

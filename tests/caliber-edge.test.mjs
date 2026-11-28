@@ -27,6 +27,10 @@ import {
   resolveIasLevel,
   stripSignalSuffix,
   FRESHNESS_STATE_META,
+  describeBoundary,
+  resolveNextDirection,
+  saturatedBadgeText,
+  saturatedBadgeTitle,
 } from '../src/lib/caliber.ts'
 import { getKeyword } from '../src/data/score-keywords.ts'
 
@@ -831,6 +835,72 @@ console.log('\n[16] IAS 档位只读 signal，前端不再比数字阈值')
   for (const re of thresholdPatterns) {
     check(`App.tsx 无 ${re} 残留`, !re.test(appSrc))
   }
+}
+
+// ------------------------------------------------------- [P1] 翻档方向 & 饱和侧
+console.log('\n[P1] 翻档方向（next_direction）与饱和侧（saturated_side）')
+{
+  // P1-1：旧版前端写死「下档」。这里钉住：方向只由字段决定，距离恒为绝对值。
+  const cases = [
+    // 当日真实值：norm −0.0413，最近阈值 −0.109 在下方
+    { ias: { boundary_margin: 0.067714, boundary_threshold: -0.109, boundary_next_signal: '减仓', next_direction: 'down', next_signal: '减仓' },
+      want: '0.068 · 下档减仓' },
+    // 泰斯特反例：norm −0.20 落在减仓档下半区 → 要**涨** 0.091 才变持有
+    { ias: { boundary_margin: -0.091, boundary_threshold: -0.109, boundary_next_signal: '持有', next_direction: 'up', next_signal: '持有' },
+      want: '0.091 · 上档持有' },
+    // norm −0.40（清仓档下半区）→ 上档减仓
+    { ias: { boundary_margin: -0.074, boundary_threshold: -0.326, boundary_next_signal: '减仓', next_direction: 'up', next_signal: '减仓' },
+      want: '0.074 · 上档减仓' },
+    // norm +0.300（增持档下半区）→ 下档持有
+    { ias: { boundary_margin: 0.083, boundary_threshold: 0.217, boundary_next_signal: '持有', next_direction: 'down', next_signal: '持有' },
+      want: '0.083 · 下档持有' },
+  ]
+  for (const c of cases) {
+    const b = describeBoundary(c.ias)
+    check(`describeBoundary → ${c.want}`, b?.label === c.want, b?.label)
+    check(`distance 恒为绝对值 (${c.want})`, b?.distance === Math.abs(c.ias.boundary_margin), String(b?.distance))
+  }
+
+  // 旧产物（无 next_* 字段）：按 margin 符号回退，不得把「上档」说成「下档」
+  check('旧产物 margin<0 → up（↔上档）',
+    resolveNextDirection({ boundary_margin: -0.091 }) === 'up')
+  check('旧产物 margin>0 → down',
+    resolveNextDirection({ boundary_margin: 0.067714 }) === 'down')
+  check('无边界信息 → null', describeBoundary({}) === null && describeBoundary(null) === null)
+  check('direction 优先于符号（字段冲突时以字段为准）',
+    resolveNextDirection({ boundary_margin: 0.05, next_direction: 'up' }) === 'up')
+
+  // P1-2：饱和徽标上/下界分开（沪铜 −1.0 是下界）
+  check('saturated_side=lower → 下界文案',
+    saturatedBadgeText({ saturated: true, saturated_side: 'lower' }) === '已到区间下界·不携带信息')
+  check('saturated_side=upper → 上界文案',
+    saturatedBadgeText({ saturated: true, saturated_side: 'upper' }) === '已到区间上界·不携带信息')
+  check('无 side（旧产物）→ 上界回退（不崩）',
+    saturatedBadgeText({ saturated: true }) === '已到区间上界·不携带信息')
+  check('lower tooltip 含「下界」', saturatedBadgeTitle({ saturated_side: 'lower' }).includes('下界'))
+
+  // 真实产物：每个饱和项都必须带 side，且 +1/−1 与 upper/lower 一一对应
+  const satKeys = (real.meta.ias.saturated_inputs || [])
+  const badSide = satKeys.filter(k => {
+    const v = real.indicators[k]
+    const want = v.score > 0 ? 'upper' : 'lower'
+    return v.saturated !== true || v.saturated_side !== want
+  })
+  check(`真实产物 ${satKeys.length} 项饱和侧正确`, badSide.length === 0, badSide.join(','))
+  const copper = real.indicators.shanghaiCopper
+  check('真实产物：沪铜（−1.0）= 下界',
+    copper?.saturated === true && copper?.saturated_side === 'lower' && copper?.score < 0,
+    `${copper?.score}/${copper?.saturated_side}`)
+
+  // 真实产物：IAS 翻档方向字段必须与 normalized/阈值自洽
+  const ias = real.meta.ias
+  const thr = ias.next_threshold ?? ias.boundary_threshold
+  const wantDir = thr > ias.normalized ? 'up' : 'down'
+  check('真实产物 next_direction 自洽', ias.next_direction === wantDir,
+    `${ias.next_direction} vs ${wantDir} (norm=${ias.normalized}, thr=${thr})`)
+  check('真实产物 next_signal 与跨档后信号一致',
+    ias.next_signal === (wantDir === 'up' ? deriveIasSignal(thr + 1e-9) : deriveIasSignal(thr - 1e-9)),
+    `${ias.next_signal}`)
 }
 
 // ------------------------------------------------------- 汇总
