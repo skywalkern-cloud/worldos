@@ -174,6 +174,14 @@ console.log('\n[4] 排除标：reference_only / no_score / expired_alpha0 文案
       if (key === 'reference_only') check(`${k}: 参考项不描灰`, st.dimmed === false)
     }
   }
+
+  // D7（2026-11-28）：降级态（usdcnh 回退在岸）徽标必须一眼看出「不计分」，绝非「无评分」
+  const degradedFake = { ...real.indicators.usdcnh, score: null, excluded_from_scoring: true, exclusion_reason: 'degraded_no_score' }
+  const stDeg = describeIndicatorState(degradedFake)
+  check('degraded_no_score: 徽标=降级·不计分', stDeg.exclusionBadge?.text === '降级·不计分', stDeg.exclusionBadge?.text)
+  check('degraded_no_score: title 标明在岸参考价',
+    (stDeg.exclusionBadge?.title || '').includes('在岸参考价'), stDeg.exclusionBadge?.title)
+  check('degraded_no_score: 着色 neutral', resolveScoreTone(degradedFake.score, { excluded: stDeg.excluded }) === 'neutral')
 }
 
 // ------------------------------------------------------- [5] 维度置灰
@@ -594,7 +602,7 @@ console.log('\n[12] 不计分 = 中性色：判定只认 excluded，不按 exclu
   }
 
   // 四种理由必须走同一条颜色规则（防止只修 reference_only 那一支）
-  for (const reason of ['reference_only', 'expired_alpha0', 'no_score']) {
+  for (const reason of ['reference_only', 'expired_alpha0', 'no_score', 'degraded_no_score']) {
     const fake = { score: -0.9, excluded_from_scoring: true, exclusion_reason: reason, reference_only: reason === 'reference_only' }
     const st = describeIndicatorState(fake)
     check(`${reason}: excluded=true → neutral`, st.excluded === true && resolveScoreTone(fake.score, { excluded: st.excluded }) === 'neutral')

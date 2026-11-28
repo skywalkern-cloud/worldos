@@ -60,7 +60,7 @@ interface IndicatorInfo {
   fetchError?: FetchErrorInfo | null
   // === P0/T4 新增（龙五 Q3：α=0 / reference_only 的独立语义） ===
   excluded_from_scoring?: boolean
-  /** reference_only | no_score | expired_alpha0 */
+  /** reference_only | no_score | expired_alpha0 | degraded_no_score */
   exclusion_reason?: string
   frequency: string
   dataDate: string | null

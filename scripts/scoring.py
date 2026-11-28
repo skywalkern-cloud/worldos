@@ -797,7 +797,14 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         pct_meta = None
         step_meta = None
         ratio_ma_meta = None
-        if key in im.RATIO_MA_STEPS_CONFIG:
+        # D7（2026-11-28）：口径降级（如 usdcnh 回退在岸 CNY）→ 不给分。
+        # 判据只用 fetch 层已有的痕迹（sourceDegraded / caliberNoteSuffix），不新增并行标记。
+        source_degraded = bool(info.get('sourceDegraded')) or bool(info.get('caliberNoteSuffix'))
+        score_blocked_by_degraded = source_degraded and key in im.NO_SCORE_WHEN_SOURCE_DEGRADED
+        if score_blocked_by_degraded:
+            # 不算 ratio、不碰 ma_base：留半套数就是“看着像在打分”，宁缺勿错。
+            score = None
+        elif key in im.RATIO_MA_STEPS_CONFIG:
             # A2：usdcnh = 最新收盘 / MA120 的 5 档阶跃。需要历史序列（fetch 已回填并挂到 history）
             ratio_ma_meta = score_by_ratio_ma(key, value, info.get('history') or [])
             score = ratio_ma_meta['score']
@@ -851,6 +858,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         # 口径降级（如 usdcnh 回退在岸价）：fetch 层给 suffix，这里拼到 caliberNote 上，
         # 保证「用了哪个口径」在页面上可见（工单 §2 要求）。
         caliber_text = caliber_of(key) + (info.get('caliberNoteSuffix') or '')
+        if score_blocked_by_degraded:
+            # 页面/JSON 仍展示在岸值，但必须一眼看出“没在打分”（D7）。
+            caliber_text += ('；降级·在岸参考价，不计分' if key == 'usdcnh'
+                             else '；数据源降级，本项不计分')
         # A2：ratio_ma_steps 必须把「vs 120 日均值 ±x.x%」直接写进 caliberNote，
         # 否则用户只看到 6.6551，猜不到分数从哪来。
         if ratio_ma_meta:
@@ -865,6 +876,10 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         # 是否进评分：参考项 / 无评分 / 过期(α=0) 三种都不进
         if ref_only:
             excluded, exclusion_reason = True, 'reference_only'
+        elif score_blocked_by_degraded:
+            # 不是“没配评分参数”，是“本次数据口径降级，拒绝打分”：单独的理由码，
+            # 前端据此挂「降级·不计分」徽标，不与 no_score 混成一个词。
+            excluded, exclusion_reason = True, 'degraded_no_score'
         elif score is None:
             excluded, exclusion_reason = True, 'no_score'
         elif timeliness <= 0:
@@ -958,6 +973,18 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
                 'deviation_pct': ratio_ma_meta['deviation_pct'],
                 'ratio_steps': list(im.RATIO_MA_STEPS_CONFIG[key]['steps']),
                 'ratio_values': list(im.RATIO_MA_STEPS_CONFIG[key]['values']),
+            })
+        if score_blocked_by_degraded:
+            # 显式写 null 而不是干脆不写：字段“存在但为 null”才能让契约测试与前端
+            # 明确“本次没有 ratio/MA”，而不是“这版字段还没上”。
+            indicators[key].update({
+                'scoring_method': 'ratio_ma_steps',
+                'score_blocked_by_degraded': True,
+                'degrade_reason': (info.get('sourceDegraded') or {}).get('reason')
+                if isinstance(info.get('sourceDegraded'), dict) else None,
+                'ratio_value': None,
+                'ma_base': None,
+                'deviation_pct': None,
             })
         if pct_meta:
             indicators[key].update({

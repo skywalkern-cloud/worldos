@@ -270,6 +270,8 @@ export function describeExclusion(reason?: string | null): string {
       return '参考项：仅展示，不参与打分'
     case 'no_score':
       return '无评分参数或无值，未计入综合评分'
+    case 'degraded_no_score':
+      return '降级：本次为在岸参考价（非离岸），不计分'
     case 'expired_alpha0':
       return '数据过期 α=0，已剔出加权'
     default:
@@ -281,7 +283,7 @@ export function describeExclusion(reason?: string | null): string {
  * 评分着色。
  *
  * ⚠️ 红绿是「这项对结论有贡献且方向为正/负」的语言。
- *   一个已被剔出加权的指标（reference_only / expired_alpha0 / no_score），
+ *   一个已被剔出加权的指标（reference_only / expired_alpha0 / no_score / degraded_no_score），
  *   给它上红等于说「它在拉低评分」——但它没在参与。
  *
  * 所以规则只有一条：excluded_from_scoring === true → neutral。
@@ -443,6 +445,8 @@ export function describeIndicatorState(info: IndicatorStateInput): IndicatorStat
         text:
           info.exclusion_reason === 'no_score'
             ? '无评分'
+            : info.exclusion_reason === 'degraded_no_score'
+            ? '降级·不计分'
             : info.exclusion_reason === 'expired_alpha0'
             ? '过期剔除'
             : '不计分',

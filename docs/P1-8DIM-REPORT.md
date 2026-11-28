@@ -405,3 +405,34 @@ $ npm run build
 3. **在岸回退价会污染 ratio**：主源日线失败时仍保留 exchangerate-api 在岸价兜底（页面标注降级）。
    在岸/离岸价差通常 0.1~0.3%，对 ratio 影响小于一个档距（1%），但若长期用兜底值，MA120 会慢慢偏。
    是否要在「本轮为在岸回退」时直接不给 usdcnh 出分（宁缺勿错），请 PM 拍。
+
+---
+
+## 7. A3 / D7（2026-11-28）：usdcnh 回退在岸价 → 不计分
+
+**决策来源**：工单 §9 D7 —— 「回退 → `score=null`，只展示并标『降级·在岸价』。宁缺勿错。」
+落实了三件事（一处判定、两处消费）：
+
+| 层 | 改动 | 位置 |
+|---|---|---|
+| 判定（唯一） | `NO_SCORE_WHEN_SOURCE_DEGRADED = {'usdcnh'}`；判据只认 fetch 已有的 `sourceDegraded` / `caliberNoteSuffix`，**不新增并行降级标记** | `scripts/indicator_meta.py` |
+| 打分 | 命中降级 → `score=None`，**不进 `score_by_ratio_ma`**（不算 ratio、不算 MA）；`ratio_value/ma_base/deviation_pct` 显式写 `null`，`warmup/window` 不落；`exclusion_reason='degraded_no_score'` | `scripts/scoring.py` |
+| 展示 | caliberNote 追加「降级·在岸参考价，不计分」；前端徽标「降级·不计分」，tooltip「降级：本次为在岸参考价（非离岸），不计分」；值 6.6551 照常展示 | `src/lib/caliber.ts`、`src/App.tsx` |
+
+**同日同值对照（正常态 vs 降级态，6.6551，其余 3 项完全相同）**：
+
+| | usdcnh score | ratio / MA | fxExternal | IAS |
+|---|---|---|---|---|
+| 正常态（离岸日线） | +0.5 | 0.989852 / 6.723327 | +0.125，4/4 有效，lightgreen | +0.21（normalized 0.038255，持有） |
+| 降级态（在岸 CNY） | **null** | **null / null** | **0.0**，3/4 有效，gray | +0.11（normalized 0.019638，持有） |
+
+维度不破：3/4 有效 ≥ required 2，`insufficient_data=false`，fxExternal 照常出分；信号 gray 是 0 分附近的
+中性档，不是置灰（置灰判据是 insufficient_data，本用例为 false）。
+降级只影响 usdcnh 一项：dollarIndex / creditSpread / usBond10Y 三项分数在两种状态下逐项持平（S13-08）。
+
+**测试**：`scripts/test_schema_fields.py` 新增 S13-00~08（fetch 源 2 monkeypatch 命中 + scoring 降级态），
+`tests/caliber-edge.test.mjs` 新增降级徽标断言。原始输出见本次回主线报告。
+
+**D7 我不确定的 1 件事**：降级态 `exclusion_reason` 用了新枚举码 `degraded_no_score`（vs 复用 `no_score`）。
+好处是徽标能写「降级·不计分」而不是笼统「无评分」；代价是 exclusion_reason 枚举 +1，若有外部消费者
+按白名单校验需要同步。若 PM 要求枚举冻结，可退回 `no_score` + `score_blocked_by_degraded=true` 双字段。

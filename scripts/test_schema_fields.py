@@ -201,7 +201,7 @@ EXPECTED_SOURCE = {
 
 SIGNALS = {'red', 'yellow', 'gray', 'lightgreen', 'green', 'reference'}
 FRESHNESS_LEVELS = {'fresh', 'realtime', 'unknown', 'stale', 'expired'}
-EXCLUSION_REASONS = {'reference_only', 'no_score', 'expired_alpha0'}
+EXCLUSION_REASONS = {'reference_only', 'no_score', 'expired_alpha0', 'degraded_no_score'}
 FETCH_REASONS = {'http_4xx', 'http_5xx', 'empty_response', 'parse_error',
                  'timeout', 'nan_value', 'not_found'}
 DEGRADED_REASONS = {'no_date', 'used_fallback'}
@@ -306,22 +306,22 @@ def test_s1(doc, label, ref, live):
     bad = []
     for k, v in ind.items():
         # 不变式（V1a 修正后的准确表述）：
-        #   无分数 ⇔ 被排除，且理由 ∈ {no_score, reference_only}；
-        #   有分数 ⇒ 理由不得是 no_score。
+        #   无分数 ⇔ 被排除，且理由 ∈ {no_score, reference_only, degraded_no_score}；
+        #   有分数 ⇒ 理由不得是 no_score / degraded_no_score。
         # 旧版写的是 `(score is None) == (reason == 'no_score')`，它默认了
         # 「参考项一定有分数」（当时 epu/aiGrowth/robotInstall 都有参量表）。
         # V1a 新增的 4 个 A股/港股代理**无评分参数**却 reference_only，
         # 旧式会把正确实现判成错的（参考项本来就不该有分数）。
-        if v['score'] is None and v['exclusion_reason'] not in ('no_score', 'reference_only'):
+        if v['score'] is None and v['exclusion_reason'] not in ('no_score', 'reference_only', 'degraded_no_score'):
             bad.append(f'{k}.score={v["score"]!r} reason={v["exclusion_reason"]!r}')
-        if v['score'] is not None and v['exclusion_reason'] == 'no_score':
+        if v['score'] is not None and v['exclusion_reason'] in ('no_score', 'degraded_no_score'):
             bad.append(f'{k}.score={v["score"]!r} reason={v["exclusion_reason"]!r}')
     check(f'S1-10[{label}]', not bad, '; '.join(bad[:6]))
 
     # S1-10b：真·双向不变式（V1b-1b 龙六要求：不许只做单向蕴含）
     # 「有分数却标 no_score」与「无分数却标 expired_alpha0」两句都必须咬住：
-    #   方向 A：score is None ⇒ reason ∈ {no_score, reference_only}
-    #   方向 B：reason == 'no_score' ⇒ score is None
+    #   方向 A：score is None ⇒ reason ∈ {no_score, reference_only, degraded_no_score}
+    #   方向 B：reason ∈ {no_score, degraded_no_score} ⇒ score is None
     # 为什么右集合必须包含 reference_only：epu / aiGrowth / robotInstall 是参考项，
     # 它们**照常算出展示用的 score**（不进 IAS 而已）。若写死 score is None ⇔ reason∈{...}，
     # 这 3 项会被判错——那是契约写错了，不是实现错（已向 PM/龙六报备）。
@@ -329,10 +329,10 @@ def test_s1(doc, label, ref, live):
     for k, v in ind.items():
         s_none = v['score'] is None
         r = v['exclusion_reason']
-        if s_none and r not in ('no_score', 'reference_only'):
+        if s_none and r not in ('no_score', 'reference_only', 'degraded_no_score'):
             bi.append(f'{k}: score=None 但 reason={r!r}')
-        if r == 'no_score' and not s_none:
-            bi.append(f'{k}: reason=no_score 但 score={v["score"]!r}')
+        if r in ('no_score', 'degraded_no_score') and not s_none:
+            bi.append(f'{k}: reason={r} 但 score={v["score"]!r}')
     check(f'S1-10b[{label}]', not bi, '; '.join(bi[:6]))
 
     # 变异自证：把「参考项有分数」改成「no_score 但有分数」必须被抓到 —— 证明上面不是假绿
@@ -1620,6 +1620,146 @@ def test_s12_replay_no_lookahead():
     check('S12-03[产物声明]', lo.get('passed') is True, f'{lo}')
 
 
+# ══════════════════════════════════════════
+# S13：usdcnh 降级（在岸回退）不得参与打分（D7，2026-11-28）
+# ══════════════════════════════════════════
+
+def test_s13_usdcnh_degraded_no_score():
+    """D7 强制断言（不依赖任何产物）：口径降级 → 只展示、不计分。
+
+    ① fetch 层：monkeypatch 源1（akshare 离岸日线）失败、源2（exchangerate-api 在岸
+       CNY）命中 → 必须带出 source_degraded（含 caliberNoteSuffix），不得静默当正常；
+    ② scoring 层：同一份 4 项 fxExternal，只给 usdcnh 加降级痕迹
+       → score=null、ratio_value/ma_base/deviation_pct 全为 null（不留半套数），
+         exclusion_reason=degraded_no_score；
+    ③ 展示不丢：value 仍是 6.6551（展示 ≠ 打分），caliberNote 明写「降级·在岸参考价，不计分」；
+    ④ 维度不破：降级态 fxExternal 3/4 有效仍出分；同日正常态作对照必须出分且两者
+       fxExternal/IAS 可对照（差异只能来自 usdcnh 这一项）。
+    """
+    import sys as _sys
+    import types as _types
+    import fetch_worldos_data as fetch_mod
+
+    # ── ① fetch 层 monkeypatch：源2 命中 ──
+    fake_ak = _types.ModuleType('akshare')
+    def _ak_boom(*a, **k):
+        raise RuntimeError('akshare unavailable (simulated by S13)')
+    fake_ak.forex_hist_em = _ak_boom
+
+    class _FakeResp:
+        def raise_for_status(self):
+            return None
+        def json(self):
+            return {'date': '2026-11-27', 'rates': {'CNY': 6.6551}}
+
+    seen_urls = []
+    fake_requests = _types.ModuleType('requests')
+    def _req_get(url, timeout=10):
+        seen_urls.append(url)
+        return _FakeResp()
+    fake_requests.get = _req_get
+
+    old_ak = _sys.modules.get('akshare')
+    old_req = _sys.modules.get('requests')
+    _sys.modules['akshare'] = fake_ak
+    _sys.modules['requests'] = fake_requests
+    try:
+        f_val, f_dd, f_freq, f_degraded, f_extras = fetch_mod.get_usdcnh()
+    finally:
+        if old_ak is not None:
+            _sys.modules['akshare'] = old_ak
+        else:
+            _sys.modules.pop('akshare', None)
+        if old_req is not None:
+            _sys.modules['requests'] = old_req
+        else:
+            _sys.modules.pop('requests', None)
+
+    check('S13-00[源2命中]',
+          f_val == 6.6551 and f_freq == 'daily' and bool(seen_urls)
+          and 'exchangerate-api' in (seen_urls[0] if seen_urls else ''),
+          f'value={f_val} freq={f_freq} url={seen_urls[:1]}')
+    check('S13-01[降级信号外带]',
+          isinstance(f_degraded, dict)
+          and f_degraded.get('reason') == 'primary_source_missing'
+          and '在岸' in (f_degraded.get('caliberNoteSuffix') or '')
+          and '在岸' in (f_degraded.get('source') or ''),
+          f'{f_degraded}')
+
+    # ── ②/③/④ scoring 层：同日数据，正常态 vs 降级态 ──
+    from datetime import date as _date
+    end = _date.today()
+    hist = [{'date': _date.fromordinal(end.toordinal() - (119 - i)).isoformat(),
+             'value': 6.7239} for i in range(119)]   # 119 条 + 当日 = 120 点，满窗
+
+    def _raw(degraded: bool):
+        cnh = {'value': 6.6551, 'unit': '', 'frequency': 'daily',
+               'source': 'akshare-东财离岸人民币日线（forex_hist_em USDCNH）',
+               'dataDate': end.isoformat(), 'realtime': False,
+               'used_fallback': False, 'history': hist}
+        if degraded:
+            cnh['sourceDegraded'] = {
+                'source': 'exchangerate-api 在岸中间价',
+                'primarySource': 'akshare 离岸 USDCNH 日线（forex_hist_em）',
+                'reason': 'primary_source_missing',
+                'reasonText': '离岸日线暂不可得，已回退在岸参考价（口径见 caliberNote）',
+                'caliberNoteSuffix': '（本条为在岸参考价，非离岸价）',
+            }
+            cnh['caliberNoteSuffix'] = '（本条为在岸参考价，非离岸价）'
+            cnh['actualSource'] = 'exchangerate-api 在岸中间价'
+        return {
+            'usdcnh': cnh,
+            'dollarIndex': {'value': 100.0, 'unit': '', 'frequency': 'daily',
+                            'source': 'test', 'dataDate': end.isoformat()},
+            'creditSpread': {'value': 200.0, 'unit': 'bp', 'frequency': 'daily',
+                             'source': 'test', 'dataDate': end.isoformat()},
+            'usBond10Y': {'value': 4.0, 'unit': '%', 'frequency': 'daily',
+                          'source': 'test', 'dataDate': end.isoformat()},
+        }
+
+    n_ind, n_meta = scoring.build_indicators_and_meta(_raw(False))
+    d_ind, d_meta = scoring.build_indicators_and_meta(_raw(True))
+    n_cnh, d_cnh = n_ind['usdcnh'], d_ind['usdcnh']
+
+    check('S13-02[降级→score=null 且不留半套数]',
+          d_cnh['score'] is None and d_cnh.get('ratio_value') is None
+          and d_cnh.get('ma_base') is None and d_cnh.get('deviation_pct') is None
+          and 'warmup' not in d_cnh,
+          json.dumps({k: d_cnh.get(k) for k in
+                      ('score', 'ratio_value', 'ma_base', 'deviation_pct')},
+                     ensure_ascii=False))
+    check('S13-03[降级标在 caliberNote]',
+          '降级·在岸参考价，不计分' in (d_cnh.get('caliberNote') or '')
+          and '在岸参考价' in (d_cnh.get('caliberNote') or '')
+          and '当前 ' not in (d_cnh.get('caliberNote') or ''),
+          f"{d_cnh.get('caliberNote')}")
+    check('S13-04[excluded + 专属理由码]',
+          d_cnh.get('excluded_from_scoring') is True
+          and d_cnh.get('exclusion_reason') == 'degraded_no_score'
+          and d_cnh.get('signal') == 'gray',
+          f"excluded={d_cnh.get('excluded_from_scoring')} "
+          f"reason={d_cnh.get('exclusion_reason')} signal={d_cnh.get('signal')}")
+    check('S13-05[值仍展示 6.6551]', d_cnh.get('value') == 6.6551,
+          f"value={d_cnh.get('value')}")
+
+    d_fx = d_meta['dimensions']['fxExternal']
+    n_fx = n_meta['dimensions']['fxExternal']
+    check('S13-06[降级不破维度 3/4 出分]',
+          d_fx['valid_count'] == 3 and d_fx['required_count'] == 2
+          and d_fx['insufficient_data'] is False and d_fx['score'] is not None,
+          f'fx={d_fx}')
+    check('S13-07[正常态对照：同值仍出分]',
+          n_cnh['score'] is not None and n_cnh.get('ratio_value') is not None
+          and n_fx['valid_count'] == 4 and n_fx['score'] is not None
+          and n_meta['ias']['score'] is not None and d_meta['ias']['score'] is not None,
+          f"normal: usdcnh={n_cnh['score']} fx={n_fx['score']} ias={n_meta['ias']['score']}; "
+          f"degraded: usdcnh={d_cnh['score']} fx={d_fx['score']} ias={d_meta['ias']['score']}")
+    # 差异只能来自 usdcnh：另外 3 项分数必须逐个持平（降级不得波及他项）
+    shared_bad = [k for k in ('dollarIndex', 'creditSpread', 'usBond10Y')
+                  if n_ind[k]['score'] != d_ind[k]['score']]
+    check('S13-08[降级不波及他项]', not shared_bad, f'{shared_bad}')
+
+
 # ═══════════════════════════════════════════
 # main
 # ═══════════════════════════════════════════
@@ -1780,8 +1920,9 @@ def main():
     try:
         test_s11_usdcnh_ratio()
         test_s12_replay_no_lookahead()
+        test_s13_usdcnh_degraded_no_score()
     except Exception as e:  # noqa: BLE001
-        check('S11/S12[crash]', False, f'{type(e).__name__}: {e}')
+        check('S11/S12/S13[crash]', False, f'{type(e).__name__}: {e}')
 
     try:
         before = hashlib.sha256(Path(args.json).read_bytes()).hexdigest()

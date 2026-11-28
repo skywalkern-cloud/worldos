@@ -541,6 +541,14 @@ RATIO_MA_STEPS_CONFIG = {
 # fetch 用 QUANTILE_CONFIG 决定「哪些指标要写 series / 挂 history」。
 QUANTILE_CONFIG = {**PCT_RANK_CONFIG, **RATIO_BAND_CONFIG, **RATIO_MA_STEPS_CONFIG}
 
+# ── D7（龙五 2026-11-28）：口径降级 → 不给分 ─────────────────────────────
+# 这些指标一旦 fetch 层报告 sourceDegraded（本次用了非主源/代理口径，如 usdcnh
+# 回退 exchangerate-api 在岸 CNY），值只作展示，score 必须为 None：
+#   在岸/离岸价差 0.1~0.3% 会让 ratio 长期慢漂，拿代理冒充真值 = 假结论。
+# 消费方：scoring.build_indicators_and_meta。判据只认 fetch 已有的
+# `sourceDegraded` / `caliberNoteSuffix`，不新增并行的降级标记。
+NO_SCORE_WHEN_SOURCE_DEGRADED = {'usdcnh'}
+
 INDICATOR_DIMENSION = {}
 for _dim in DIMENSIONS:
     for _key in list(_dim['indicators']) + list(_dim.get('reference_indicators', [])):
