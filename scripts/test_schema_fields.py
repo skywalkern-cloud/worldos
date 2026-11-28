@@ -194,6 +194,8 @@ EXPECTED_SOURCE = {
     'marginBalance': ('东方财富-沪深交易所', '🇨🇳', 'daily'),
     'southboundNet': ('东方财富-港交所', '🇨🇳', 'daily'),
     'hstechMomentum': ('东方财富-恒生指数公司', '🇨🇳', 'daily'),
+    # P1-8DIM（2026-11-28）：USDCNH 新增（离岸优先，回退在岸中间价）
+    'usdcnh': ('akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）', '🌐', 'daily'),
 }
 
 SIGNALS = {'red', 'yellow', 'gray', 'lightgreen', 'green', 'reference'}
@@ -587,11 +589,15 @@ def test_s4(doc, label):
         check(f'S4-09[{label}]', ias['normalized'] is None and ias['score'] is None,
               '无有效权重时 normalized/score 应为 null')
 
-    # 阈值表冻结 + 分档
-    want_bands = [(2.5, '强烈买入', '80-100%', '🚀'), (1.0, '增持', '60-80%', '✅'),
-                  (-0.5, '持有', '40-60%', '➖'), (-1.5, '减仓', '20-40%', '⚠️')]
+    # 阈值表冻结 + 分档（P1-8DIM：阈值量纲 = normalized）
+    want_bands = [(0.543, '强烈买入', '80-100%', '🚀'), (0.217, '增持', '60-80%', '✅'),
+                  (-0.109, '持有', '40-60%', '➖'), (-0.326, '减仓', '20-40%', '⚠️')]
     check(f'S4-10[{label}]', [tuple(x) for x in im.IAS_THRESHOLDS] == want_bands,
           f'{im.IAS_THRESHOLDS}')
+    check(f'S4-10b[{label}]',
+          getattr(im, 'IAS_THRESHOLD_SPACE', None) == 'normalized'
+          and ias.get('threshold_space') == 'normalized',
+          f"threshold_space={ias.get('threshold_space')}")
     check(f'S4-11[{label}]', im.IAS_MIN_COVERAGE == 0.6 and im.IAS_PARTIAL_COVERAGE == 0.8,
           f'{im.IAS_MIN_COVERAGE}/{im.IAS_PARTIAL_COVERAGE}')
 
@@ -601,12 +607,14 @@ def test_s4(doc, label):
     else:
         want = im.IAS_POSITION_ERROR
         for t, s, p, i in want_bands:
-            if ias['score'] >= t:
+            # P1-8DIM：一律比 normalized（不许比 ias.score）
+            if ias['normalized'] >= t:
                 want = (s, p, i)
                 break
     check(f'S4-12[{label}]',
           (base, ias['position'], ias['signal_icon']) == want,
-          f"got={(base, ias['position'], ias['signal_icon'])} want={want}")
+          f"got={(base, ias['position'], ias['signal_icon'])} want={want} "
+          f"norm={ias['normalized']}")
 
     if ias['data_coverage'] < im.IAS_MIN_COVERAGE:
         check(f'S4-13[{label}]', ias['is_actionable'] is False, '低覆盖仍 actionable')
@@ -1094,9 +1102,12 @@ def test_s8(fix):
                          ensure_ascii=False) if x else 'missing')
 
     branch('chinaGdp', 'expired', 'expired_alpha0')
-    for k in ('usBond2Y', 'usBond5Y', 'usBond10Y', 'dollarIndex', 'lpr',
+    for k in ('usBond10Y', 'dollarIndex', 'lpr',
               'dr007', 'm2', 'creditSpread', 'renewEnergyInvest', 'evPenetration'):
         branch(k, 'expired', 'expired_alpha0')
+    # P1-8DIM：美债 2Y/5Y 已降为 riskAppetite 的只展示参考项；即使 α=0 也先按参考项剔除
+    branch('usBond2Y', 'expired', 'reference_only')
+    branch('usBond5Y', 'expired', 'reference_only')
     branch('aiGrowth', 'fresh', 'reference_only')
     branch('robotInstall', 'fresh', 'reference_only')
     branch('newIndicatorSample', 'fresh', 'no_score')
@@ -1111,8 +1122,8 @@ def test_s8(fix):
           and liq['valid_count'] < liq['required_count'],
           json.dumps(liq, ensure_ascii=False))
     check('S8[tech gray]', tech['insufficient_data'] is True and tech['score'] is None
-          and tech['active_count'] == 2 and tech['reference_only_count'] == 2
-          and tech['weight_effective'] == 0.2,
+          and tech['active_count'] == 3 and tech['reference_only_count'] == 2
+          and abs(tech['weight_effective'] - 0.3) < 1e-9,
           json.dumps(tech, ensure_ascii=False))
 
     for k in ('naturalGas', 'lmeIndex'):
@@ -1165,7 +1176,7 @@ def test_units():
     ds = {d['id']: {'score': None, 'insufficient_data': True,
                     'weight_effective': im.dimension_weights(d)['effective']}
           for d in im.DIMENSIONS}
-    ds['sentiment'].update({'score': -0.5, 'insufficient_data': False})
+    ds['sentimentA'].update({'score': -0.5, 'insufficient_data': False})
     out = scoring.calc_ias(ds)
     check('S4-U1', out['data_coverage'] < im.IAS_MIN_COVERAGE
           and out['signal'] == '数据不足' and out['is_actionable'] is False
@@ -1173,29 +1184,29 @@ def test_units():
           json.dumps(out, ensure_ascii=False))
 
     # S4-U2：分档边界（>= 语义）；all dims 同分时 normalized == 该分
+    # P1-8DIM：全部用 normalized 构造与比较（阈值量纲已统一为 normalized）
     def dims_all(v):
         return {d['id']: {'score': v, 'insufficient_data': False,
                           'weight_effective': im.dimension_weights(d)['effective']}
                 for d in im.DIMENSIONS}
 
-    def want_band(score):
+    def want_band(norm):
         want = im.IAS_POSITION_ERROR
         for t, s_, p_, i_ in im.IAS_THRESHOLDS:
-            if score >= t:
+            if norm >= t:
                 return (s_, p_, i_)
         return want
 
     bad = []
     for t, _sig, _pos, _ico in im.IAS_THRESHOLDS:
-        for v, expect_ge in (((t + 0.02) / im.IAS_SCALE, True),
-                             ((t - 0.03) / im.IAS_SCALE, False)):
+        for v, expect_ge in (((t + 0.02), True), ((t - 0.02), False)):
             out = scoring.calc_ias(dims_all(v))
             got = (out['signal'], out['position'], out['signal_icon'])
-            want = want_band(out['score'])
+            want = want_band(out['normalized'])
             if got != want:
-                bad.append(f'{t} score={out["score"]} got={got} want={want}')
-            if (out['score'] >= t) != expect_ge:
-                bad.append(f'{t} 构造分 {out["score"]} 未落在预期侧')
+                bad.append(f'{t} norm={out["normalized"]} got={got} want={want}')
+            if (out['normalized'] >= t) != expect_ge:
+                bad.append(f'{t} 构造 normalized {out["normalized"]} 未落在预期侧')
     check('S4-U2', not bad, '; '.join(bad))
 
     # S5-U1：维度全 α=0 → insufficient、score=None（旧实现会 -1.0）
@@ -1208,8 +1219,9 @@ def test_units():
           json.dumps(out, ensure_ascii=False))
 
     # S5-U2：全参考项维度 → active 0
+    # P1-8DIM：techGreen 计分项 3 + 参考项 2（aiGrowth/robotInstall），全部标参考应得 5
     tech = [d for d in im.DIMENSIONS if d['id'] == 'techGreen'][0]
-    # 显式构造「维内 4 个全是参考项」的分支；calc_dimension_scores 走的是元数据
+    # 显式构造「维内全部都是参考项」的分支；calc_dimension_scores 走的是元数据
     # 的 is_reference_only，因此临时 monkeypatch，测完立即恢复。
     ind = {k: {'score': 1.0, 'timeliness': 1.0, 'reference_only': True}
            for k in tech['indicators']}
@@ -1220,7 +1232,7 @@ def test_units():
     finally:
         scoring.is_reference_only = orig
     check('S5-U2', out['insufficient_data'] is True and out['active_count'] == 0
-          and out['reference_only_count'] == 4
+          and out['reference_only_count'] == len(tech['indicators']) + len(tech.get('reference_indicators', []))
           and out['valid_count'] == 0 and out['score'] is None,
           json.dumps(out, ensure_ascii=False))
 
@@ -1367,6 +1379,101 @@ def test_t6b3(doc, label, live):
 
 
 # ═══════════════════════════════════════════
+# S10：P1-8DIM 工单 §6.5 五条断言（2026-11-28）
+# ═══════════════════════════════════════════
+
+def test_s10_8dim(doc, label):
+    """工单 §6.5 强制要求：
+
+    ① dimension_weights() 设计权重和 == sum(weight) == IAS_SCALE（5.6）
+    ② 参考项（reference_only）不计入分母、不参与平均
+    ③ 同一天旧阈值→新阈值信号不变（阈值量纲换算不改变语义）
+    ④ usdcnh 取不到时维度仍能算（4 项仅 3 个有效 → 出分）+ 缺失不伪造值
+    ⑤ 若未取到 usdcnh，fxExternal 维度因子数仍满足 required_valid_count
+    """
+    dims = doc['meta']['dimensions']
+
+    # ① IAS_SCALE 由 sum(weight) 派生，且与产物一致
+    design_sum = round(sum(d['weight'] for d in im.DIMENSIONS), 2)
+    check(f'S10-01[{label}]',
+          abs(design_sum - im.IAS_SCALE) < 1e-9
+          and abs(sum(d['weight_design'] for d in dims.values()) - im.IAS_SCALE) < 1e-9
+          and doc['meta']['ias']['ias_scale'] == im.IAS_SCALE == 5.6,
+          f'design_sum={design_sum} IAS_SCALE={im.IAS_SCALE} '
+          f"产={doc['meta']['ias']['ias_scale']}")
+
+    # ② 参考项不进分母：每个维度的 design_count 只数非参考项
+    bad = []
+    for d in im.DIMENSIONS:
+        act = [k for k in d['indicators'] if not im.is_reference_only(k)]
+        x = dims[d['id']]
+        if x['active_count'] != len(act):
+            bad.append(f"{d['id']}.active={x['active_count']} != {len(act)}")
+        # weight_effective = weight × (active / design_count)，参考项不得出现在分母里
+        want = round(d['weight'] * (len(act) / len(d['indicators'])), 4)
+        if abs(x['weight_effective'] - want) > 1e-9:
+            bad.append(f"{d['id']}.w_eff={x['weight_effective']} != {want}")
+        for k in d.get('reference_indicators', []):
+            if not im.is_reference_only(k):
+                bad.append(f"{d['id']}: {k} 在 reference_indicators 却未标 reference_only")
+            if k in d['indicators']:
+                bad.append(f"{d['id']}: {k} 同时在计分列表与参考列表")
+    check(f'S10-02[{label}]', not bad, '; '.join(bad[:6]))
+
+    # ③ 阈值量纲换算不改变信号语义：对同一 normalized，新旧阈值分档必须一致
+    #   旧口径 = 拿 normalized×4.6 去比 2.5/1.0/-0.5/-1.5
+    def band_old(norm):
+        s = scoring.q(norm * 4.6, 2)
+        for t, sig, _p, _i in ((2.5, '强烈买入', 0, 0), (1.0, '增持', 0, 0),
+                               (-0.5, '持有', 0, 0), (-1.5, '减仓', 0, 0)):
+            if s >= t:
+                return sig
+        return '清仓/防御'
+
+    def band_new(norm):
+        for t, sig, _p, _i in im.IAS_THRESHOLDS:
+            if norm >= t:
+                return sig
+        return '清仓/防御'
+
+    bad = []
+    n = -1000
+    while n <= 1000:            # -1.000 ~ 1.000，步长 0.001
+        norm = n / 1000
+        if band_old(norm) != band_new(norm):
+            bad.append(norm)
+        n += 1
+    # 允许的不一致只能来自「旧阈值 /4.6 后取 3 位」的舍入窗口
+    # 最大窗：-1.495/4.6 = -0.3250 vs -0.326 → 0.0011，故阈值取 0.0012
+    BOUNDS = (0.5435, 0.2174, 0.1087, 0.3261)
+    stray = [v for v in bad if min(abs(abs(v) - b) for b in BOUNDS) > 0.0012]
+    check(f'S10-03[{label}]', not stray,
+          f'舍入窗口外仍有 {len(stray)} 处不一致: {stray[:6]}（窗口内 {len(bad) - len(stray)} 处）')
+
+    # ④ usdcnh 缺失时：必须为 null/不存在，不得伪造值；fxExternal 仍能算
+    raw_cnh = (doc.get('data') or {}).get('usdcnh') or {}
+    cnh_val = raw_cnh.get('value')
+    fx = dims['fxExternal']
+    if cnh_val is None:
+        ok = (fx['valid_count'] >= fx['required_count'])
+        check(f'S10-04[{label}]', ok,
+              f"usdcnh 缺失但 fxExternal valid={fx['valid_count']}/{fx['required_count']}")
+        check(f'S10-05[{label}]',
+              'usdcnh' not in doc['indicators']
+              or doc['indicators']['usdcnh']['score'] is None,
+              'usdcnh 无值时不得出分')
+    else:
+        # 有值时：分数必须能由四段阶跃复算（防止硬编码/手填）
+        cfg = im.BREAKPOINT_STEPS_CONFIG['usdcnh']
+        want = scoring.score_breakpoint_steps(cnh_val, cfg['steps'], cfg['values'])
+        got = (doc['indicators'].get('usdcnh') or {}).get('score')
+        check(f'S10-04[{label}]', got is not None and abs(got - want) < 1e-9,
+              f'usdcnh={cnh_val} score={got} 期望 {want}')
+        check(f'S10-05[{label}]', fx['valid_count'] >= 1 and fx['score'] is not None,
+              f"fxExternal valid={fx['valid_count']} score={fx['score']}")
+
+
+# ═══════════════════════════════════════════
 # main
 # ═══════════════════════════════════════════
 
@@ -1506,6 +1613,9 @@ def run_one(json_path, fixture_path=None, do_units=True):
         safe('T6b3', test_t6b3, fix, 'fixture', False)
     # V1b-1：pct_rank 契约（live + fixture 两套都要验）
     safe('S9', test_s9, doc, label)
+    # P1-8DIM：工单 §6.5 五条断言（只对 live 有意义：fixture 是合成值）
+    if live:
+        safe('S10', test_s10_8dim, doc, label)
     if live and fixture_path and Path(fixture_path).exists():
         safe('S9', test_s9, fix, 'fixture')
     return sha

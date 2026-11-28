@@ -39,10 +39,6 @@ from indicator_meta import (  # noqa: F401  (DIMENSION_CONFIG / INDICATOR_NAMES 
     caliber_of,
     resolve_freshness,
     FRESHNESS_STATES,
-    UNKNOWN_ALPHA,
-    q,
-    rules_snapshot,
-    compute_rules_hash,
     # V1a：响应速度（由 frequency 映射 / 指标显式覆盖，前端不自己算）
     responsiveness_of,
     dimension_responsiveness,
@@ -353,6 +349,23 @@ def score_bidirectional(value: float, L_low: float, T_low: float, T_high: float,
         return -1.0
 
 
+def score_breakpoint_steps(value: float, steps: tuple, values: tuple) -> float:
+    """四段阶跃（P1-8DIM，usdcnh）：纯函数，阶跃不插值。
+
+    steps=(x1,x2,x3), values=(v0,v1,v2,v3)：
+      x < x1  → v0；x1 ≤ x < x2 → v1；x2 ≤ x < x3 → v2；x ≥ x3 → v3
+
+    为何不用三段线性：龙五工单 §2 给的是带区间语义的阶梯（“7.05~7.20 → 0”），
+    线性会把区间中点算成半档，正是“看着精确的假结论”。
+    与 RATIO_BAND 的区别：那个是“过热只钝化”的连续形状，这个是政策区间阶梯。
+    """
+    x = float(value)
+    for i, upper in enumerate(steps):
+        if x < upper:
+            return values[i]
+    return values[-1]
+
+
 def calc_score(key: str, value) -> Optional[float]:
     """根据指标类型计算评分"""
     if value is None:
@@ -361,6 +374,11 @@ def calc_score(key: str, value) -> Optional[float]:
         v = float(value)
     except (ValueError, TypeError):
         return None
+
+    # P1-8DIM：四段阶跃（usdcnh）。先查它，否则会被下面的三段线性分支银过。
+    step_cfg = im.BREAKPOINT_STEPS_CONFIG.get(key)
+    if step_cfg:
+        return q(score_breakpoint_steps(v, step_cfg['steps'], step_cfg['values']), 3)
 
     if key in POSITIVE_PARAMS:
         L, T, H = POSITIVE_PARAMS[key]
@@ -466,7 +484,7 @@ def get_freshness_level(alpha: float) -> str:
 # ═══════════════════════════════════════════
 
 def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
-    """计算6个维度评分（T4：最小有效数 + 置灰 + 参考项排除）
+    """计算各维度评分（T4：最小有效数 + 置灰 + 参考项排除）
 
     indicators: { key: {score, timeliness, reference_only, ...} }
 
@@ -538,25 +556,30 @@ def calc_dimension_scores(indicators: dict, raw_data: dict) -> dict:
 
 
 def calc_ias(dim_scores: dict) -> dict:
-    """计算 IAS 综合评分（T3：按有效权重归一化）
+    """计算 IAS 综合评分（T3：按有效权重归一化；P1-8DIM：阈值改 normalized 语义）
 
     T3 修复（2026-11-09）：
       旧式 IAS = Σ score_i×w_i，max_possible 固定 4.6。
       一旦某维度「数据不足」置灰、贡献 0，IAS 就系统性向 0 漂移，
       信号自动变「持有」而页面不提示 —— 这就是「置灰反而制造新假信号」。
 
-      新式：
-        normalized = Σ(score_i×w_i) / Σ(有效维度 w_i)      ∈ [-1, 1]
-        score      = normalized × Σ(全部 w_i)  = normalized × 4.6
-      score 保持旧量纲，前端阈值（±2.5/1.0/-0.5/-1.5）无需重标；
-      normalized 供展示与跨日对比。
+    P1-8DIM 修复（2026-11-28）：
+      旧 bug：内部拿 score（量纲 Σ权重）去比 -0.5 这类阈值，却对外发 normalized，
+      真实分界漂到 normalized −0.109；IAS_SCALE 一改（4.6→5.6）信号含义就跟着变。
+      现改为：**阈值常量一律 normalized 语义**（indicator_meta.IAS_THRESHOLDS），
+      比较一律用 ias.normalized；score 仍输出（= normalized × IAS_SCALE），
+      但它只是展示层量纲，不得再用它比阈值。
 
-      覆盖率 = Σ有效w / Σ全部w；低于 IAS_MIN_COVERAGE 不给仓位建议。
+      公式：
+        normalized = Σ(score_i×w_i) / Σ(有效维度 w_i)      ∈ [-1, 1]
+        score      = normalized × Σ(全设计 w_i) = normalized × IAS_SCALE
+
+      覆盖率 = Σ有效w / Σ全设计w；低于 IAS_MIN_COVERAGE 不给仓位建议。
     """
     total_weighted = 0.0
     valid_weight = 0.0
     total_weight = 0.0        # Σ 有效权重
-    design_weight = 0.0       # Σ 设计权重（保持 4.6，用于把 normalized 还原成旧量纲）
+    design_weight = 0.0       # Σ 设计权重（= IAS_SCALE，仅用于把 normalized 换回展示用 score）
     counted = []
     grayed = []
 
@@ -586,6 +609,7 @@ def calc_ias(dim_scores: dict) -> dict:
             'weight_effective_sum': round(total_weight, 2),
             'scale_coverage': 0.0,
             'ias_scale': IAS_SCALE,
+            'threshold_space': im.IAS_THRESHOLD_SPACE,
             'valid_weight': 0.0,
             'data_coverage': 0.0,
             'counted_dimensions': [],
@@ -597,8 +621,6 @@ def calc_ias(dim_scores: dict) -> dict:
         }
 
     normalized = q(total_weighted / valid_weight, 6)   # T15-1: 6 位，half-up
-    # score 恒按「设计权重总和(4.6)」还原，保证与历史阈值/前端分档可比的量纲；
-    # 有效权重之和是 4.0（D 案收缩后），所以 normalized 才是横比用的那个数。
     if abs(design_weight - IAS_SCALE) > 1e-9:
         # 防御：设计权重总和变了却没人重标阈值
         print(f'⚠️ 设计权重总和 {design_weight} != IAS_SCALE {IAS_SCALE}，阈值可能已失真')
@@ -610,8 +632,9 @@ def calc_ias(dim_scores: dict) -> dict:
     else:
         actionable = True
         signal, position, icon = IAS_POSITION_ERROR
+        # P1-8DIM：拿 normalized 比 normalized 阈值（不许拿 ias_score 比）
         for threshold, sig, pos, ico in IAS_THRESHOLDS:
-            if ias_score >= threshold:
+            if normalized >= threshold:
                 signal, position, icon = sig, pos, ico
                 break
         if coverage < IAS_PARTIAL_COVERAGE:
@@ -621,6 +644,7 @@ def calc_ias(dim_scores: dict) -> dict:
     return {
         'score': ias_score,
         'normalized': normalized,
+        'threshold_space': im.IAS_THRESHOLD_SPACE,
         'max_possible': round(design_weight, 1),
         'weight_design_sum': round(design_weight, 2),
         'weight_effective_sum': round(total_weight, 2),
@@ -701,11 +725,15 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         freq = info.get('frequency', 'monthly')
         data_date = info.get('dataDate')
 
-        # V1b-1：pct_rank 打分（唯一实现在 scoring.score_by_pct_rank）
-        # 历史样本从 info['history'] 读（fetch 阶段就从 series 回填好并随产物落盘），
-        # 不在这里现读磁盘 —— 否则 data-only replay 会变成时间相关，回放不可复现。
+        # V1b-1：pct_rank / ratio_band / breakpoint_steps 打分（实现在本模块）
         pct_meta = None
-        if key in im.RATIO_BAND_CONFIG:
+        step_meta = None
+        if key in im.BREAKPOINT_STEPS_CONFIG:
+            # P1-8DIM：usdcnh 四段阶跃（不要求历史回填 → 当日可入维度）
+            # 打分本身只走 calc_score（唯一实现），这里只额外挂审计字段。
+            step_meta = im.BREAKPOINT_STEPS_CONFIG[key]
+            score = calc_score(key, value)
+        elif key in im.RATIO_BAND_CONFIG:
             pct_meta = score_by_ratio_band(key, value, info.get('history') or [])
             score = pct_meta['score']
         elif key in im.PCT_RANK_CONFIG:
@@ -748,6 +776,9 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         period = parse_period(data_date)
         name = INDICATOR_NAMES.get(key, key)
         ref_only = is_reference_only(key)
+        # 口径降级（如 usdcnh 回退在岸价）：fetch 层给 suffix，这里拼到 caliberNote 上，
+        # 保证「用了哪个口径」在页面上可见（工单 §2 要求）。
+        caliber_text = caliber_of(key) + (info.get('caliberNoteSuffix') or '')
 
         # 是否进评分：参考项 / 无评分 / 过期(α=0) 三种都不进
         if ref_only:
@@ -782,7 +813,7 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
             'name': name,
             'displayName': name,
             'shortName': INDICATOR_SHORT.get(key, name),
-            'caliberNote': caliber_of(key),
+            'caliberNote': caliber_text,
             'reference_only': ref_only,
             'frequency': freq,
             # V1a：响应速度标注（T+0 / T+1 / 月 / 季），单一真源在 indicator_meta
@@ -823,6 +854,14 @@ def build_indicators_and_meta(raw_data: dict, prev_data: dict = None) -> tuple:
         if isinstance(info.get('extras'), dict) and info['extras']:
             indicators[key]['extras'] = info['extras']
         # V1b-1：pct_rank 打分明细（11 个字段全进产物，分数必须可复核到样本与分位）
+        # 历史样本从 info['history'] 读（fetch 阶段就从 series 回填好并随产物落盘），
+        # 不在这里现读磁盘 —— 否则 data-only replay 会变成时间相关，回放不可复现。
+        if step_meta:
+            indicators[key].update({
+                'scoring_method': 'breakpoint_steps',
+                'breakpoint_steps': list(step_meta['steps']),
+                'breakpoint_values': list(step_meta['values']),
+            })
         if pct_meta:
             indicators[key].update({
                 'scoring_method': pct_meta['scoring_method'],

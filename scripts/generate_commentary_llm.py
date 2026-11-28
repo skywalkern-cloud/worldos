@@ -289,13 +289,19 @@ def build_prompt(indicators: dict, meta: dict, prev_commentary: Optional[dict] =
       "commentary": "<通胀与政策维度解读，约100-200字，突出中美通胀分化及货币政策方向>"
     }},
     "liquidity": {{
-      "commentary": "<流动性维度解读，约100-200字，国内宽松vs美债压制>"
+      "commentary": "<流动性（国内）维度解读，约100-200字，只看 LPR/DR007/M2；跨境与美债不在本维>"
     }},
-    "sentiment": {{
-      "commentary": "<市场情绪维度解读，约100-200字，VIX（CBOE 官方，美股）与美股恐惧贪婪>"
+    "fxExternal": {{
+      "commentary": "<汇率与外部维度解读，约100-200字，USDCNH 区间、美元指数、中美10Y利差、美债10Y>"
+    }},
+    "sentimentA": {{
+      "commentary": "<A股/港股情绪维度解读，约100-200字，两市成交额相对量、融资余额、南向净买入、恒科动量>"
+    }},
+    "riskAppetite": {{
+      "commentary": "<全球风险偏好维度解读，约100-200字，VIX（CBOE 官方，美股）与美股恐惧贪婪；美债2Y/5Y 仅参考>"
     }},
     "resource": {{
-      "commentary": "<资源与供应链维度解读，约100-200字，能源、碳价、铜价等>"
+      "commentary": "<资源与供应链维度解读，约100-200字，WTI/天然气/沪铜；LME铜仅参考>"
     }},
     "techGreen": {{
       "commentary": "<科技与绿色维度解读，约100-200字，新能源渗透率与科技升级>"
@@ -447,7 +453,8 @@ def generate_commentary_llm(indicators: dict, meta: dict, prev_commentary: Optio
             print(f"  ❌ LLM 输出缺少字段: {k}")
             return None
 
-    required_dim_keys = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
+    required_dim_keys = ['economic', 'inflation', 'liquidity', 'fxExternal',
+                         'sentimentA', 'riskAppetite', 'resource', 'techGreen']
     for k in required_dim_keys:
         if k not in result.get('dimensions', {}):
             print(f"  ❌ LLM 输出缺少维度字段: {k}")

@@ -1098,6 +1098,20 @@
         }
       ]
     },
+    "usdcnh": {
+      "value": null,
+      "unit": "",
+      "frequency": "daily",
+      "source": "akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）",
+      "dataDate": null,
+      "lastFetched": "2026-11-28T10:00:00",
+      "realtime": true,
+      "used_fallback": false,
+      "fetchError": {
+        "reason": "timeout",
+        "reasonText": "夹具：超时"
+      }
+    },
     "dollarIndex": {
       "value": 96.9,
       "unit": "",
@@ -1513,7 +1527,7 @@
       "score": -0.035,
       "trend": "neutral",
       "signal": "gray",
-      "category": "sentiment",
+      "category": "riskAppetite",
       "country": "🇺🇸",
       "name": "VIX恐慌指数",
       "displayName": "VIX恐慌指数",
@@ -1664,14 +1678,14 @@
       "value": 4.51,
       "score": -0.007,
       "trend": "neutral",
-      "signal": "gray",
-      "category": "liquidity",
+      "signal": "reference",
+      "category": "riskAppetite",
       "country": "🇺🇸",
       "name": "美债2年收益率",
       "displayName": "美债2年收益率",
       "shortName": "美债2Y",
       "caliberNote": "美国2年期国债到期收益率",
-      "reference_only": false,
+      "reference_only": true,
       "frequency": "daily",
       "responsiveness": "T+0",
       "dataDate": "2024-06-11",
@@ -1694,20 +1708,20 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "reference_only"
     },
     "usBond5Y": {
       "value": 4.64,
       "score": 0.0,
       "trend": "neutral",
-      "signal": "gray",
-      "category": "liquidity",
+      "signal": "reference",
+      "category": "riskAppetite",
       "country": "🇺🇸",
       "name": "美债5年收益率",
       "displayName": "美债5年收益率",
       "shortName": "美债5Y",
       "caliberNote": "美国5年期国债到期收益率",
-      "reference_only": false,
+      "reference_only": true,
       "frequency": "daily",
       "responsiveness": "T+0",
       "dataDate": "2024-06-11",
@@ -1730,14 +1744,14 @@
       "freshness_level": "expired",
       "degraded_reasons": [],
       "excluded_from_scoring": true,
-      "exclusion_reason": "expired_alpha0"
+      "exclusion_reason": "reference_only"
     },
     "usBond10Y": {
       "value": 4.86,
       "score": 0.0,
       "trend": "neutral",
       "signal": "gray",
-      "category": "liquidity",
+      "category": "fxExternal",
       "country": "🇺🇸",
       "name": "美债10年收益率",
       "displayName": "美债10年收益率",
@@ -1809,7 +1823,7 @@
       "score": -0.895,
       "trend": "neutral",
       "signal": "red",
-      "category": "sentiment",
+      "category": "riskAppetite",
       "country": "🇺🇸",
       "name": "美股恐惧贪婪(CNN)",
       "displayName": "美股恐惧贪婪(CNN)",
@@ -1845,7 +1859,7 @@
       "score": 0.702,
       "trend": "neutral",
       "signal": "green",
-      "category": "sentiment",
+      "category": "sentimentA",
       "country": "🇨🇳",
       "name": "两市成交额",
       "displayName": "两市成交额",
@@ -1894,7 +1908,7 @@
       "score": 1.0,
       "trend": "neutral",
       "signal": "green",
-      "category": "sentiment",
+      "category": "sentimentA",
       "country": "🇨🇳",
       "name": "两融余额",
       "displayName": "两融余额",
@@ -1941,7 +1955,7 @@
       "score": null,
       "trend": "neutral",
       "signal": "gray",
-      "category": "sentiment",
+      "category": "sentimentA",
       "country": "🇨🇳",
       "name": "南向净买入",
       "displayName": "南向净买入",
@@ -1988,7 +2002,7 @@
       "score": -1.0,
       "trend": "neutral",
       "signal": "red",
-      "category": "sentiment",
+      "category": "sentimentA",
       "country": "🇨🇳",
       "name": "恒生科技动量",
       "displayName": "恒生科技动量",
@@ -2035,7 +2049,7 @@
       "score": 0.387,
       "trend": "neutral",
       "signal": "lightgreen",
-      "category": "liquidity",
+      "category": "fxExternal",
       "country": "🌐",
       "name": "美元指数",
       "displayName": "美元指数",
@@ -2251,7 +2265,7 @@
       "score": -0.635,
       "trend": "neutral",
       "signal": "red",
-      "category": "liquidity",
+      "category": "fxExternal",
       "country": "🌐",
       "name": "中美10年利差",
       "displayName": "中美10年利差",
@@ -2287,7 +2301,7 @@
       "score": 1.0,
       "trend": "neutral",
       "signal": "green",
-      "category": "resource",
+      "category": "techGreen",
       "country": "🇨🇳",
       "name": "碳价",
       "displayName": "碳价",
@@ -2502,14 +2516,14 @@
       "value": 13755.5,
       "score": -0.585,
       "trend": "neutral",
-      "signal": "red",
+      "signal": "reference",
       "category": "resource",
       "country": "🌐",
       "name": "LME金属指数",
       "displayName": "LME金属指数",
       "shortName": "LME铜",
       "caliberNote": "代理指标：LME 3个月铜价，非 LME 综合金属指数",
-      "reference_only": false,
+      "reference_only": true,
       "frequency": "daily",
       "responsiveness": "T+0",
       "dataDate": null,
@@ -2531,8 +2545,8 @@
       "freshness": "🔵",
       "freshness_level": "realtime",
       "degraded_reasons": [],
-      "excluded_from_scoring": false,
-      "exclusion_reason": null
+      "excluded_from_scoring": true,
+      "exclusion_reason": "reference_only"
     },
     "shanghaiCopper": {
       "value": 105060.0,
@@ -2609,23 +2623,26 @@
   },
   "meta": {
     "ias": {
-      "score": -0.33,
-      "normalized": -0.071353,
-      "max_possible": 4.6,
-      "weight_design_sum": 4.6,
-      "weight_effective_sum": 4.4,
-      "scale_coverage": 0.957,
-      "ias_scale": 4.6,
-      "valid_weight": 3.4,
-      "data_coverage": 0.773,
+      "score": -0.47,
+      "normalized": -0.083526,
+      "threshold_space": "normalized",
+      "max_possible": 5.6,
+      "weight_design_sum": 5.6,
+      "weight_effective_sum": 5.6,
+      "scale_coverage": 1.0,
+      "ias_scale": 5.6,
+      "valid_weight": 3.8,
+      "data_coverage": 0.679,
       "counted_dimensions": [
         "economic",
         "inflation",
-        "sentiment",
+        "sentimentA",
+        "riskAppetite",
         "resource"
       ],
       "grayed_dimensions": [
         "liquidity",
+        "fxExternal",
         "techGreen"
       ],
       "signal": "持有（部分维度缺失·参考）",
@@ -2650,7 +2667,7 @@
         "reference_only_count": 0,
         "insufficient_data": false,
         "avg_alpha": 0.75,
-        "caliberNote": "",
+        "caliberNote": "6 项：中美 GDP + 中美 PMI + 用电量 + 非农（均按三段线性 breakpoint 打分）",
         "responsiveness": {
           "slowest": "季",
           "slowest_reference": null,
@@ -2712,7 +2729,7 @@
         "reference_only_count": 0,
         "insufficient_data": false,
         "avg_alpha": 1.0,
-        "caliberNote": "",
+        "caliberNote": "5 项：中美 CPI + 核心PCE + PPI + 联邦基金利率",
         "responsiveness": {
           "slowest": "月",
           "slowest_reference": null,
@@ -2754,7 +2771,7 @@
         "reference_indicators": []
       },
       "liquidity": {
-        "name": "流动性",
+        "name": "流动性（国内）",
         "icon": "💧",
         "weight": 0.8,
         "weight_design": 0.8,
@@ -2763,12 +2780,12 @@
         "score": null,
         "signal": "gray",
         "valid_count": 0,
-        "required_count": 4,
-        "active_count": 8,
+        "required_count": 3,
+        "active_count": 3,
         "reference_only_count": 0,
         "insufficient_data": true,
         "avg_alpha": 0.0,
-        "caliberNote": "",
+        "caliberNote": "仅国内 3 项（LPR / DR007 / M2）。T4：n≤3 要求全部有效，任一缺失整维置灰（0.8 权重归零）",
         "responsiveness": {
           "slowest": "月",
           "slowest_reference": null,
@@ -2787,9 +2804,38 @@
               "key": "m2",
               "label": "月",
               "reference_only": false
-            },
+            }
+          ]
+        },
+        "display_indicators": [
+          "lpr",
+          "dr007",
+          "m2"
+        ],
+        "reference_indicators": []
+      },
+      "fxExternal": {
+        "name": "汇率与外部",
+        "icon": "💱",
+        "weight": 0.7,
+        "weight_design": 0.7,
+        "weight_effective": 0.7,
+        "weight_reason": "满额",
+        "score": null,
+        "signal": "gray",
+        "valid_count": 0,
+        "required_count": 2,
+        "active_count": 3,
+        "reference_only_count": 0,
+        "insufficient_data": true,
+        "avg_alpha": 0.0,
+        "caliberNote": "USDCNH（离岸优先，缺失回退在岸）+ 美元指数（三货币加权代理）+ 中美10Y利差 + 美债10Y；4 项需 ≥2 有效",
+        "responsiveness": {
+          "slowest": "T+0",
+          "slowest_reference": null,
+          "detail": [
             {
-              "key": "creditSpread",
+              "key": "usdcnh",
               "label": "T+0",
               "reference_only": false
             },
@@ -2799,12 +2845,7 @@
               "reference_only": false
             },
             {
-              "key": "usBond2Y",
-              "label": "T+0",
-              "reference_only": false
-            },
-            {
-              "key": "usBond5Y",
+              "key": "creditSpread",
               "label": "T+0",
               "reference_only": false
             },
@@ -2816,47 +2857,33 @@
           ]
         },
         "display_indicators": [
-          "lpr",
-          "dr007",
-          "m2",
-          "creditSpread",
+          "usdcnh",
           "dollarIndex",
-          "usBond2Y",
-          "usBond5Y",
+          "creditSpread",
           "usBond10Y"
         ],
         "reference_indicators": []
       },
-      "sentiment": {
-        "name": "市场情绪",
+      "sentimentA": {
+        "name": "A股/港股情绪",
         "icon": "🧠",
-        "weight": 0.8,
-        "weight_design": 0.8,
-        "weight_effective": 0.8,
+        "weight": 0.9,
+        "weight_design": 0.9,
+        "weight_effective": 0.9,
         "weight_reason": "满额",
-        "score": -0.046,
-        "signal": "gray",
-        "valid_count": 5,
-        "required_count": 3,
-        "active_count": 6,
+        "score": 0.234,
+        "signal": "lightgreen",
+        "valid_count": 3,
+        "required_count": 2,
+        "active_count": 4,
         "reference_only_count": 0,
         "insufficient_data": false,
-        "avg_alpha": 0.833,
-        "caliberNote": "6 项：美股 VIX + CNN F&G + A股/港股 4 项（两市成交额/融资余额/南向净买入/恒科动量），均按 pct_rank 打分",
+        "avg_alpha": 0.75,
+        "caliberNote": "4 项 A股/港股情绪代理：两市成交额(ratio_band) + 融资余额/南向净买入/恒科动量(pct_rank)",
         "responsiveness": {
           "slowest": "T+1",
           "slowest_reference": null,
           "detail": [
-            {
-              "key": "vix",
-              "label": "T+0",
-              "reference_only": false
-            },
-            {
-              "key": "fearGreed",
-              "label": "T+0",
-              "reference_only": false
-            },
             {
               "key": "ashareTurnover",
               "label": "T+0",
@@ -2880,8 +2907,6 @@
           ]
         },
         "display_indicators": [
-          "vix",
-          "fearGreed",
           "ashareTurnover",
           "marginBalance",
           "southboundNet",
@@ -2889,25 +2914,78 @@
         ],
         "reference_indicators": []
       },
+      "riskAppetite": {
+        "name": "全球风险偏好",
+        "icon": "🌍",
+        "weight": 0.4,
+        "weight_design": 0.4,
+        "weight_effective": 0.4,
+        "weight_reason": "满额",
+        "score": -0.465,
+        "signal": "yellow",
+        "valid_count": 2,
+        "required_count": 2,
+        "active_count": 2,
+        "reference_only_count": 2,
+        "insufficient_data": false,
+        "avg_alpha": 1.0,
+        "caliberNote": "VIX + CNN F&G 打分；美债2Y/5Y 仅展示（避免与 fedRate、期限结构重复计入）",
+        "responsiveness": {
+          "slowest": "T+0",
+          "slowest_reference": "T+0",
+          "detail": [
+            {
+              "key": "vix",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "fearGreed",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "usBond2Y",
+              "label": "T+0",
+              "reference_only": true
+            },
+            {
+              "key": "usBond5Y",
+              "label": "T+0",
+              "reference_only": true
+            }
+          ]
+        },
+        "display_indicators": [
+          "vix",
+          "fearGreed",
+          "usBond2Y",
+          "usBond5Y"
+        ],
+        "reference_indicators": [
+          "usBond2Y",
+          "usBond5Y"
+        ]
+      },
       "resource": {
         "name": "资源与供应链",
         "icon": "🛢️",
-        "weight": 0.6,
-        "weight_design": 0.6,
-        "weight_effective": 0.6,
+        "weight": 0.5,
+        "weight_design": 0.5,
+        "weight_effective": 0.5,
         "weight_reason": "满额",
-        "score": -0.178,
+        "score": -0.486,
         "signal": "yellow",
-        "valid_count": 5,
+        "valid_count": 3,
         "required_count": 3,
-        "active_count": 5,
-        "reference_only_count": 0,
+        "active_count": 3,
+        "reference_only_count": 1,
         "insufficient_data": false,
-        "avg_alpha": 0.9,
-        "caliberNote": "",
+        "avg_alpha": 0.833,
+        "caliberNote": "WTI 原油 + 天然气 + 沪铜打分；LME 铜仅展示（与沪铜共线）",
         "responsiveness": {
           "slowest": "T+0",
-          "slowest_reference": null,
+          "slowest_reference": "T+0",
           "detail": [
             {
               "key": "oilPrice",
@@ -2920,61 +2998,47 @@
               "reference_only": false
             },
             {
-              "key": "carbonPrice",
+              "key": "shanghaiCopper",
               "label": "T+0",
               "reference_only": false
             },
             {
               "key": "lmeIndex",
               "label": "T+0",
-              "reference_only": false
-            },
-            {
-              "key": "shanghaiCopper",
-              "label": "T+0",
-              "reference_only": false
+              "reference_only": true
             }
           ]
         },
         "display_indicators": [
           "oilPrice",
           "naturalGas",
-          "carbonPrice",
-          "lmeIndex",
-          "shanghaiCopper"
+          "shanghaiCopper",
+          "lmeIndex"
         ],
-        "reference_indicators": []
+        "reference_indicators": [
+          "lmeIndex"
+        ]
       },
       "techGreen": {
         "name": "科技与绿色",
         "icon": "🌱",
-        "weight": 0.4,
-        "weight_design": 0.4,
-        "weight_effective": 0.2,
-        "weight_reason": "有效性收缩 2/4",
+        "weight": 0.3,
+        "weight_design": 0.3,
+        "weight_effective": 0.3,
+        "weight_reason": "满额",
         "score": null,
         "signal": "gray",
-        "valid_count": 0,
-        "required_count": 2,
-        "active_count": 2,
+        "valid_count": 1,
+        "required_count": 3,
+        "active_count": 3,
         "reference_only_count": 2,
         "insufficient_data": true,
-        "avg_alpha": 0.0,
-        "caliberNote": "",
+        "avg_alpha": 0.333,
+        "caliberNote": "新能源渗透率 + 新能源指数 + 碳价打分；AI/机器人代理仅展示",
         "responsiveness": {
           "slowest": "月",
           "slowest_reference": "月",
           "detail": [
-            {
-              "key": "aiGrowth",
-              "label": "月",
-              "reference_only": true
-            },
-            {
-              "key": "robotInstall",
-              "label": "月",
-              "reference_only": true
-            },
             {
               "key": "evPenetration",
               "label": "月",
@@ -2984,16 +3048,35 @@
               "key": "renewEnergyInvest",
               "label": "T+0",
               "reference_only": false
+            },
+            {
+              "key": "carbonPrice",
+              "label": "T+0",
+              "reference_only": false
+            },
+            {
+              "key": "aiGrowth",
+              "label": "月",
+              "reference_only": true
+            },
+            {
+              "key": "robotInstall",
+              "label": "月",
+              "reference_only": true
             }
           ]
         },
         "display_indicators": [
-          "aiGrowth",
-          "robotInstall",
           "evPenetration",
-          "renewEnergyInvest"
+          "renewEnergyInvest",
+          "carbonPrice",
+          "aiGrowth",
+          "robotInstall"
         ],
-        "reference_indicators": []
+        "reference_indicators": [
+          "aiGrowth",
+          "robotInstall"
+        ]
       }
     },
     "rules_snapshot": {
@@ -3023,36 +3106,42 @@
         "economic": 1.0,
         "inflation": 1.0,
         "liquidity": 0.8,
-        "sentiment": 0.8,
-        "resource": 0.6,
-        "techGreen": 0.4
+        "fxExternal": 0.7,
+        "sentimentA": 0.9,
+        "riskAppetite": 0.4,
+        "resource": 0.5,
+        "techGreen": 0.3
       },
       "market_mismatch": {},
       "reference_only": [
         "aiGrowth",
         "epu",
-        "robotInstall"
+        "lmeIndex",
+        "robotInstall",
+        "usBond2Y",
+        "usBond5Y"
       ],
       "min_valid_rule": "n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母",
-      "ias_scale": 4.6,
+      "ias_scale": 5.6,
+      "ias_threshold_space": "normalized",
       "ias_thresholds": [
         [
-          2.5,
+          0.543,
           "强烈买入",
           "80-100%"
         ],
         [
-          1.0,
+          0.217,
           "增持",
           "60-80%"
         ],
         [
-          -0.5,
+          -0.109,
           "持有",
           "40-60%"
         ],
         [
-          -1.5,
+          -0.326,
           "减仓",
           "20-40%"
         ]
@@ -3061,22 +3150,25 @@
       "ias_partial_coverage": 0.8,
       "unknown_alpha": 0.5
     },
-    "rules_hash": "269592dd0bb6",
+    "rules_hash": "ae148d2b8a6d",
     "model": {
       "version": "v4.2",
       "reference_only": [
         "aiGrowth",
         "epu",
-        "robotInstall"
+        "lmeIndex",
+        "robotInstall",
+        "usBond2Y",
+        "usBond5Y"
       ],
       "ias_formula": "normalized = Σ(score×w)/Σ(valid_w); score = normalized × Σ(w)",
       "min_coverage": 0.6
     }
   },
   "validity_report": {
-    "total": 36,
+    "total": 37,
     "valid": 35,
-    "invalid": 1,
+    "invalid": 2,
     "degraded": [
       {
         "key": "usGdp",
@@ -3129,6 +3221,17 @@
         "dataDate": null,
         "days_stale": null,
         "used_fallback": true,
+        "lastAttempt": "2026-11-28T10:00:00"
+      },
+      {
+        "key": "usdcnh",
+        "displayName": "美元兑离岸人民币",
+        "source": "akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）",
+        "reason": "timeout",
+        "reasonText": "夹具：超时",
+        "dataDate": null,
+        "days_stale": null,
+        "used_fallback": false,
         "lastAttempt": "2026-11-28T10:00:00"
       },
       {

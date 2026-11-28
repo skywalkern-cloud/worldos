@@ -1,5 +1,11 @@
 // 投资监控仪表盘 - 主面板组件 v6
 // 龙六负责 - 按国家分类显示 + NA正确显示 + 表头+横向滚动龙七修改
+//
+// @deprecated 未挂载（P1-8DIM 2026-11-28 标注）：本文件读的是 v6 时代的 MetricData
+//   （../data/marketData.ts），不是 8 维 IAS 模型，App.tsx 也未 import 它。
+//   保留原因：历史归档 + 可回溯旧版布局；**不要**在这里加新维度逻辑，
+//   也**不要**把它当作维度真源（真源 = indicator_meta.DIMENSIONS）。
+//   下方 'sentiment' 指的是 v6 旧模型里的分组，与 8 维模型的 sentimentA/riskAppetite 无关。
 
 import React from 'react';
 import { motion } from 'framer-motion';
@@ -252,7 +258,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, lastUpdate }) => {
           </DimensionCard>
         </motion.div>
 
-        {/* 维度5: 情绪（5个）😤 */}
+        {/* 维度5: 情绪（5个）😤 —— ⚠️ 旧 v6 模型分组，8 维模型下已拆为 sentimentA + riskAppetite */}
         <motion.div variants={itemVariants}>
           <DimensionCard title="市场情绪" icon="😤" alertStatus={getDimensionStatus(data, 'sentiment')}>
             {/* 🇨🇳 中国 */}

@@ -783,6 +783,62 @@ def get_dollar_index():
 
 
 @with_timeout(20)
+def get_usdcnh():
+    """美元兑离岸人民币 USDCNH（P1-8DIM，2026-11-28）
+
+    取数优先级（必须 log 用了哪个源）：
+      1) akshare forex_spot_em 的 USDCNH（东财离岸现货，无交易日期 → 标 realtime）
+      2) exchangerate-api /v4/latest/USD 的 rates.CNY（**在岸**中间价；回退时
+         用 source_degraded + caliberNoteSuffix 把「在岸参考价」写上页面）
+      3) 都取不到 → None。**不许造数、不许用上一交易日硬填、不许插值补齐。**
+
+    Returns: (value, dataDate, 'daily', source_degraded_or_None, extras_or_None)
+    """
+    import pandas as pd
+
+    # ── 源 1：akshare 离岸现货 ──
+    try:
+        import akshare as ak
+        df = ak.forex_spot_em()
+        row = df[df['代码'] == 'USDCNH']
+        if not row.empty:
+            price = row.iloc[0]['最新价']
+            if price is not None and not pd.isna(price):
+                v = round(float(price), 4)
+                print(f" [源=akshare-forex_spot_em 离岸USDCNH {v}（源无日期→realtime）]", end='')
+                return v, None, 'daily', None, None
+        print(" [源1 akshare离岸: 无 USDCNH 行]", end='')
+    except Exception as e:  # noqa: BLE001
+        print(f" [源1 akshare离岸失败: {type(e).__name__}]", end='')
+
+    # ── 源 2：exchangerate-api（在岸 CNY，必须标降级）──
+    try:
+        import requests
+        r = requests.get('https://api.exchangerate-api.com/v4/latest/USD', timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        cny = (data.get('rates') or {}).get('CNY')
+        if cny:
+            v = round(float(cny), 4)
+            d = data.get('date') or None
+            print(f" [源=exchangerate-api 在岸CNY {v}（降级：非离岸价）]", end='')
+            return v, d, 'daily', {
+                'source': 'exchangerate-api 在岸中间价',
+                'primarySource': 'akshare 离岸 USDCNH 现货',
+                'reason': 'primary_source_missing',
+                'reasonText': '离岸价暂不可得，已回退在岸参考价（口径见 caliberNote）',
+                'caliberNoteSuffix': '（本条为在岸参考价，非离岸价）',
+            }, None
+        print(" [源2 exchangerate-api: 无 CNY]", end='')
+    except Exception as e:  # noqa: BLE001
+        print(f" [源2 exchangerate-api失败: {type(e).__name__}]", end='')
+
+    # ── 源 3：取不到 → None（不许造数）──
+    print(" [无可用源→None]", end='')
+    return None, None, 'daily', None, None
+
+
+@with_timeout(20)
 def get_cpi():
     """中国CPI同比 - East Money 数据中心 RPT_ECONOMY_CPI"""
     try:
@@ -1422,6 +1478,7 @@ FETCH_FUNCS = {
     'usNonFarm': get_us_nonfarm,
     'fearGreed': get_fear_greed,
     'dollarIndex': get_dollar_index,
+    'usdcnh': get_usdcnh,
     'cpi': get_cpi,
     'ppi': get_ppi,
     'lpr': get_lpr,
@@ -1730,6 +1787,10 @@ def main():
             # source 保持冻结口径（NYMEX期货）；actualSource 写实际取数路径
             results[key]['actualSource'] = source_degraded.get('source')
             results[key]['sourceDegraded'] = source_degraded
+            # 口径声明降级（usdcnh 在岸回退）：拼到 indicators[key].caliberNote，
+            # 让「这条是在岸价」在页面上能看见，而不是只藏在 validity_report。
+            if source_degraded.get('caliberNoteSuffix'):
+                results[key]['caliberNoteSuffix'] = source_degraded['caliberNoteSuffix']
         # V1a：参考项的附加展示字段（20日涨幅 / 3日变化 / 两市拆分）
         if extras:
             results[key]['extras'] = extras

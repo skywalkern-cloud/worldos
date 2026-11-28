@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """WorldOS V1b-1：撤 market_mismatch 前后的 30 个交易日回算对比。
 
+⛔ 已废弃（P1-8DIM 2026-11-28）：维度 id `sentiment` 已拆为 `sentimentA` + `riskAppetite`，
+   本脚本依赖的 `sentiment` 维度不存在了，且它「其余五维冻结」的前提也已过时。
+   替代：`scripts/replay_8dim_30d.py`（旧 6 维 vs 新 8 维逐日回算 + 归因）。
+   保留本文件只为回溯 V1b-1 的历史结论；不要再跑，也不要拿它当现状基线。
+
 ⚠️ 边界（必须和结论一起引用，别包装成「30 日 IAS 回测」）：
    只有 4 个新指标有逐日历史序列；其余 31 项（VIX/F&G 及各宏观项）**没有**逐日历史。
    因此本脚本的逐日回算 = 「其余五个维度锁死为当日值，仅逐日重算 sentiment」。
@@ -30,8 +35,13 @@ import series_store                    # noqa: E402
 
 PCT_KEYS = list(im.QUANTILE_CONFIG)   # pct_rank + ratio_band 两类都算
 # 没有逐日历史、只能冻结为当日值的 sentiment 成员
-FROZEN_KEYS = [k for k in ['vix', 'fearGreed']
-               if k in [d['indicators'] for d in im.DIMENSIONS if d['id'] == 'sentiment'][0]]
+_SENT_DIM = next((d for d in im.DIMENSIONS if d['id'] == 'sentiment'), None)
+if _SENT_DIM is None:
+    # 不静默 StopIteration / 不自动换到 sentimentA（口径不同，换了就是假结论）
+    raise SystemExit(
+        '已废弃：维度 sentiment 已拆为 sentimentA + riskAppetite（P1-8DIM 2026-11-28）。\n'
+        '请改用 scripts/replay_8dim_30d.py；本脚本不再维护。')
+FROZEN_KEYS = [k for k in ['vix', 'fearGreed'] if k in _SENT_DIM['indicators']]
 
 DISCLAIMER = ('本次回算只覆盖 sentiment 维度，其余五维冻结为当日值，'
               '因此 IAS 的日间差异不具代表性，不能用来判断整体信号的稳定性')

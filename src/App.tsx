@@ -211,31 +211,41 @@ interface CommentaryData {
  * 依据：① 4 位是对 `ias.normalized` 的展示层舍入，未反推重算
  * ② tooltip 露 6 位真值，「看到的」与「数据里的」可对照
  * ③ 这条分歧的实质是「排版 vs 真源」，加真值对照即两者兼得
- * 边界：禁止从 score/4.6 反推 normalized；禁止在调用处硬编码位数；换位数只改常量一个数字
+ * 边界：禁止从 score/IAS_SCALE 反推 normalized；禁止在调用处硬编码位数；换位数只改常量一个数字
  */
 const NORMALIZED_DISPLAY_PLACES = 4
 
-// ====== 6维度配置 ======
+// ====== 8 维度配置（P1-8DIM，2026-11-28）======
+// 顺序 = 阅读顺序（按权重从高到低的分组叙事），不是权重表：权重以后端 meta.dimensions 为准。
 
-const DIMENSION_ORDER = ['economic', 'inflation', 'liquidity', 'sentiment', 'resource', 'techGreen']
+const DIMENSION_ORDER = [
+  'economic', 'inflation', 'liquidity', 'fxExternal',
+  'sentimentA', 'riskAppetite', 'resource', 'techGreen',
+]
 
 const DIMENSION_LABELS: Record<string, { name: string; icon: string }> = {
-  economic:  { name: '经济增长', icon: '📈' },
-  inflation: { name: '通胀与政策', icon: '💰' },
-  liquidity: { name: '流动性', icon: '💧' },
-  sentiment: { name: '市场情绪', icon: '🧠' },
-  resource:  { name: '资源与供应链', icon: '🛢️' },
-  techGreen: { name: '科技与绿色', icon: '🌱' },
+  economic:     { name: '经济增长', icon: '📈' },
+  inflation:    { name: '通胀与政策', icon: '💰' },
+  liquidity:    { name: '流动性（国内）', icon: '💧' },
+  fxExternal:   { name: '汇率与外部', icon: '💱' },
+  sentimentA:   { name: 'A股/港股情绪', icon: '🧠' },
+  riskAppetite: { name: '全球风险偏好', icon: '🌍' },
+  resource:     { name: '资源与供应链', icon: '🛢️' },
+  techGreen:    { name: '科技与绿色', icon: '🌱' },
 }
 
 // 每个维度下按国家排序的指标key列表
+// ⚠️ 这是**旧数据回退表**：新数据一律读后端 meta.dimensions[*].display_indicators。
+//    含只展示不打分的参考项（lmeIndex / 美债2Y/5Y / aiGrowth / robotInstall）。
 const DIMENSION_INDICATORS: Record<string, string[]> = {
-  economic:  ['chinaGdp', 'chinaPmi', 'servicePmi', 'electricity', 'usGdp', 'usNonFarm'],
-  inflation: ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
-  liquidity: ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex', 'usBond2Y', 'usBond5Y', 'usBond10Y'],
-  sentiment: ['vix', 'fearGreed'],
-  resource:  ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
-  techGreen: ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
+  economic:     ['chinaGdp', 'chinaPmi', 'servicePmi', 'electricity', 'usGdp', 'usNonFarm'],
+  inflation:    ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
+  liquidity:    ['lpr', 'dr007', 'm2'],
+  fxExternal:   ['usdcnh', 'dollarIndex', 'creditSpread', 'usBond10Y'],
+  sentimentA:   ['ashareTurnover', 'marginBalance', 'southboundNet', 'hstechMomentum'],
+  riskAppetite: ['vix', 'fearGreed', 'usBond2Y', 'usBond5Y'],
+  resource:     ['oilPrice', 'naturalGas', 'shanghaiCopper', 'lmeIndex'],
+  techGreen:    ['evPenetration', 'renewEnergyInvest', 'carbonPrice', 'aiGrowth', 'robotInstall'],
 }
 
 const COUNTRY_ORDER: Record<string, number> = {
@@ -297,7 +307,7 @@ function App() {
   }, [rawData])
 
   const indicators = v4Data?.indicators || {}
-  const meta = v4Data?.meta || { ias: { score: 0, max_possible: 4.6, signal: '持有', position: '40-60%', signal_icon: '➖' }, dimensions: {} }
+  const meta = v4Data?.meta || { ias: { score: 0, max_possible: 5.6, signal: '持有', position: '40-60%', signal_icon: '➖' }, dimensions: {} }
   
   // Compute anomalies early (before early return to keep hook count stable)
   const anomalies = useMemo(() => {
@@ -457,7 +467,7 @@ function App() {
         </div>
       )}
 
-      {/* 6维度卡片网格 */}
+      {/* 8 维度卡片网格 */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {DIMENSION_ORDER.map(dimId => (
           <DimensionCardV4

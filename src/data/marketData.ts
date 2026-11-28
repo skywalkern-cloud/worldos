@@ -1,5 +1,11 @@
 // 投资监控仪表盘 - 数据层 v6
 // 龙六负责 - 30指标体系v3.0（8维度30指标）
+//
+// @deprecated 旧 v6 模型（P1-8DIM 2026-11-28 标注）：这里的「8 维度」是 v6 时代的
+//   economic/inflation/liquidity/sentiment/supply… 分组，**不是**当前 scoring 的 8 维
+//   （economic/inflation/liquidity/fxExternal/sentimentA/riskAppetite/resource/techGreen）。
+//   App.tsx 不读这份文件；它只服务未挂载的 Dashboard.tsx / realtime.ts。
+//   维度真源 = scripts/indicator_meta.py:DIMENSIONS，不是这里。
 
 // 国家标签类型
 export type CountryTag = '🇨🇳' | '🇺🇸' | '🌐';

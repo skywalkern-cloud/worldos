@@ -38,18 +38,20 @@ const real = load('../public/data/market-data.json')
 
 // ── IAS 判级 oracle ────────────────────────────────────────────────────────
 // 镜像 scripts/indicator_meta.IAS_THRESHOLDS（后端唯一真源）。
+// P1-8DIM（2026-11-28）：阈值量纲已统一为 **normalized**（旧版拿 score 比 2.5/1.0/-0.5/-1.5，
+// 对外却发 normalized，真实分界漂到 −0.109）。此表只用于「验证后端自洽」，不是第二真源。
 // ⚠️ 禁止为了迁就当日快照去改这张表：它是契约，不是行情快照。
 const IAS_TIERS = [
-  [2.5, '强烈买入', '🚀'],
-  [1.0, '增持', '✅'],
-  [-0.5, '持有', '➖'],
-  [-1.5, '减仓', '⚠️'],
+  [0.543, '强烈买入', '🚀'],
+  [0.217, '增持', '✅'],
+  [-0.109, '持有', '➖'],
+  [-0.326, '减仓', '⚠️'],
 ]
 const IAS_ICON = Object.fromEntries(IAS_TIERS.map(([, s, icon]) => [s, icon]))
 IAS_ICON['清仓/防御'] = '🛑'
-function deriveIasSignal(score) {
-  if (typeof score !== 'number' || !Number.isFinite(score)) return '数据不足'
-  for (const [t, sig] of IAS_TIERS) if (score >= t) return sig
+function deriveIasSignal(normalized) {
+  if (typeof normalized !== 'number' || !Number.isFinite(normalized)) return '数据不足'
+  for (const [t, sig] of IAS_TIERS) if (normalized >= t) return sig
   return '清仓/防御'
 }
 
@@ -145,7 +147,8 @@ console.log('\n[3] 描灰口径：overdue === true 才描；无日期（days_ove
     if (v.days_overdue === null || v.days_stale === null) {
       check(`${k}: 无日期 → 不描灰`, st.dimmed === false, `state=${st.state}`)
     } else {
-      check(`${k}: 描灰 = overdue 布尔值`, st.dimmed === (v.overdue === true), `overdue=${v.overdue} dimmed=${st.dimmed}`)
+      // P1-8DIM：参考项（reference_only）永远不描灰 —— 契约优先级高于 overdue
+      check(`${k}: 描灰 = overdue 且非参考项`, st.dimmed === (v.overdue === true && v.reference_only !== true), `overdue=${v.overdue} ref=${v.reference_only} dimmed=${st.dimmed}`)
     }
   }
   const unknownItems = Object.entries(fixture.indicators).filter(([, v]) => resolveFreshnessState(v) === 'unknown')
@@ -450,15 +453,16 @@ console.log('\n[9] 真实快照回归（public/data/market-data.json）')
   )
 
   // 2026-11-24 龙五批准重定基线：WTI 主源改 OilPrice.com 现货后，oilPrice 也回到 realtime（无日期），
-  // realtime 名额 2 → 3（oilPrice/naturalGas/lmeIndex）。名额是当日事实，但
-  // 「每个 realtime 项必须 days=null」是契约（无日期项永不 fresh，realtime 只描述无日期主源命中）。
+  // realtime 名额 2 → 3（oilPrice/naturalGas/lmeIndex）。
+  // P1-8DIM（2026-11-28）：usdcnh 主源（东财离岸现货）同样不提供交易日期 → 名额 3 → 4。
+  // 名额是当日事实，但「每个 realtime 项必须 days=null」是契约（无日期项永不 fresh）。
   const rt = all.filter(([, v]) => resolveFreshnessState(v) === 'realtime')
   check(
-    'realtime 3 个 = {oilPrice, naturalGas, lmeIndex}',
-    rt.map(([k]) => k).sort().join(',') === 'lmeIndex,naturalGas,oilPrice',
+    'realtime 4 个 = {oilPrice, naturalGas, lmeIndex, usdcnh}',
+    rt.map(([k]) => k).sort().join(',') === 'lmeIndex,naturalGas,oilPrice,usdcnh',
     rt.map(([k]) => k).join(',')
   )
-  check('每个 realtime 项 days=null（强断言，不是只看个数）', rt.length === 3 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
+  check('每个 realtime 项 days=null（强断言，不是只看个数）', rt.length === 4 && rt.every(([, v]) => computeStaleness(v).days === null), rt.map(([k]) => k).join(','))
 
   // ── 超期字段：期望值由 max(0, days_stale − 红线) 推导，不写死 13
   const usGdp = real.indicators.usGdp
@@ -562,7 +566,8 @@ console.log('\n[11] 维度计数：active_count ≠ 计分项')
   check('economic: 不把 active_count 6 当计分项', counts.scoring !== real.meta.dimensions.economic.active_count)
 
   const tg = resolveDimensionCounts(real.meta.dimensions.techGreen)
-  check('techGreen: scoring=2 / referenceOnly=2', tg.scoring === 2 && tg.referenceOnly === 2, JSON.stringify(tg))
+  // P1-8DIM：carbonPrice 从 resource 迁入 → 计分项 3；aiGrowth/robotInstall 移出分母，仍只展示
+  check('techGreen: scoring=3 / referenceOnly=2', tg.scoring === 3 && tg.referenceOnly === 2, JSON.stringify(tg))
 
   // 边界
   check('缺字段不烙', JSON.stringify(resolveDimensionCounts({})) === JSON.stringify({ scoring: 0, referenceOnly: 0, excluded: 0, required: null }))
@@ -714,14 +719,20 @@ console.log('\n[15] IAS 关键词读 ias.signal，不按 score 另算一套阈�
   // 那是把今天的行情写进契约，明天数据一动就红。改成**结构断言**：
   //   signal 必须与 score 按后端 IAS_THRESHOLDS 同源推导，icon 必须与 signal 档位配套。
   check(
-    'ias.signal ≡ score 经 IAS_THRESHOLDS 推导的档位（同源，不写死具体档）',
-    ias.signal === deriveIasSignal(ias.score),
-    `${ias.signal} vs ${deriveIasSignal(ias.score)}(score=${ias.score})`
+    'ias.signal ≡ normalized 经 IAS_THRESHOLDS 推导的档位（同源，不写死具体档）',
+    ias.signal === deriveIasSignal(ias.normalized),
+    `${ias.signal} vs ${deriveIasSignal(ias.normalized)}(norm=${ias.normalized})`
   )
   check(
     'ias.signal_icon ≡ signal 档位对应图标',
-    ias.signal_icon === IAS_ICON[deriveIasSignal(ias.score)],
-    `${ias.signal_icon} vs ${IAS_ICON[deriveIasSignal(ias.score)]}`
+    ias.signal_icon === IAS_ICON[deriveIasSignal(ias.normalized)],
+    `${ias.signal_icon} vs ${IAS_ICON[deriveIasSignal(ias.normalized)]}`
+  )
+  // P1-8DIM：score 只是展示层量纲（normalized × IAS_SCALE），不得再用它比阈值
+  check(
+    'ias.score = normalized × ias_scale（展示量纲，不是判级依据）',
+    Math.abs(ias.score - ias.normalized * ias.ias_scale) <= 0.011,
+    `${ias.score} vs ${ias.normalized * ias.ias_scale}`
   )
 
   const kw = resolveIasKeyword(ias)
@@ -736,7 +747,11 @@ console.log('\n[15] IAS 关键词读 ias.signal，不按 score 另算一套阈�
 
   // 维度关键词不受影响（维度没有后端等价物）
   check('维度 economic 仍有词', getKeyword('economic', -0.25).keyword === '放缓', getKeyword('economic', -0.25).keyword)
-  check('维度 sentiment 仍有词', getKeyword('sentiment', -0.465).keyword === '谨慎', getKeyword('sentiment', -0.465).keyword)
+  // P1-8DIM：旧 id 'sentiment' 已拆为 sentimentA + riskAppetite
+  check('维度 sentimentA 仍有词', getKeyword('sentimentA', -0.465).keyword === '谨慎', getKeyword('sentimentA', -0.465).keyword)
+  check('维度 fxExternal 有词', getKeyword('fxExternal', -0.2).keyword === '承压', getKeyword('fxExternal', -0.2).keyword)
+  check('维度 riskAppetite 有词', getKeyword('riskAppetite', -0.7).keyword === '恐慌', getKeyword('riskAppetite', -0.7).keyword)
+  check('旧 id sentiment 只回中性占位（不保留兼容别名）', getKeyword('sentiment', -0.465).keyword === '—', getKeyword('sentiment', -0.465).keyword)
 
   // 带后缀的 signal 必须原样透传（不枚举匹配）
   const suffixed = resolveIasKeyword({ signal: '减仓（部分维度缺失·参考）', signal_icon: '⚠️' })
@@ -769,29 +784,30 @@ console.log('\n[16] IAS 档位只读 signal，前端不再比数字阈值')
     real.meta.ias.signal
   )
   check(
-    '真实 ias.signal 档位 ≡ score 推导档位（同源交叉验证）',
-    resolveIasLevel(real.meta.ias.signal) === resolveIasLevel(deriveIasSignal(real.meta.ias.score)),
-    `${resolveIasLevel(real.meta.ias.signal)} vs ${deriveIasSignal(real.meta.ias.score)}`
+    '真实 ias.signal 档位 ≡ normalized 推导档位（同源交叉验证）',
+    resolveIasLevel(real.meta.ias.signal) === resolveIasLevel(deriveIasSignal(real.meta.ias.normalized)),
+    `${resolveIasLevel(real.meta.ias.signal)} vs ${deriveIasSignal(real.meta.ias.normalized)}`
   )
 
   // 三档映射用例（夹具字面量，固定不随行情漂移；阈值镜像 indicator_meta.IAS_THRESHOLDS）
-  // 注：后端阈值是 2.5 / 1.0 / -0.5 / -1.5（量纲=Σ权重 4.6），
-  //     故「中间持有」区间是 [-0.5, 1.0)，「加仓」档从 ≥1.0（增持）起，不是 ±0.5。
+  // P1-8DIM：阈值量纲 = normalized（0.543 / 0.217 / −0.109 / −0.326），
+  //   「中间持有」区间是 [−0.109, 0.217)，不是旧的 ±0.5（score 空间）。
   const tierCases = [
-    [-1.6, '清仓/防御', 'sell'],
-    [-1.5, '减仓', 'reduce'],
-    [-0.51, '减仓', 'reduce'],
-    [-0.5, '持有', 'hold'],
+    [-0.34, '清仓/防御', 'sell'],
+    [-0.326, '减仓', 'reduce'],
+    [-0.2, '减仓', 'reduce'],
+    [-0.109, '持有', 'hold'],
     [0, '持有', 'hold'],
-    [0.99, '持有', 'hold'],
-    [1.0, '增持', 'buy'],
-    [1.2, '增持', 'buy'],
+    [0.216, '持有', 'hold'],
+    [0.217, '增持', 'buy'],
+    [0.4, '增持', 'buy'],
+    [0.543, '强烈买入', 'strong-buy'],
   ]
-  for (const [score, sig, level] of tierCases) {
+  for (const [norm, sig, level] of tierCases) {
     check(
-      `夹具 score=${score} → ${sig}/${level}`,
-      deriveIasSignal(score) === sig && resolveIasLevel(deriveIasSignal(score)) === level,
-      `${deriveIasSignal(score)}/${resolveIasLevel(deriveIasSignal(score))}`
+      `夹具 normalized=${norm} → ${sig}/${level}`,
+      deriveIasSignal(norm) === sig && resolveIasLevel(deriveIasSignal(norm)) === level,
+      `${deriveIasSignal(norm)}/${resolveIasLevel(deriveIasSignal(norm))}`
     )
   }
 

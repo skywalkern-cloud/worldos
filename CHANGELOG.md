@@ -3,6 +3,29 @@
 > 只记「会改变结论」的变更（权重、阈值、打分口径、指标归属）。
 > 每条必须能回答：谁改的 / 何时 / 依据什么证据 / 怎么回滚。
 
+## 2026-11-28 · P1-8DIM：综合评分 6 维 → 8 维（IAS_SCALE 4.6 → 5.6）+ 阈值改 normalized 量纲
+
+- **谁**：龙五（PM）派单 `docs/P1-8DIM-WORKORDER.md`，扣钉实现（批次 A：骨架搬家）
+- **何时**：2026-11-28
+- **变更（一句话）**：`DIMENSIONS` 由 6 维拆为 8 维（新增 fxExternal，sentiment 拆为 sentimentA + riskAppetite），
+  权重和 4.6 → 5.6；`IAS_THRESHOLDS` 由 score 量纲（2.5/1.0/−0.5/−1.5）改为 **normalized 量纲**
+  （0.543/0.217/−0.109/−0.326），比较一律用 `ias.normalized`。
+- **结构**：economic 1.0 / inflation 1.0 / liquidity 0.8（只剩 LPR·DR007·M2）/ fxExternal 0.7（新增）/
+  sentimentA 0.9 / riskAppetite 0.4 / resource 0.5 / techGreen 0.3，合计 **5.6**（= `IAS_SCALE` 派生值，无硬编码）。
+- **指标搬家**：`dollarIndex/creditSpread/usBond10Y` → fxExternal；`usBond2Y/5Y` → riskAppetite **只展示**；
+  `lmeIndex` → resource **只展示**（与沪铜共线）；`carbonPrice` → techGreen（**改为计分**）；
+  `aiGrowth/robotInstall` 维持 reference_only 但**移出计分分母**（techGreen shrink 0.5 → 1.0）。
+- **新增指标**：`usdcnh`（USDCNH，离岸优先 akshare 东财现货，回退 exchangerate-api 在岸中间价并标 caliberNote；
+  取不到 = `null`，不硬填不插值），四段阶跃 `breakpoint_steps`：<7.05→+0.5 / 7.05~7.20→0 / 7.20~7.35→−0.5 / ≥7.35→−1.0。
+- **修复的 bug**：① 旧代码内部拿 `score`（量纲 4.6）比 −0.5 却对外发 `normalized`，真实分界漂到 −0.109；
+  ② `_ias_signal_desc`/`_strategy_advice` 里同一类 score 量纲阈值比较（改为只读后端 `ias.signal`）。
+- **当日影响（11-28，同数据）**：old −0.43/−0.093636/持有 → new **−0.57/−0.102/持有**（含 usdcnh 实时 6.6551）；
+  `rules_hash` 269592dd0bb6 → **ae148d2b8a6d**。
+- **证据**：`scripts/replay_8dim_30d.py` 逐日回算 → `data/history/recompute-8dim-2026-11-28.json`；
+  19 个历史快照中 6 天档位翻转，全部归因「结构/权重」或「缺失剔除」，**归因「阈值量纲」= 0 天**。
+- **回滚**：`git revert` 本笔代码 commit（数据/回算产物是另一笔，需一并 revert）；
+  无数据迁移、无 schema 破坏（旧快照仍可读，`ias.score` 语义保留为 normalized×IAS_SCALE）。
+
 ## 2026-11-28 · ashareTurnover 改「相对量分段」打分（不再用分位）
 
 - **谁**：龙六裁定，PM 龙五转达，扣钉实现

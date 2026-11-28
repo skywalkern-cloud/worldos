@@ -204,11 +204,15 @@ INDICATORS = {
         'name': '美债2年收益率', 'short': '美债2Y',
         'source': 'akshare-中美债券', 'country': '🇺🇸', 'unit': '%', 'frequency': 'daily',
         'caliberNote': '美国2年期国债到期收益率',
+        # P1-8DIM：降级为 riskAppetite 的只展示参考项（避免与 fedRate、期限结构重复计入）
+        'reference_only': True,
     },
     'usBond5Y': {
         'name': '美债5年收益率', 'short': '美债5Y',
         'source': 'akshare-中美债券', 'country': '🇺🇸', 'unit': '%', 'frequency': 'daily',
         'caliberNote': '美国5年期国债到期收益率',
+        # P1-8DIM：降级为 riskAppetite 的只展示参考项
+        'reference_only': True,
     },
     'usBond10Y': {
         'name': '美债10年收益率', 'short': '美债10Y',
@@ -273,6 +277,24 @@ INDICATORS = {
         'transform': 'raw',
         'polarity': 'risk_appetite',
         'reference_only': False,
+    },
+
+    # ── 新增（P1-8DIM，2026-11-28）：USDCNH ─────────────────────────
+    # 取数优先级：akshare 离岸现货(东财 USDCNH) → exchangerate-api 在岸 CNY（回退时
+    # caliberNote 追加「在岸参考价」）→ None（不许造数/不许上一交易日硬填）。
+    # 打分：breakpoint_steps 四段阶跃（龙五工单 §2）。不要求历史回填 → 可当日进维度。
+    'usdcnh': {
+        'name': '美元兑离岸人民币', 'short': 'USDCNH',
+        'source': 'akshare-东财离岸人民币现货（回退 exchangerate-api 在岸中间价）',
+        'country': '🌐', 'unit': '', 'frequency': 'daily',
+        # 东财离岸现货不提供交易日期：按现有约定标 realtime（不伪造当天），
+        # 回退到 exchangerate-api 时带日期 → 不再当实时报价展示（见 main() realtime 判定）。
+        'dateSource': 'realtime',
+        'caliberNote': '离岸人民币汇率；取不到离岸价时回退在岸中间价并在 caliberNote 标注',
+        'scoring_method': 'breakpoint_steps',
+        # 分段阶跃：数值越高 = 人民币越弱 = 越差（龙五工单 §2 建议值）
+        'breakpoint_steps': (7.05, 7.20, 7.35),
+        'breakpoint_values': (0.5, 0.0, -0.5, -1.0),
     },
 
     'dollarIndex': {
@@ -355,6 +377,8 @@ INDICATORS = {
         'name': 'LME金属指数', 'short': 'LME铜',
         'source': 'LME-综合铜03', 'country': '🌐', 'unit': '$/吨', 'frequency': 'daily',
         'caliberNote': '代理指标：LME 3个月铜价，非 LME 综合金属指数',
+        # P1-8DIM：去共线 —— 与沪铜同向，降级为 resource 的只展示参考项
+        'reference_only': True,
     },
     'shanghaiCopper': {
         'name': '沪铜', 'short': '沪铜',
@@ -373,57 +397,78 @@ DIMENSIONS = [
     {
         'id': 'economic', 'name': '经济增长', 'icon': '📈', 'weight': 1.0,
         'indicators': ['chinaGdp', 'chinaPmi', 'usGdp', 'servicePmi', 'electricity', 'usNonFarm'],
+        'caliberNote': '6 项：中美 GDP + 中美 PMI + 用电量 + 非农（均按三段线性 breakpoint 打分）',
     },
     {
         'id': 'inflation', 'name': '通胀与政策', 'icon': '💰', 'weight': 1.0,
         'indicators': ['cpi', 'ppi', 'usCpi', 'corePce', 'fedRate'],
+        'caliberNote': '5 项：中美 CPI + 核心PCE + PPI + 联邦基金利率',
     },
     {
-        'id': 'liquidity', 'name': '流动性', 'icon': '💧', 'weight': 0.8,
-        'indicators': ['lpr', 'dr007', 'm2', 'creditSpread', 'dollarIndex',
-                       'usBond2Y', 'usBond5Y', 'usBond10Y'],
+        # P1-8DIM：**保留 id 不变**（避免历史序列 key 断裂），只改 name 与成员。
+        # 移出 dollarIndex / creditSpread / usBond2Y / usBond5Y / usBond10Y。
+        'id': 'liquidity', 'name': '流动性（国内）', 'icon': '💧', 'weight': 0.8,
+        'indicators': ['lpr', 'dr007', 'm2'],
+        'caliberNote': '仅国内 3 项（LPR / DR007 / M2）。T4：n≤3 要求全部有效，任一缺失整维置灰（0.8 权重归零）',
     },
     {
-        'id': 'sentiment', 'name': '市场情绪', 'icon': '🧠', 'weight': 0.8,
-        # V1a(2026-11-27)：4 个 A股/港股情绪代理先在 sentiment 挂"只展示"；
-        # V1b-1(2026-11-28) 转正：4 项已 reference_only=False，从 reference_indicators
-        # 正式移入 indicators（计分成员），参与维度平均。
-        'indicators': ['vix', 'fearGreed', 'ashareTurnover', 'marginBalance',
-                       'southboundNet', 'hstechMomentum'],
-        'reference_indicators': [],
-        # D(2026-11-09 龙五拍板)：该维度按「A股情绪齐备」设计权重 0.8。
-        # 2026-11-24：vix 换 CBOE、2 项均为美股，A股代理 0 项 → 声明式折半到 0.4。
-        # 2026-11-28 V1b-1：补齐 ≥3 项 A股/港股情绪代理且均已出分（见 CHANGELOG.md），
-        #   撤 market_mismatch 折半 → 恢复设计权重 0.8。mismatch_reason 同步置 None。
-        'market_mismatch': 1.0,
-        'mismatch_reason': None,
-        'caliberNote': '6 项：美股 VIX + CNN F&G + A股/港股 4 项（两市成交额/融资余额/南向净买入/恒科动量），均按 pct_rank 打分',
+        # 新维度：汇率与外部（usdcnh 新增。4 项 → 最小有效数 max(2, ceil(4*0.5)) = 2，
+        # usdcnh 取不到时维度仍可出分）。
+        'id': 'fxExternal', 'name': '汇率与外部', 'icon': '💱', 'weight': 0.7,
+        'indicators': ['usdcnh', 'dollarIndex', 'creditSpread', 'usBond10Y'],
+        'caliberNote': 'USDCNH（离岸优先，缺失回退在岸）+ 美元指数（三货币加权代理）+ 中美10Y利差 + 美债10Y；4 项需 ≥2 有效',
     },
     {
-        'id': 'resource', 'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.6,
-        'indicators': ['oilPrice', 'naturalGas', 'carbonPrice', 'lmeIndex', 'shanghaiCopper'],
+        # 原 sentiment 拆分：4 个 A股/港股代理独立成 sentimentA（0.9），
+        # 老板 46% 仓位在港股 → 这是关键维度。旧 id 'sentiment' 已消失。
+        'id': 'sentimentA', 'name': 'A股/港股情绪', 'icon': '🧠', 'weight': 0.9,
+        'indicators': ['ashareTurnover', 'marginBalance', 'southboundNet', 'hstechMomentum'],
+        'caliberNote': '4 项 A股/港股情绪代理：两市成交额(ratio_band) + 融资余额/南向净买入/恒科动量(pct_rank)',
     },
     {
-        'id': 'techGreen', 'name': '科技与绿色', 'icon': '🌱', 'weight': 0.4,
-        'indicators': ['aiGrowth', 'robotInstall', 'evPenetration', 'renewEnergyInvest'],
+        # 原 sentiment 的 VIX + F&G 缩编为本维度；美债 2Y/5Y 只展示不打分。
+        'id': 'riskAppetite', 'name': '全球风险偏好', 'icon': '🌍', 'weight': 0.4,
+        'indicators': ['vix', 'fearGreed'],
+        'reference_indicators': ['usBond2Y', 'usBond5Y'],
+        'caliberNote': 'VIX + CNN F&G 打分；美债2Y/5Y 仅展示（避免与 fedRate、期限结构重复计入）',
+    },
+    {
+        # 去共线：lmeIndex 降 reference_only（与沪铜同向），carbonPrice 移入 techGreen 打分。
+        'id': 'resource', 'name': '资源与供应链', 'icon': '🛢️', 'weight': 0.5,
+        'indicators': ['oilPrice', 'naturalGas', 'shanghaiCopper'],
+        'reference_indicators': ['lmeIndex'],
+        'caliberNote': 'WTI 原油 + 天然气 + 沪铜打分；LME 铜仅展示（与沪铜共线）',
+    },
+    {
+        # aiGrowth / robotInstall 保持 reference_only 现状（不顺手转正），移出计分分母。
+        'id': 'techGreen', 'name': '科技与绿色', 'icon': '🌱', 'weight': 0.3,
+        'indicators': ['evPenetration', 'renewEnergyInvest', 'carbonPrice'],
+        'reference_indicators': ['aiGrowth', 'robotInstall'],
+        'caliberNote': '新能源渗透率 + 新能源指数 + 碳价打分；AI/机器人代理仅展示',
     },
 ]
 
-# IAS 信号阈值（对外统一使用 ias.score，量纲 = Σ权重 = 4.6，
-# 因此阈值沿用旧标定值；ias.normalized = score / 4.6 仅供展示）
+# IAS 信号阈值（P1-8DIM 2026-11-28：量纲统一为 **normalized**，比较一律用 ias.normalized）
+#
+# 旧 bug：内部拿 score（量纲 Σ权重=4.6）去比 -0.5，却对外发 normalized，
+# 真实分界漂到 normalized −0.109。现在阈值在 normalized 空间恒定，缩放 IAS_SCALE 不再改信号含义：
+#   旧 score 2.5 → /4.6 = 0.5435 → 0.543；1.0 → 0.2174 → 0.217；
+#   −0.5 → −0.1087 → −0.109；−1.5 → −0.3261 → −0.326（half-up 3 位）。
+IAS_THRESHOLD_SPACE = 'normalized'
 IAS_THRESHOLDS = [
-    (2.5,  '强烈买入', '80-100%', '🚀'),
-    (1.0,  '增持',     '60-80%',  '✅'),
-    (-0.5, '持有',     '40-60%',  '➖'),
-    (-1.5, '减仓',     '20-40%',  '⚠️'),
+    (0.543,  '强烈买入', '80-100%', '🚀'),
+    (0.217,  '增持',     '60-80%',  '✅'),
+    (-0.109, '持有',     '40-60%',  '➖'),
+    (-0.326, '减仓',     '20-40%',  '⚠️'),
 ]
 IAS_POSITION_ERROR = ('清仓/防御', '0-20%', '🛑')
 IAS_MIN_COVERAGE = 0.6      # data_coverage 低于此值 → 不给仓位建议
 IAS_PARTIAL_COVERAGE = 0.8  # 0.6~0.8 → 出分但信号标注「部分维度缺失·参考」
 
-# 综合分标尺：等于设计权重总和（今日 4.6）。
-# 必须派生，不能硬编码——P1 一旦调整 design 权重（sentiment 恢复 0.8 / 新增汇率维度），
-# 硬编码的 4.6 会变成僵尸常数，阈值语义被悄悄改掉而没人知道。
+# 综合分标尺：等于设计权重总和（今日 1.0+1.0+0.8+0.7+0.9+0.4+0.5+0.3 = 5.6）。
+# 必须派生，不能硬编码 —— 硬编码的常数会变成僵尸常数，
+# 阈值语义被悄悄改掉而没人知道（P1-8DIM 就是被这个坑咬过一次：4.6 写死、阈值按 score 比）。
+# 现在**信号阈值在 normalized 空间**（见 IAS_THRESHOLDS），IAS_SCALE 只影响展示用 score 的量纲。
 IAS_SCALE = round(sum(d['weight'] for d in DIMENSIONS), 2)
 
 
@@ -459,7 +504,25 @@ RATIO_BAND_CONFIG = {
     for k, v in INDICATORS.items()
     if v.get('scoring_method') == 'ratio_band'
 }
-# 所有非 breakpoint 指标的配置汇总（scoring / fetch 都从这份派生）
+# breakpoint_steps（四段阶跃）：目前只有 usdcnh。
+# steps=(x1,x2,x3)，values=(v0,v1,v2,v3)，语义：
+#   x < x1 → v0；x1 ≤ x < x2 → v1；x2 ≤ x < x3 → v2；x ≥ x3 → v3
+# 与三段线性 breakpoint 的区别：这里是要龙五拍的四段阶梯（不是线性插值），
+# 故单列一份配置，**不许**为了省事把它塞进 NEGATIVE_PARAMS 改变语义。
+BREAKPOINT_STEPS_CONFIG = {
+    k: {
+        'method': 'breakpoint_steps',
+        'steps': tuple(v['breakpoint_steps']),
+        'values': tuple(v['breakpoint_values']),
+    }
+    for k, v in INDICATORS.items()
+    if v.get('scoring_method') == 'breakpoint_steps'
+}
+
+# 所有「需要历史样本」的量化指标配置汇总（pct_rank + ratio_band）。
+# ⚠️ breakpoint_steps（usdcnh）**故意不在里面**：它不需要历史回填，
+# 而 fetch 用 QUANTILE_CONFIG 决定「哪些指标要写 series / 挂 history」，
+# 把它混进来会多写一份无用的历史序列。
 QUANTILE_CONFIG = {**PCT_RANK_CONFIG, **RATIO_BAND_CONFIG}
 
 INDICATOR_DIMENSION = {}
@@ -529,17 +592,19 @@ def dimension_weights(dim: dict) -> dict:
       1. 有效性收缩（自动）：w_eff = w_design × (active_count / 设计指标数)
          代理/参考项不算 active，所以剔掉它们会自动收缩权重，
          不需要为「只剩 2 个指标」单独拍一个魔法数字。
-      2. 市场错配折半（声明式）：维度可声明 market_mismatch 系数（默认 1.0），
-         仅 sentiment 有值 0.5，原因写进 mismatch_reason。
+      2. 市场错配折半（声明式）：维度可声明 market_mismatch 系数（默认 1.0）。
+         P1-8DIM（2026-11-28）后已无维度使用该系数（原 sentiment 已拆分），
+         但保留机制：下一轮若再出现「维度成员与目标市场不匹配」仍需声明式降权。
 
     2026-11-27 V1a 注记（**故意不改**本函数口径）：
       V1a 要往 sentiment 挂 4 个 reference_only 展示项。若把它们塞进 dim['indicators']，
       本函数会把它们算进分母 → shrink 1.0→0.333、有效权重 0.4→0.133，
       等于「只加展示项却偷改权重」。故 V1a 采用 reference_indicators（独立展示列），
       dim['indicators'] 一律保持「计分成员」语义不变，权重逐位零漂移。
-      ❗遗留不一致（已上报，V1b 再定）：techGreen 的 aiGrowth/robotInstall 是 reference_only
-      但仍在 indicators 里，shrink = 2/4 = 0.5（有效 0.2），与本文档「参考项不计入分母」不符。
-      这与 V1a 无关，且改动会直接影响 IAS，故本次不动。
+
+    2026-11-28 P1-8DIM：上述「遗留不一致」（techGreen 的 aiGrowth/robotInstall 是
+      reference_only 却仍在 indicators 里 → shrink=2/4）已修正：
+      两项移到 reference_indicators，indicators 只留 3 个真计分项 → shrink=1.0。
 
     Returns: {design, effective, shrink, mismatch, reason, active_count, design_count,
               display_count}
@@ -627,6 +692,9 @@ def rules_snapshot() -> dict:
         'reference_only': sorted(REFERENCE_ONLY),
         'min_valid_rule': 'n>3 → max(2, ceil(n/2)); n<=3 → 全部有效; 参考项不计入分母',
         'ias_scale': IAS_SCALE,
+        # P1-8DIM：阈值量纲声明（normalized）。缺了这行，第三方无法判断
+        # 快照里的阈值该乘 IAS_SCALE 还是直接比 normalized。
+        'ias_threshold_space': IAS_THRESHOLD_SPACE,
         'ias_thresholds': [[t, sig, pos] for t, sig, pos, _ in IAS_THRESHOLDS],
         'ias_min_coverage': IAS_MIN_COVERAGE,
         'ias_partial_coverage': IAS_PARTIAL_COVERAGE,

@@ -6,7 +6,7 @@ WorldOS 数据解读评论生成器 v1.0 (模板引擎)
     保留作为 LLM 调用失败时的 fallback 使用。
     主入口：generate_commentary_llm.py
 
-根据评分后的 indicators 和 meta 数据，自动生成6个维度 + IAS整体解读的评论。
+根据评分后的 indicators 和 meta 数据，自动生成 8 个维度 + IAS整体解读的评论。
 完全基于模板引擎，无需 LLM 或外部依赖。
 
 输出: commentary.json (public/data/commentary.json)
@@ -281,94 +281,176 @@ def _dim_commentary_inflation(indicators: dict, dim_meta: dict) -> str:
 
 
 def _dim_commentary_liquidity(indicators: dict, dim_meta: dict) -> str:
-    """💧 流动性板块解读"""
+    """💧 流动性（国内）板块解读
+
+    P1-8DIM（2026-11-28）：本维度**只剩国内 3 项**（LPR / DR007 / M2）。
+    中美利差 / 美元指数 / 美债收益率已迁到 fxExternal，本段不再重复讲，
+    否则同一件事在两张卡上说两遍（口径重复 = 读者无法归因）。
+    """
     dim_score = dim_meta.get('score', 0)
-    cls = classify_score(dim_score)
     signal_label = get_signal_label(dim_meta.get('signal', 'gray'))
 
     lpr = get_indicator(indicators, 'lpr')
     dr007 = get_indicator(indicators, 'dr007')
     m2 = get_indicator(indicators, 'm2')
-    credit = get_indicator(indicators, 'creditSpread')
-    dollar = get_indicator(indicators, 'dollarIndex')
-    b2y = get_indicator(indicators, 'usBond2Y')
-    b10y = get_indicator(indicators, 'usBond10Y')
 
     lines = []
-    cls_label = '中性偏松但结构分化明显' if abs(dim_score) < 0.2 else ('偏宽松' if dim_score > 0 else '偏紧')
-    lines.append(f"流动性板块评分**{dim_score:+.2f}**（{signal_label}），{cls_label}。")
+    cls_label = ('国内流动性中性偏松但结构分化' if abs(dim_score) < 0.2
+                 else ('国内流动性偏宽松' if dim_score > 0 else '国内流动性偏紧'))
+    lines.append(f"流动性（国内）板块评分**{dim_score:+.2f}**（{signal_label}），{cls_label}。")
 
-    # 国内流动性
-    cn_parts = []
+    parts = []
     lpr_v = lpr.get('value')
     dr_v = dr007.get('value')
     m2_v = m2.get('value')
     if lpr_v is not None:
-        cn_parts.append(f"LPR{value_str(lpr)}{' 低于3.5% target，政策偏松' if lpr_v < 3.5 else ' 符合预期'}")
+        parts.append(f"LPR{value_str(lpr)}{' 低于3.5%政策中枢，价格型工具偏松' if lpr_v < 3.5 else ' 符合政策中枢'}")
     if dr_v is not None:
-        cn_parts.append(f"DR007实际成交{value_str(dr007, 2)}{' 远低于1.8%中性线' if dr_v < 1.6 else ' 在1.8%附近'}")
+        parts.append(f"DR007实际成交{value_str(dr007, 2)}{' 低于1.8%中性线，银行间不缺钱' if dr_v < 1.6 else ' 在1.8%附近，资金面中性'}")
     if m2_v is not None:
-        cn_parts.append(f"M2增速{value_str(m2)}{' 接近9% target' if abs(m2_v - 9.0) < 1.5 else ''}")
-    if cn_parts:
-        lines.append("国内宽松信号清晰：" + "，".join(cn_parts) + "。")
+        parts.append(f"M2增速{value_str(m2)}{' 接近9%目标' if abs(m2_v - 9.0) < 1.5 else ''}")
+    if parts:
+        lines.append("国内货币环境：" + "，".join(parts) + "。")
 
-    # 利差和美元
-    cross_parts = []
-    cr_v = credit.get('value')
-    if cr_v is not None:
-        cross_parts.append(f"中美10年利差{value_str(credit)}{' 高于200bp中性线，中美利差倒挂压力大' if cr_v > 250 else ' 在200bp附近'}")
-    d_v = dollar.get('value')
-    if d_v is not None:
-        cross_parts.append(f"美元指数{value_str(dollar)}{' 高位震荡' if d_v > 100 else ' 偏弱'}")
-    if cross_parts:
-        lines.append("跨境维度，" + "，".join(cross_parts) + "。")
-
-    # 美债收益率曲线
-    b2y_v = b2y.get('value')
-    b10y_v = b10y.get('value')
-    if b2y_v is not None and b10y_v is not None:
-        if b10y_v > b2y_v:
-            lines.append(f"美债收益率曲线正常化（10Y **{b10y_v:.2f}%** > 2Y **{b2y_v:.2f}%**），但整体高利率环境仍压制全球风险偏好。")
-        else:
-            lines.append(f"美债收益率曲线持续倒挂（10Y **{b10y_v:.2f}%** < 2Y **{b2y_v:.2f}%**），衰退预期未消。")
+    missing = [k for k, v in (('LPR', lpr), ('DR007', dr007), ('M2', m2)) if v.get('value') is None]
+    if missing:
+        lines.append(f"注意：{'/'.join(missing)} 本轮缺失。本维度只有 3 项，"
+                     "按最小有效数规则须全部有效，任一缺失整维置灰（0.8 权重不计入 IAS）。")
     else:
-        lines.append("整体利率环境偏高，压制全球风险偏好。")
+        lines.append("三项均有效，按权重全额计入 IAS。")
 
+    lines.append("跨境资金与美债收益率已单独成「汇率与外部」维度，不在本段重复。")
     return ''.join(lines)
 
 
-def _dim_commentary_sentiment(indicators: dict, dim_meta: dict) -> str:
-    """🧠 市场情绪板块解读"""
+def _dim_commentary_sentimentA(indicators: dict, dim_meta: dict) -> str:
+    """🧠 A股/港股情绪板块解读（P1-8DIM：原 sentiment 拆分而来）
+
+    成员：两市成交额（相对量）、融资余额（5日变化率）、南向净买入（5日累计）、恒科动量。
+    权重 0.9——老板 46% 仓位在港股，这一维的解释力比美股情绪更高。
+    """
+    dim_score = dim_meta.get('score', 0)
+    signal_label = get_signal_label(dim_meta.get('signal', 'gray'))
+
+    turnover = get_indicator(indicators, 'ashareTurnover')
+    margin = get_indicator(indicators, 'marginBalance')
+    south = get_indicator(indicators, 'southboundNet')
+    hstech = get_indicator(indicators, 'hstechMomentum')
+
+    lines = []
+    lines.append(f"A股/港股情绪板块评分**{dim_score:+.2f}**（{signal_label}）。")
+
+    parts = []
+    t_v = turnover.get('value')
+    if t_v is not None:
+        r = turnover.get('r_value')
+        base = turnover.get('ma120_base')
+        extra = (f"（相对前120日均值 {r:.2f} 倍，基准 {base:.0f} 亿）"
+                 if isinstance(r, (int, float)) and isinstance(base, (int, float)) else '')
+        parts.append(f"两市成交额{value_str(turnover, 0)}{extra}")
+    m_v = margin.get('value')
+    if m_v is not None:
+        parts.append(f"融资余额{value_str(margin, 0)}（打分取5日变化率）")
+    s_v = south.get('value')
+    if s_v is not None:
+        parts.append(f"南向净买入{value_str(south)}（5日累计口径）")
+    h_v = hstech.get('value')
+    if h_v is not None:
+        parts.append(f"恒科相对上证20日强弱{value_str(hstech)}")
+    if parts:
+        lines.append("、".join(parts) + "。")
+
+    # 打分方法透明化：4 项都是相对量/分位，不说清楚会被误读成绝对水平判断
+    lines.append("本维四项均用**相对自身历史**的分位/相对量打分（非绝对高低）："
+                 "成交额看相对量、融资看5日变化率、南向看5日累计、恒科看20日相对强弱。")
+
+    if dim_meta.get('insufficient_data'):
+        lines.append(f"⚠️ 有效项不足（{dim_meta.get('valid_count')}/{dim_meta.get('required_count')}），"
+                     "本维置灰，不计入 IAS。")
+    return ''.join(lines)
+
+
+def _dim_commentary_fxExternal(indicators: dict, dim_meta: dict) -> str:
+    """💱 汇率与外部板块解读（P1-8DIM 新增）"""
+    dim_score = dim_meta.get('score', 0)
+    signal_label = get_signal_label(dim_meta.get('signal', 'gray'))
+
+    cnh = get_indicator(indicators, 'usdcnh')
+    dollar = get_indicator(indicators, 'dollarIndex')
+    credit = get_indicator(indicators, 'creditSpread')
+    b10y = get_indicator(indicators, 'usBond10Y')
+
+    lines = []
+    lines.append(f"汇率与外部板块评分**{dim_score:+.2f}**（{signal_label}）。")
+
+    cnh_v = cnh.get('value')
+    if cnh_v is not None:
+        zone = ('人民币偏强（<7.05）' if cnh_v < 7.05 else
+                '人民币中性（7.05~7.20）' if cnh_v < 7.20 else
+                '人民币偏弱（7.20~7.35）' if cnh_v < 7.35 else
+                '人民币明显承压（≥7.35）')
+        lines.append(f"美元兑离岸人民币{value_str(cnh, 4)}，{zone}。")
+    else:
+        lines.append("美元兑离岸人民币本轮未取到（不回退造数），本项不计分。")
+
+    d_v = dollar.get('value')
+    if d_v is not None:
+        lines.append(f"美元指数{value_str(dollar)}（三货币加权代理，非 ICE DXY）{' 高位' if d_v > 100 else ' 偏弱'}。")
+    cr_v = credit.get('value')
+    if cr_v is not None:
+        lines.append(f"中美10年利差{value_str(credit, 0)}{'，倒挂压力大。' if cr_v > 250 else '。'}")
+    b10_v = b10y.get('value')
+    if b10_v is not None:
+        lines.append(f"美债10Y {value_str(b10y, 2)}，仍是全球资产定价锚。")
+
+    if dim_meta.get('insufficient_data'):
+        lines.append(f"⚠️ 有效项不足（{dim_meta.get('valid_count')}/{dim_meta.get('required_count')}），"
+                     "本维置灰。")
+    return ''.join(lines)
+
+
+def _dim_commentary_riskAppetite(indicators: dict, dim_meta: dict) -> str:
+    """🌍 全球风险偏好板块解读（P1-8DIM：原 sentiment 的 VIX/F&G 部分）"""
     dim_score = dim_meta.get('score', 0)
     signal_label = get_signal_label(dim_meta.get('signal', 'gray'))
 
     vix = get_indicator(indicators, 'vix')
-    epu = get_indicator(indicators, 'epu')
+    fg = get_indicator(indicators, 'fearGreed')
+    b2y = get_indicator(indicators, 'usBond2Y')
+    b5y = get_indicator(indicators, 'usBond5Y')
 
     lines = []
-    lines.append(f"市场情绪板块评分**{dim_score:+.2f}**（{signal_label}），信号中性但数据源单一需谨慎解读。")
+    lines.append(f"全球风险偏好板块评分**{dim_score:+.2f}**（{signal_label}）。")
 
     vix_v = vix.get('value')
     if vix_v is not None:
         if vix_v < 15:
             lines.append(f"{short_name('vix')}{value_str(vix)}低于15，市场情绪非常平静。")
         elif vix_v < 20:
-            lines.append(f"{short_name('vix')}{value_str(vix)}处于15-20的常规区间，市场情绪正常。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}处于15-20常规区间，情绪正常。")
         elif vix_v < 25:
-            lines.append(f"{short_name('vix')}{value_str(vix)}略高于20的中性线，市场存在一定紧张情绪，资产定价中不可忽视隐含的风险溢价。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}略高于20中性线，存在一定紧张情绪。")
         elif vix_v < 30:
-            lines.append(f"{short_name('vix')}{value_str(vix)}超过25，市场恐慌情绪明显升温，需警惕地缘事件或流动性冲击的传导风险。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}超过25，恐慌情绪明显升温。")
         else:
-            lines.append(f"{short_name('vix')}{value_str(vix)}突破30，市场处于极端恐慌状态，系统性风险显著上升。")
+            lines.append(f"{short_name('vix')}{value_str(vix)}突破30，极端恐慌。")
     else:
-        lines.append(f"{short_name('vix')}暂无有效数据，情绪指标缺失。")
+        lines.append(f"{short_name('vix')}暂无有效数据。")
 
-    epu_v = epu.get('value')
-    if epu_v is not None:
-        lines.append(f"EPU指数{value_str(epu)}，政策不确定性{'高企' if epu_v > 150 else '中等' if epu_v > 100 else '较低'}。")
-    else:
-        lines.append("EPU指数暂缺有效数据，情绪维度数据面偏薄，需警惕 VIX 未充分反映的实际风险。")
+    fg_v = fg.get('value')
+    if fg_v is not None:
+        lines.append(f"CNN 恐惧贪婪指数{value_str(fg)}{'（极度恐惧）' if fg_v < 25 else '（恐惧）' if fg_v < 45 else '（中性）' if fg_v < 60 else '（贪婪）'}。")
 
+    ref = []
+    if b2y.get('value') is not None:
+        ref.append(f"2Y {b2y['value']:.2f}%")
+    if b5y.get('value') is not None:
+        ref.append(f"5Y {b5y['value']:.2f}%")
+    if ref:
+        lines.append(f"参考（不计分）：美债 {' / '.join(ref)}。")
+
+    if dim_meta.get('insufficient_data'):
+        lines.append(f"⚠️ 有效项不足（{dim_meta.get('valid_count')}/{dim_meta.get('required_count')}），本维置灰。")
     return ''.join(lines)
 
 
@@ -380,7 +462,6 @@ def _dim_commentary_resource(indicators: dict, dim_meta: dict) -> str:
 
     oil = get_indicator(indicators, 'oilPrice')
     nat_gas = get_indicator(indicators, 'naturalGas')
-    carbon = get_indicator(indicators, 'carbonPrice')
 
     lines = []
     lines.append(f"资源与供应链板块评分**{dim_score:+.2f}**（{signal_label}），是表现{'最好的板块' if dim_score > 0.2 else '偏稳的板块'}。")
@@ -405,28 +486,17 @@ def _dim_commentary_resource(indicators: dict, dim_meta: dict) -> str:
         else:
             lines.append(f"天然气{value_str(nat_gas, 2)}偏高，关注能源成本传导。")
 
-    cb_v = carbon.get('value')
-    if cb_v is not None:
-        if cb_v > 90:
-            lines.append(f"碳价{value_str(carbon)}持续高于90¥/吨H值，碳市场定价机制运转良好，绿色转型信号积极。")
-        else:
-            lines.append(f"碳价{value_str(carbon)}在合理区间。")
-
-    # ── LME铜期货 ──
+    # ── LME铜（P1-8DIM：降为只展示参考项，与沪铜共线，不重复计分）──
     lme = get_indicator(indicators, 'lmeIndex')
     lme_v = lme.get('value')
     if lme_v is not None:
-        # bidirectional: L=3000, T_low=6000, T_high=12000, H=15000
-        if lme_v < 3000:
-            lines.append(f"LME铜{value_str(lme)}处于3000$/吨以下极低位，需求萎缩风险突出。")
-        elif lme_v <= 6000:
-            lines.append(f"LME铜{value_str(lme)}处于3000-6000$/吨偏低区间，关注低位修复机会。")
+        # bidirectional: L=3000, T_low=6000, T_high=12000, H=15000（仅展示）
+        if lme_v < 6000:
+            lines.append(f"参考（不计分）LME铜{value_str(lme)}处于6000$/吨以下偏低区间。")
         elif lme_v <= 12000:
-            lines.append(f"LME铜{value_str(lme)}处于6000-12000$/吨理想区间内，供需格局健康。")
-        elif lme_v <= 15000:
-            lines.append(f"LME铜{value_str(lme)}处于12000-15000$/吨偏高区间，铜价上行压力显现，关注下游成本传导。")
+            lines.append(f"参考（不计分）LME铜{value_str(lme)}处于6000-12000$/吨合理区间。")
         else:
-            lines.append(f"LME铜{value_str(lme)}突破15000$/吨高位，铜价过热风险上升，警惕需求抑制。")
+            lines.append(f"参考（不计分）LME铜{value_str(lme)}高于12000$/吨，铜价偏热。")
 
     # ── 沪铜期货 ──
     sh_copper = get_indicator(indicators, 'shanghaiCopper')
@@ -443,6 +513,8 @@ def _dim_commentary_resource(indicators: dict, dim_meta: dict) -> str:
             lines.append(f"沪铜{value_str(sh_copper)}处于75000-90000¥/吨偏高区间，铜价上行压力显现。")
         else:
             lines.append(f"沪铜{value_str(sh_copper)}突破90000¥/吨高位，国内铜价过热，需关注下游企业成本压力及政策调控动向。")
+
+    lines.append("LME 铜仅作参考展示（与沪铜共线，避免重复计分）；碳价已归入「科技与绿色」维度。")
 
     lines.append("整体资源端未构成系统性风险，但对油价上行通道需保持关注。" if oil_v is None or oil_v <= 90 else "整体资源端构成一定压力，需持续监控。")
 
@@ -479,16 +551,26 @@ def _dim_commentary_techGreen(indicators: dict, dim_meta: dict) -> str:
         else:
             lines.append(f"新能源指数{value_str(energy_idx, 0)}达到1200点target，市场定价合理。")
 
-    # 科技
+    # 碳价（P1-8DIM：从 resource 迁入，作为本维第三个计分项）
+    carbon = get_indicator(indicators, 'carbonPrice')
+    cb_v = carbon.get('value')
+    if cb_v is not None:
+        lines.append(f"碳价{value_str(carbon)}，"
+                     f"{'高于90的H值，碳市场定价机制运转良好' if cb_v > 90 else '在合理区间'}。")
+    else:
+        lines.append("碳价数据暂缺（本维仅 3 个计分项，需全部有效，缺失将导致整维置灰）。")
+
+    # 科技（P1-8DIM：两项降为只展示参考项，不计入本维平均）
     tech_parts = []
     ai_v = ai.get('value')
     if ai_v is not None:
-        tech_parts.append(f"{short_name('aiGrowth')}{value_str(ai)}{'低于' if ai_v < 10 else '达到'}10% target")
+        tech_parts.append(f"{short_name('aiGrowth')}{value_str(ai)}")
     robot_v = robot.get('value')
     if robot_v is not None:
-        tech_parts.append(f"{short_name('robotInstall')}{value_str(robot)}{'低于' if robot_v < 10 else '达到'}10% target")
+        tech_parts.append(f"{short_name('robotInstall')}{value_str(robot)}")
     if tech_parts:
-        lines.append("、".join(tech_parts) + "，科技升级实际落地速度弱于政策目标。")
+        lines.append("参考（不计分）：" + "、".join(tech_parts) +
+                     "，科技升级落地速度与政策目标的差距仍需观察。")
 
     lines.append("板块存在'产业热、资本冷'的结构性矛盾，值得持续关注。")
 
@@ -510,7 +592,8 @@ def _generate_ias_summary(meta: dict, indicators: dict) -> str:
     lines = []
 
     # 1. 总览
-    lines.append(f"本期IAS综合评分**{ias_score:+.2f}**（{signal_icon}{signal}，建议仓位{position}），整体信号{_ias_signal_desc(ias_score)}。\n")
+    lines.append(f"本期IAS综合评分**{ias_score:+.2f}**（{signal_icon}{signal}，建议仓位{position}），"
+                 f"整体信号{_ias_signal_desc(signal)}。\n")
 
     # 2. 板块贡献分解
     dims = meta.get('dimensions', {})
@@ -546,49 +629,50 @@ def _generate_ias_summary(meta: dict, indicators: dict) -> str:
         lines.append(f"⚠️**尾部风险**：{'；'.join(risks[:2])}。\n")
 
     # 5. 策略建议
-    strategy = _strategy_advice(ias_score, indicators, meta)
+    strategy = _strategy_advice(ias, indicators, meta)
     if strategy:
         lines.append(f"{strategy}")
 
     return ''.join(lines)
 
 
-def _ias_signal_desc(score: float) -> str:
-    if score >= 2.5:
-        return "全面向好"
-    if score >= 1.0:
-        return "偏积极"
-    if score >= -0.5:
-        return "中性偏弱，各板块分化明显"
-    if score >= -1.5:
-        return "偏防御"
-    return "高度警惕"
+def _ias_signal_desc(signal: str) -> str:
+    """信号档位 → 一句话描述。
+
+    P1-8DIM（2026-11-28）：旧版拿 score（量纲 Σ权重）比 2.5/1.0/-0.5/-1.5，
+    与后端阈值同一个量纲 bug。现在**只认后端给的 signal 文案**（单一真源），
+    本文件不再存第二张阈值表 —— 否则 threshold 一改又得改两处。
+    """
+    base = (signal or '').split('（')[0]
+    return {
+        '强烈买入': '全面向好',
+        '增持': '偏积极',
+        '持有': '中性偏弱，各板块分化明显',
+        '减仓': '偏防御',
+        '清仓/防御': '高度警惕',
+        '数据不足': '数据不足，不给仓位建议',
+    }.get(base, '中性偏弱，各板块分化明显')
 
 
-def _strategy_advice(ias_score: float, indicators: dict, meta: dict) -> str:
-    """投资策略建议"""
-    dims = meta.get('dimensions', {})
-    if ias_score >= 0.5:
-        return f"投资策略上，IAS信号积极，可适度增加风险敞口。结构性机会明确，可关注新能源和碳市场相关资产。"
-    elif ias_score >= -0.5:
-        # 中性策略：点出亮点和风险
+def _strategy_advice(ias: dict, indicators: dict, meta: dict) -> str:
+    """投资策略建议（P1-8DIM：改按后端 signal 分档，不再自己比 score 阈值）"""
+    base = (ias.get('signal') or '持有').split('（')[0]
+    position = ias.get('position') or '40-60%'
+    if base in ('强烈买入', '增持'):
+        return "投资策略上，IAS 信号积极，可适度增加风险敞口；结构性机会聚焦新能源与碳市场相关资产。"
+    if base == '持有':
         ev = get_indicator(indicators, 'evPenetration').get('value')
         carbon = get_indicator(indicators, 'carbonPrice').get('value')
         highlights = []
         if ev is not None and ev >= 40:
             highlights.append("新能源产业链（渗透率超预期）")
         if carbon is not None and carbon >= 90:
-            highlights.append("碳市场相关资产（碳价创新高）")
-        if highlights:
-            hl_text = "结构性亮点在于中国" + "和".join(highlights)
-        else:
-            hl_text = "国内宽松政策提供支撑"
-        return (f"投资策略上，IAS信号指向'持有'区间，维持40-60%仓位。"
-                f"{hl_text}。"
-                f"而美国方向需警惕利率环境持续偏紧对估值的压制。建议均衡配置，不过度暴露单一市场风险。")
-    else:
-        return (f"投资策略上，IAS信号偏防御，建议适度降低风险敞口。"
-                f"关注防御性资产和高股息板块，等待数据改善信号。")
+            highlights.append("碳市场相关资产（碳价高位）")
+        hl_text = ("结构性亮点在于中国" + "和".join(highlights)) if highlights else "国内宽松政策提供支撑"
+        return (f"投资策略上，IAS 信号指向'持有'区间，维持{position}仓位。"
+                f"{hl_text}。而美国方向需警惕利率环境偏紧对估值的压制。"
+                "建议均衡配置，不过度暴露单一市场风险。")
+    return "投资策略上，IAS 信号偏防御，建议适度降低风险敞口；关注防御性资产和高股息板块，等待数据改善信号。"
 
 
 def _extract_key_divergences(indicators: dict, meta: dict) -> list:

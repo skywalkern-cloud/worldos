@@ -44,11 +44,29 @@ const LIQUIDITY_KEYWORDS: Record<string, KeywordEntry> = {
   'strong-negative': { keyword: '枯竭', emoji: '🧊', color: 'text-red-400', dotColor: '#ef4444' },
 }
 
-const SENTIMENT_KEYWORDS: Record<string, KeywordEntry> = {
+const SENTIMENT_A_KEYWORDS: Record<string, KeywordEntry> = {
   'strong-positive': { keyword: '狂热', emoji: '🚀', color: 'text-green-400', dotColor: '#22c55e' },
   'weak-positive':   { keyword: '乐观', emoji: '😊', color: 'text-green-300', dotColor: '#86efac' },
   'neutral':         { keyword: '中性', emoji: '😐', color: 'text-gray-400', dotColor: '#9ca3af' },
   'weak-negative':   { keyword: '谨慎', emoji: '😰', color: 'text-yellow-400', dotColor: '#eab308' },
+  'strong-negative': { keyword: '恐慌', emoji: '😱', color: 'text-red-400', dotColor: '#ef4444' },
+}
+
+// P1-8DIM 新增：汇率与外部（USDCNH / 美元指数 / 中美利差 / 美债10Y）
+const FX_EXTERNAL_KEYWORDS: Record<string, KeywordEntry> = {
+  'strong-positive': { keyword: '顺风', emoji: '🌤️', color: 'text-green-400', dotColor: '#22c55e' },
+  'weak-positive':   { keyword: '偏顺', emoji: '🍃', color: 'text-green-300', dotColor: '#86efac' },
+  'neutral':         { keyword: '均衡', emoji: '⚖️', color: 'text-gray-400', dotColor: '#9ca3af' },
+  'weak-negative':   { keyword: '承压', emoji: '🌬️', color: 'text-yellow-400', dotColor: '#eab308' },
+  'strong-negative': { keyword: '逆风', emoji: '🌪️', color: 'text-red-400', dotColor: '#ef4444' },
+}
+
+// P1-8DIM 新增：全球风险偏好（VIX / 美股恐惧贪婪）
+const RISK_APPETITE_KEYWORDS: Record<string, KeywordEntry> = {
+  'strong-positive': { keyword: '激进', emoji: '🔥', color: 'text-green-400', dotColor: '#22c55e' },
+  'weak-positive':   { keyword: '偏多', emoji: '📈', color: 'text-green-300', dotColor: '#86efac' },
+  'neutral':         { keyword: '中性', emoji: '↔️', color: 'text-gray-400', dotColor: '#9ca3af' },
+  'weak-negative':   { keyword: '避险', emoji: '🛡️', color: 'text-yellow-400', dotColor: '#eab308' },
   'strong-negative': { keyword: '恐慌', emoji: '😱', color: 'text-red-400', dotColor: '#ef4444' },
 }
 
@@ -69,11 +87,15 @@ const TECHGREEN_KEYWORDS: Record<string, KeywordEntry> = {
 }
 
 // 维度ID到关键词表的映射
+// P1-8DIM：旧 id 'sentiment' 已拆为 sentimentA + riskAppetite，不留兼容别名
+// （留着 = 指向不存在维度的死引用，改名后旧 key 会静默拿到中性占位而不报错）。
 const KEYWORD_MAP: Record<string, Record<string, KeywordEntry>> = {
   economic: ECONOMIC_KEYWORDS,
   inflation: INFLATION_KEYWORDS,
   liquidity: LIQUIDITY_KEYWORDS,
-  sentiment: SENTIMENT_KEYWORDS,
+  fxExternal: FX_EXTERNAL_KEYWORDS,
+  sentimentA: SENTIMENT_A_KEYWORDS,
+  riskAppetite: RISK_APPETITE_KEYWORDS,
   resource: RESOURCE_KEYWORDS,
   techGreen: TECHGREEN_KEYWORDS,
 }
