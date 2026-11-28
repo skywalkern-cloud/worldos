@@ -1,0 +1,1250 @@
+{
+  "generatedAt": "2026-11-28T17:36:47",
+  "purpose": "P1-8DIM 历史回算：旧 6 维（冻结字面量）vs 新 8 维，逐日对照 + 信号翻转清单",
+  "legacy": {
+    "dims": [
+      {
+        "id": "economic",
+        "name": "经济增长",
+        "weight": 1.0,
+        "indicators": [
+          "chinaGdp",
+          "chinaPmi",
+          "usGdp",
+          "servicePmi",
+          "electricity",
+          "usNonFarm"
+        ]
+      },
+      {
+        "id": "inflation",
+        "name": "通胀与政策",
+        "weight": 1.0,
+        "indicators": [
+          "cpi",
+          "ppi",
+          "usCpi",
+          "corePce",
+          "fedRate"
+        ]
+      },
+      {
+        "id": "liquidity",
+        "name": "流动性",
+        "weight": 0.8,
+        "indicators": [
+          "lpr",
+          "dr007",
+          "m2",
+          "creditSpread",
+          "dollarIndex",
+          "usBond2Y",
+          "usBond5Y",
+          "usBond10Y"
+        ]
+      },
+      {
+        "id": "sentiment",
+        "name": "市场情绪",
+        "weight": 0.8,
+        "indicators": [
+          "vix",
+          "fearGreed",
+          "ashareTurnover",
+          "marginBalance",
+          "southboundNet",
+          "hstechMomentum"
+        ]
+      },
+      {
+        "id": "resource",
+        "name": "资源与供应链",
+        "weight": 0.6,
+        "indicators": [
+          "oilPrice",
+          "naturalGas",
+          "carbonPrice",
+          "lmeIndex",
+          "shanghaiCopper"
+        ]
+      },
+      {
+        "id": "techGreen",
+        "name": "科技与绿色",
+        "weight": 0.4,
+        "indicators": [
+          "aiGrowth",
+          "robotInstall",
+          "evPenetration",
+          "renewEnergyInvest"
+        ]
+      }
+    ],
+    "scale": 4.6,
+    "thresholds": [
+      [
+        2.5,
+        "强烈买入",
+        "80-100%"
+      ],
+      [
+        1.0,
+        "增持",
+        "60-80%"
+      ],
+      [
+        -0.5,
+        "持有",
+        "40-60%"
+      ],
+      [
+        -1.5,
+        "减仓",
+        "20-40%"
+      ]
+    ],
+    "reference_only": [
+      "aiGrowth",
+      "epu",
+      "robotInstall"
+    ]
+  },
+  "current": {
+    "dims": [
+      {
+        "id": "economic",
+        "name": "经济增长",
+        "weight": 1.0
+      },
+      {
+        "id": "inflation",
+        "name": "通胀与政策",
+        "weight": 1.0
+      },
+      {
+        "id": "liquidity",
+        "name": "流动性（国内）",
+        "weight": 0.8
+      },
+      {
+        "id": "fxExternal",
+        "name": "汇率与外部",
+        "weight": 0.7
+      },
+      {
+        "id": "sentimentA",
+        "name": "A股/港股情绪",
+        "weight": 0.9
+      },
+      {
+        "id": "riskAppetite",
+        "name": "全球风险偏好",
+        "weight": 0.4
+      },
+      {
+        "id": "resource",
+        "name": "资源与供应链",
+        "weight": 0.5
+      },
+      {
+        "id": "techGreen",
+        "name": "科技与绿色",
+        "weight": 0.3
+      }
+    ],
+    "scale": 5.6,
+    "threshold_space": "normalized",
+    "thresholds": [
+      [
+        0.543,
+        "强烈买入",
+        "80-100%"
+      ],
+      [
+        0.217,
+        "增持",
+        "60-80%"
+      ],
+      [
+        -0.109,
+        "持有",
+        "40-60%"
+      ],
+      [
+        -0.326,
+        "减仓",
+        "20-40%"
+      ]
+    ]
+  },
+  "rules_hash_old": [
+    "269592dd0bb6",
+    "88cb8f040f89",
+    "a306915b6fa9"
+  ],
+  "rules_hash_new": "ae148d2b8a6d",
+  "rows": [
+    {
+      "date": "2026-11-09",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-10",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-11",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-12",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-13",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-14",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-16",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-17",
+      "old": {
+        "score": -0.32,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.455,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "liquidity",
+          "sentiment",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "sentiment": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.38,
+        "normalized": -0.0685,
+        "signal": "数据不足",
+        "coverage": 0.357,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "liquidity",
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "resource",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": null,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": null,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "数据不足",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-18",
+      "old": {
+        "score": -0.44,
+        "normalized": -0.096,
+        "signal": "持有",
+        "coverage": 0.773,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.05,
+          "sentiment": null,
+          "resource": -0.249,
+          "techGreen": null
+        }
+      },
+      "new": {
+        "score": -0.61,
+        "normalized": -0.108485,
+        "signal": "数据不足",
+        "coverage": 0.589,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "fxExternal",
+          "sentimentA",
+          "riskAppetite",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.12,
+          "fxExternal": null,
+          "sentimentA": null,
+          "riskAppetite": null,
+          "resource": -0.25,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "数据不足",
+        "threshold_flip": false,
+        "structure_flip": true
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-19",
+      "old": {
+        "score": -0.34,
+        "normalized": -0.073833,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.132,
+          "sentiment": null,
+          "resource": -0.249,
+          "techGreen": 0.631
+        }
+      },
+      "new": {
+        "score": -0.78,
+        "normalized": -0.138568,
+        "signal": "减仓（部分维度缺失·参考）",
+        "coverage": 0.786,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.112,
+          "fxExternal": -0.167,
+          "sentimentA": null,
+          "riskAppetite": -0.353,
+          "resource": -0.25,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "减仓",
+        "threshold_flip": false,
+        "structure_flip": true
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-20",
+      "old": {
+        "score": -0.3,
+        "normalized": -0.064889,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.125,
+          "sentiment": null,
+          "resource": -0.202,
+          "techGreen": 0.623
+        }
+      },
+      "new": {
+        "score": -0.85,
+        "normalized": -0.152432,
+        "signal": "减仓（部分维度缺失·参考）",
+        "coverage": 0.786,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA",
+          "techGreen"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.112,
+          "fxExternal": -0.161,
+          "sentimentA": null,
+          "riskAppetite": -0.516,
+          "resource": -0.25,
+          "techGreen": null
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "减仓",
+        "threshold_flip": false,
+        "structure_flip": true
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-21",
+      "old": {
+        "score": -0.14,
+        "normalized": -0.029444,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.104,
+          "sentiment": null,
+          "resource": -0.015,
+          "techGreen": 0.616
+        }
+      },
+      "new": {
+        "score": -0.52,
+        "normalized": -0.092936,
+        "signal": "持有",
+        "coverage": 0.839,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.112,
+          "fxExternal": -0.132,
+          "sentimentA": null,
+          "riskAppetite": -0.516,
+          "resource": -0.25,
+          "techGreen": 0.712
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-22",
+      "old": {
+        "score": -0.13,
+        "normalized": -0.029222,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.103,
+          "sentiment": null,
+          "resource": -0.015,
+          "techGreen": 0.616
+        }
+      },
+      "new": {
+        "score": -0.52,
+        "normalized": -0.09234,
+        "signal": "持有",
+        "coverage": 0.839,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.112,
+          "fxExternal": -0.128,
+          "sentimentA": null,
+          "riskAppetite": -0.516,
+          "resource": -0.25,
+          "techGreen": 0.712
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-23",
+      "old": {
+        "score": -0.13,
+        "normalized": -0.028056,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.004,
+          "sentiment": null,
+          "resource": -0.14,
+          "techGreen": 0.616
+        }
+      },
+      "new": {
+        "score": -0.47,
+        "normalized": -0.083489,
+        "signal": "持有",
+        "coverage": 0.839,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": 0.018,
+          "fxExternal": -0.018,
+          "sentimentA": null,
+          "riskAppetite": -0.677,
+          "resource": -0.4,
+          "techGreen": 0.712
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-24",
+      "old": {
+        "score": -0.21,
+        "normalized": -0.046222,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.056,
+          "sentiment": null,
+          "resource": -0.111,
+          "techGreen": 0.41
+        }
+      },
+      "new": {
+        "score": -0.62,
+        "normalized": -0.109979,
+        "signal": "减仓",
+        "coverage": 0.839,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": 0.013,
+          "fxExternal": -0.134,
+          "sentimentA": null,
+          "riskAppetite": -0.721,
+          "resource": -0.333,
+          "techGreen": 0.528
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "减仓",
+        "threshold_flip": false,
+        "structure_flip": true
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-25",
+      "old": {
+        "score": -0.19,
+        "normalized": -0.040333,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.052,
+          "sentiment": null,
+          "resource": -0.081,
+          "techGreen": 0.41
+        }
+      },
+      "new": {
+        "score": -0.57,
+        "normalized": -0.102596,
+        "signal": "持有",
+        "coverage": 0.839,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": 0.015,
+          "fxExternal": -0.124,
+          "sentimentA": null,
+          "riskAppetite": -0.712,
+          "resource": -0.288,
+          "techGreen": 0.528
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-26",
+      "old": {
+        "score": -0.2,
+        "normalized": -0.043111,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.047,
+          "sentiment": null,
+          "resource": -0.101,
+          "techGreen": 0.4
+        }
+      },
+      "new": {
+        "score": -0.62,
+        "normalized": -0.110511,
+        "signal": "减仓",
+        "coverage": 0.839,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": 0.014,
+          "fxExternal": -0.114,
+          "sentimentA": null,
+          "riskAppetite": -0.777,
+          "resource": -0.318,
+          "techGreen": 0.52
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "减仓",
+        "threshold_flip": false,
+        "structure_flip": true
+      },
+      "snapshot_rules_hash": "88cb8f040f89"
+    },
+    {
+      "date": "2026-11-27",
+      "old": {
+        "score": -0.14,
+        "normalized": -0.030444,
+        "signal": "持有",
+        "coverage": 0.818,
+        "weight_effective_sum": 4.4,
+        "grayed": [
+          "sentiment"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.046,
+          "sentiment": null,
+          "resource": -0.025,
+          "techGreen": 0.396
+        }
+      },
+      "new": {
+        "score": -0.6,
+        "normalized": -0.107106,
+        "signal": "持有",
+        "coverage": 0.839,
+        "weight_effective_sum": 5.6,
+        "grayed": [
+          "sentimentA"
+        ],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": 0.011,
+          "fxExternal": -0.11,
+          "sentimentA": null,
+          "riskAppetite": -0.777,
+          "resource": -0.333,
+          "techGreen": 0.597
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "持有",
+        "threshold_flip": false,
+        "structure_flip": false
+      },
+      "snapshot_rules_hash": "a306915b6fa9"
+    },
+    {
+      "date": "2026-11-28",
+      "old": {
+        "score": -0.43,
+        "normalized": -0.093636,
+        "signal": "持有",
+        "coverage": 1.0,
+        "weight_effective_sum": 4.4,
+        "grayed": [],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": -0.061,
+          "sentiment": -0.369,
+          "resource": -0.017,
+          "techGreen": 0.396
+        }
+      },
+      "new": {
+        "score": -0.68,
+        "normalized": -0.12175,
+        "signal": "减仓",
+        "coverage": 1.0,
+        "weight_effective_sum": 5.6,
+        "grayed": [],
+        "dims": {
+          "economic": -0.25,
+          "inflation": 0.113,
+          "liquidity": 0.011,
+          "fxExternal": -0.132,
+          "sentimentA": -0.302,
+          "riskAppetite": -0.505,
+          "resource": -0.333,
+          "techGreen": 0.597
+        }
+      },
+      "attribution": {
+        "threshold_only_signal": "持有",
+        "structure_only_signal": "减仓",
+        "threshold_flip": false,
+        "structure_flip": true
+      },
+      "snapshot_rules_hash": "269592dd0bb6"
+    }
+  ],
+  "flips": [
+    {
+      "date": "2026-11-18",
+      "old_signal": "持有",
+      "new_signal": "数据不足",
+      "old_norm": -0.096,
+      "new_norm": -0.108485,
+      "cause": "缺失剔除（覆盖率跌破 0.6）",
+      "old_coverage": 0.773,
+      "new_coverage": 0.589,
+      "new_grayed": [
+        "fxExternal",
+        "sentimentA",
+        "riskAppetite",
+        "techGreen"
+      ]
+    },
+    {
+      "date": "2026-11-19",
+      "old_signal": "持有",
+      "new_signal": "减仓（部分维度缺失·参考）",
+      "old_norm": -0.073833,
+      "new_norm": -0.138568,
+      "cause": "结构/权重",
+      "old_coverage": 0.818,
+      "new_coverage": 0.786,
+      "new_grayed": [
+        "sentimentA",
+        "techGreen"
+      ]
+    },
+    {
+      "date": "2026-11-20",
+      "old_signal": "持有",
+      "new_signal": "减仓（部分维度缺失·参考）",
+      "old_norm": -0.064889,
+      "new_norm": -0.152432,
+      "cause": "结构/权重",
+      "old_coverage": 0.818,
+      "new_coverage": 0.786,
+      "new_grayed": [
+        "sentimentA",
+        "techGreen"
+      ]
+    },
+    {
+      "date": "2026-11-24",
+      "old_signal": "持有",
+      "new_signal": "减仓",
+      "old_norm": -0.046222,
+      "new_norm": -0.109979,
+      "cause": "结构/权重",
+      "old_coverage": 0.818,
+      "new_coverage": 0.839,
+      "new_grayed": [
+        "sentimentA"
+      ]
+    },
+    {
+      "date": "2026-11-26",
+      "old_signal": "持有",
+      "new_signal": "减仓",
+      "old_norm": -0.043111,
+      "new_norm": -0.110511,
+      "cause": "结构/权重",
+      "old_coverage": 0.818,
+      "new_coverage": 0.839,
+      "new_grayed": [
+        "sentimentA"
+      ]
+    },
+    {
+      "date": "2026-11-28",
+      "old_signal": "持有",
+      "new_signal": "减仓",
+      "old_norm": -0.093636,
+      "new_norm": -0.12175,
+      "cause": "结构/权重",
+      "old_coverage": 1.0,
+      "new_coverage": 1.0,
+      "new_grayed": []
+    }
+  ],
+  "flip_count": 6
+}
